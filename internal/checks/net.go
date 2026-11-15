@@ -250,6 +250,43 @@ func ruleText(r facts.UFWRule) string {
 
 func portLabel(proto string, port int) string { return fmt.Sprintf("%s/%d", proto, port) }
 
+// sshReach is the answer to "can sshd be reached from any source": the
+// worst verdict over the sshd ports, the ports that are open, and why for
+// each port. NET-003, SSH-011 and CS-010 share it.
+type sshReach struct {
+	open      tri
+	ports     []int
+	openPorts []int
+	reasons   []string
+}
+
+// sshReachability needs both listeners and firewall facts; callers check
+// for nil first.
+func sshReachability(f *facts.Facts) sshReach {
+	r := sshReach{open: triNo, ports: sshPorts(f.Listeners)}
+	for _, p := range r.ports {
+		o, reason := openFromAnywhere(f.Firewall, f.Listeners.Sockets, "tcp", p)
+		r.reasons = append(r.reasons, fmt.Sprintf("tcp/%d: %s", p, reason))
+		switch {
+		case o == triYes:
+			r.open = triYes
+			r.openPorts = append(r.openPorts, p)
+		case o == triUnknown && r.open != triYes:
+			r.open = triUnknown
+		}
+	}
+	return r
+}
+
+// where lists the open ports as "tcp/22, tcp/2222".
+func (r sshReach) where() string {
+	labels := make([]string, 0, len(r.openPorts))
+	for _, p := range r.openPorts {
+		labels = append(labels, portLabel("tcp", p))
+	}
+	return strings.Join(labels, ", ")
+}
+
 func checkSSHFromAnywhere(in Input) []Result {
 	f := in.Facts
 	if f.Listeners == nil {
@@ -258,33 +295,15 @@ func checkSSHFromAnywhere(in Input) []Result {
 	if f.Firewall == nil {
 		return []Result{NotInspected(f, "firewall")}
 	}
-	ports := sshPorts(f.Listeners)
-	open := triNo
-	var why []string
-	var openPorts []int
-	for _, p := range ports {
-		o, reason := openFromAnywhere(f.Firewall, f.Listeners.Sockets, "tcp", p)
-		why = append(why, fmt.Sprintf("tcp/%d: %s", p, reason))
-		switch {
-		case o == triYes:
-			open = triYes
-			openPorts = append(openPorts, p)
-		case o == triUnknown && open != triYes:
-			open = triUnknown
-		}
-	}
+	reach := sshReachability(f)
 	running, known := tailnetState(f)
-	ev := map[string]any{"ssh_ports": ports, "open_from_anywhere": open.String(), "tailnet": tailnetWord(running, known)}
-	reason := strings.Join(why, "; ")
-	var openLabels []string
-	for _, p := range openPorts {
-		openLabels = append(openLabels, portLabel("tcp", p))
-	}
-	where := strings.Join(openLabels, ", ")
+	ev := map[string]any{"ssh_ports": reach.ports, "open_from_anywhere": reach.open.String(), "tailnet": tailnetWord(running, known)}
+	reason := strings.Join(reach.reasons, "; ")
+	where := reach.where()
 	switch {
-	case open == triNo:
+	case reach.open == triNo:
 		return One(Pass, "SSH is not reachable from anywhere: "+reason, ev)
-	case open == triUnknown:
+	case reach.open == triUnknown:
 		return One(Unknown, "could not tell whether SSH is open to anywhere: "+reason, ev)
 	case !known:
 		return One(Unknown, fmt.Sprintf("SSH is open to anywhere on %s; Tailscale facts are missing, so whether a private path exists is unknown", where), ev)

@@ -496,52 +496,79 @@ func checkSSHBruteForce(in Input) []Result {
 	if f.Firewall == nil {
 		return []Result{NotInspected(f, "firewall")}
 	}
-	ports := sshPorts(f.Listeners)
-	open := triNo
-	for _, p := range ports {
-		o, _ := openFromAnywhere(f.Firewall, f.Listeners.Sockets, "tcp", p)
-		if o == triYes || (o == triUnknown && open == triNo) {
-			open = o
-		}
-	}
-	ev := map[string]any{"ssh_ports": ports, "ssh_public": open.String()}
-	switch open {
+	reach := sshReachability(f)
+	ports := reach.ports
+	ev := map[string]any{"ssh_ports": ports, "ssh_public": reach.open.String()}
+	switch reach.open {
 	case triNo:
 		return One(Pass, "SSH is not reachable from anywhere, so brute force protection is optional", ev)
 	case triUnknown:
 		return One(Unknown, "could not tell whether SSH is public (see NET-003)", ev)
 	}
-
-	c, f2b := f.CrowdSec, f.Fail2ban
-	csKnown := c != nil && (!c.Installed || c.HubRead)
-	csSSH := false
-	if c != nil && c.Installed && c.HasItem("sshd") {
-		if running, _ := c.EngineRunning(); running {
-			csSSH = true
-		}
-	}
-	ev["crowdsec_sshd"] = csSSH
-	if csSSH {
+	p := sshProtection(f, ports)
+	ev["crowdsec_sshd"] = p.crowdsec
+	if p.crowdsec {
 		return One(Pass, "SSH is public and the CrowdSec sshd collection watches it", ev)
 	}
-	active, jailKnown := f2b.JailActive("sshd")
-	ev["fail2ban_sshd"] = triOf(active, jailKnown).String()
-	if active {
-		j, _ := f2b.Jail("sshd")
-		ev["jail_port"] = valueOrUnknown(j.Port)
-		ranges, ok := resolveJailPorts(j.Port)
-		switch {
-		case !ok:
-			return One(Unknown, fmt.Sprintf("SSH is public and the fail2ban sshd jail is active, but its port (%s) could not be resolved", valueOrUnknown(j.Port)), ev)
-		case !portsCovered(ranges, ports):
-			return One(Warn, fmt.Sprintf("the fail2ban sshd jail bans on port %s while sshd listens on %s: bans miss the real port", j.Port, joinInts(ports)), ev)
+	ev["fail2ban_sshd"] = p.jail.String()
+	if p.jail == triYes {
+		ev["jail_port"] = valueOrUnknown(p.jailPort)
+		switch p.level {
+		case triUnknown:
+			return One(Unknown, fmt.Sprintf("SSH is public and the fail2ban sshd jail is active, but its port (%s) could not be resolved", valueOrUnknown(p.jailPort)), ev)
+		case triNo:
+			return One(Warn, fmt.Sprintf("the fail2ban sshd jail bans on port %s while sshd listens on %s: bans miss the real port", p.jailPort, joinInts(ports)), ev)
 		}
 		return One(Pass, "SSH is public and the fail2ban sshd jail covers its port", ev)
 	}
-	if !jailKnown || !csKnown {
+	if p.level == triUnknown {
 		return One(Unknown, "SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo)", ev)
 	}
 	return One(Fail, "SSH is public and neither a fail2ban sshd jail nor the CrowdSec sshd collection protects it", ev)
+}
+
+// sshGuard is whether fail2ban or CrowdSec bans SSH brute force on the
+// sshd ports. level is the overall answer; crowdsec, jail and jailPort say
+// how it was reached.
+type sshGuard struct {
+	level    tri
+	crowdsec bool   // the CrowdSec engine runs with the sshd collection
+	jail     tri    // the fail2ban sshd jail is active
+	jailPort string // the jail's port setting, when it is active
+}
+
+func sshProtection(f *facts.Facts, ports []int) sshGuard {
+	c, f2b := f.CrowdSec, f.Fail2ban
+	g := sshGuard{}
+	if c != nil && c.Installed && c.HasItem("sshd") {
+		if running, _ := c.EngineRunning(); running {
+			g.crowdsec, g.level = true, triYes
+			return g
+		}
+	}
+	csKnown := c != nil && (!c.Installed || c.HubRead)
+	active, jailKnown := f2b.JailActive("sshd")
+	g.jail = triOf(active, jailKnown)
+	if active {
+		j, _ := f2b.Jail("sshd")
+		g.jailPort = j.Port
+		ranges, ok := resolveJailPorts(j.Port)
+		switch {
+		case !ok:
+			g.level = triUnknown
+		case !portsCovered(ranges, ports):
+			g.level = triNo
+		default:
+			g.level = triYes
+		}
+		return g
+	}
+	if !jailKnown || !csKnown {
+		g.level = triUnknown
+		return g
+	}
+	g.level = triNo
+	return g
 }
 
 func triOf(v, known bool) tri {
