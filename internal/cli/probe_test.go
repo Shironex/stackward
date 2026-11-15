@@ -161,7 +161,7 @@ func TestProbeTextWithOwnFlag(t *testing.T) {
 	if code != report.ExitOK {
 		t.Fatalf("exit %d: %s", code, errs)
 	}
-	for _, want := range []string{"probe (stackward.report.v1)", "target:    127.0.0.1", "PRB  Outside view", "profile unknown"} {
+	for _, want := range []string{"stackward probe  ", "WARNING:   target is this machine", "target:    127.0.0.1", "profile unknown"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
