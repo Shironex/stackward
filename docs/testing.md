@@ -28,7 +28,7 @@ specific checks and subjects.
 | `socket-proxy` | a read only Docker socket proxy on 127.0.0.1:2375 | DKR-002 is info (not a raw daemon on TCP), DKR-011 passes |
 | `ufw` | UFW deny by default, SSH allowed only from 192.0.2.0/24, a published container port | the firewall collector is ok under the sandbox, NET-001 passes, NET-002 to NET-008 are judged (not unknown), DKR-001 fails on the published port |
 | `ssh` | an sshd drop-in with `PasswordAuthentication yes`, then a hardened one | SSH-001 fails, then passes; the drop-in is removed afterwards |
-| `read-only` | the `bad-docker` containers and UFW active | nothing changes on the host during an audit with and without the sandbox, and strace sees no write attempt outside `--out` |
+| `read-only` | the `bad-docker` containers, UFW active and a process listening on a custom port | nothing changes on the host during an audit with and without the sandbox, strace sees no write attempt outside `--out` (the socket ownership snapshot taken before the sandbox included), and under the sandbox the snapshot names the owner of the custom port |
 | `non-root` | the `bad-docker` containers | as a user, no collector crashes and the report says it ran without root; as a user with no groups, no check marked `needs_root` passes |
 
 CI runs every scenario on `ubuntu-24.04` and `ubuntu-22.04` runners
