@@ -31,7 +31,8 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/catalog` | embedded `data/<group>.json`, loader, group order |
 | `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (from listeners, firewall, tunnel, tailnet and PaaS panel facts) |
 | `internal/report` | `report.v1` types, `Build`, text and JSON renderers, exit codes |
-| `internal/plan` | `stackward plan`: the step model, the generator registry, `Build` (vetoes, redaction), unified diffs, the plan.v1 JSON, the text summary and the shell script |
+| `internal/plan` | `stackward plan`: the step model, the generator registry, `Build` (vetoes, redaction), unified diffs, the plan.v1 JSON, the text summary and the shell script; per step `Authorize` and `Check` for apply |
+| `internal/apply` | `stackward apply` and `undo`: the `Host` seam (every write and command), selection, preconditions, backups, atomic writes, the run journal, undo. The only code that writes to a system; `applytest` holds the fakes its tests share |
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
@@ -40,6 +41,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/version` | link time version (`-X .../internal/version.Version=v0.1.0`) |
 | `schema/report.v1.json` | the JSON contract |
 | `schema/plan.v1.json` | the plan JSON contract |
+| `schema/journal.v1.json` | the apply run journal JSON contract |
 | `test/` | golden tests over `test/fixtures/<scenario>/` |
 
 ## Levels, severity, exit codes
@@ -218,9 +220,13 @@ a facts file reproduces a plan and plans have golden files.
 
    ```go
    func init() {
-       plan.Register(plan.Generator{ID: "journald-cap", Title: "...", Fixes: []string{"LOG-001"}, Risk: plan.Safe, Plan: planJournaldCap})
+       plan.Register(plan.Generator{ID: "journald-cap", Title: "...", Fixes: []string{"LOG-001"}, Risk: plan.Safe,
+           Plan: planJournaldCap, Authorize: authorizeJournaldCap, Check: checkJournaldCap, CommandsOnChange: true})
    }
    ```
+
+   `Register` panics without `Authorize` and `Check`: every step must be
+   safe to apply.
 
    `Build` copies `ID`, `Title`, `Risk` and `OptIn` from the generator into
    the step; a step may narrow `Fixes` to a subset.
@@ -230,27 +236,64 @@ a facts file reproduces a plan and plans have golden files.
    fix it, and otherwise a step built with `newEdit` (hashes and diff).
    Prefer a drop-in to editing a main configuration file; reuse the checks'
    own judgement (`checks.SysctlFixes`) rather than copying a baseline.
-4. Test the three cases (pass gives no step, fail gives the exact diff,
-   unknown facts give no step and a reason) in `internal/plan/plan_test.go`,
-   and add or extend a `test/fixtures/plan-*` scenario (`plan.json`,
-   `plan.txt`, `plan.sh`, written by `go test ./test/ -update`).
+4. Write `Authorize(Step) error`: refuse every path, content, mode,
+   command, validate command and undo command the step would not produce.
+   Re-derive rather than trust the plan: compare against constants, render
+   the content again from what the plan names (the sysctl drop-in from its
+   keys), or recompute it from the old side (the `daemon.json` merge). The
+   helpers `wantOneEdit`, `wantContent`, `wantValidate`, `wantCommands` and
+   `wantRestarts` cover the usual cases.
+5. Write `Check(Reader, Step) (applied, why, error)`: read only, through
+   the `Reader` apply passes (so it works under a test root). Set
+   `CommandsOnChange` when the commands only load a changed file (a
+   restart).
+6. Test the three plan cases (pass gives no step, fail gives the exact
+   diff, unknown facts give no step and a reason) in
+   `internal/plan/plan_test.go`, and add or extend a `test/fixtures/plan-*`
+   scenario (`plan.json`, `plan.txt`, `plan.sh`, written by
+   `go test ./test/ -update`; the golden test also runs `Authorize` on
+   every step). Add apply cases (applied twice, tampered fields refused) in
+   `internal/apply`.
 
-### How apply and the never touched list plug in
+### How apply works
 
-- **Check and apply (issue #24).** `Generator` gains `Check` and `Apply`
-  function fields; apply loads a plan, looks each step's generator up by
-  `Step.ID` (`plan.Lookup`) and calls them. The serialized step does not
-  change. Most steps need no custom code: a shared executor applies `edits`
-  (refuse when the file no longer hashes to `old_sha256`, or exists for
-  `create`; keep `FILE.orig`; back up; write; run `validate` on the staged
-  file; check `new_sha256`) and then runs `commands`. `Plan.Validate`
-  already checks every plan's invariants (known ids, risk classes match the
-  registry, hashes match unredacted content).
+`stackward apply` (`internal/cli/apply.go`, `internal/apply`) loads a plan
+strictly (unknown fields refused), checks its schema and host
+(`apply.CheckPlan`), selects steps (`apply.Select`, reading the risk class
+and opt in from the registry, refusing access-critical ones), then:
+
+```
+plan.Authorize  ->  plan.Check  ->  preconditions  ->  preview, confirm  ->  apply.Execute  ->  journal
+```
+
+- `plan.Authorize` runs the shared checks (known id, risk and opt in match
+  the registry, hashes, no redacted edit) and the generator's `Authorize`.
+- `plan.Check` asks the generator whether the step is already in place.
+- Preconditions: each file is absent (create), hashes to `old_sha256`
+  (replace) or already hashes to `new_sha256`; never a symlink.
+- `apply.Execute` is one shared executor for every step: `FILE.orig` once,
+  a backup under `/var/backups/stackward/<run-id>/`, a staged file in the
+  same directory, the `validate` command on it, rename, then the commands
+  (only when a file changed, for `CommandsOnChange` steps). It saves the
+  journal after every change and stops at the first failure.
+- `apply.Undo` loads the journal, authorizes every step again, checks every
+  file still holds what the run wrote, restores or removes files newest
+  first, then runs the steps' undo commands except file removals.
+
+All host access goes through `apply.Host` (`NewHost(root, runner)`):
+`ReadFile`, `Stat`, `WriteAtomic`, `CopyNew`, `MkdirAll`, `Remove`, `Run`.
+The real host is `NewHost("/", nil)`; tests use `t.TempDir()` and the fake
+runner in `internal/apply/applytest`, and the CLI takes an `applyEnv` (host,
+euid, hostname, stdin, terminal, clock) so its tests never reach the
+machine. Only `hostApplyEnv` touches the real host.
+
 - **Never touched list (issue #27).** `plan.Options.Vetoes` takes
   `func(Step) string` policies; a non empty reason moves the step to
   `skipped` with kind `refused`, at plan time. Policies judge the step's
   `touches` and `edits`, so a step cannot reach a forbidden target without
   declaring it.
+- **Access-critical steps (issue #26)** will run inside a transaction with a
+  rollback timer. Until then `apply.Select` refuses them.
 - **Order.** Steps sort by risk class, then id. A later step that must run
   after another (create a user, prove it, then lock the default user) adds
   an explicit ordering field rather than relying on ids.
@@ -285,6 +328,10 @@ somewhere will fail under the sandbox and report that, which is the point.
 
 Tests must never call `Apply` in the test process (it cannot be undone):
 CLI tests pass `--no-sandbox`, and the sandbox test re-executes itself.
+
+`apply` and `undo` do not apply the sandbox: it forbids the writes they
+exist to make. Their reach is bounded by `plan.Authorize` instead, and their
+header says there is no sandbox.
 
 ## Redaction
 

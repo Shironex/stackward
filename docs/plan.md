@@ -2,7 +2,8 @@
 
 `stackward plan` writes down the exact changes that would fix the audit's
 findings, and changes nothing. It is part of the upcoming 0.2 and is not in a
-release yet; `stackward apply`, which will run a plan, does not exist yet.
+release yet. [`stackward apply`](apply.md) runs the steps you choose from a
+saved plan.
 
 ```
 stackward plan [--out FILE] [--json | --emit-script]
@@ -59,9 +60,9 @@ Every step has one of three risk classes.
 |---|---|---|
 | `safe` | Changes a setting that cannot cut you off or stop your services; may restart a logging daemon. | journald size cap, sysctl hardening drop-in |
 | `networking` | Can interrupt traffic: restarts Docker, so containers stop and start. Always says what it restarts. | Docker log rotation in `daemon.json` |
-| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply will run these only inside a transaction with a rollback timer and a confirm from a new SSH session. | none yet |
+| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply refuses these until it can run them inside a transaction with a rollback timer and a confirm from a new SSH session (#26). | none yet |
 
-Some steps are **opt in** (`opt_in: true`): apply will run them only when you
+Some steps are **opt in** (`opt_in: true`): apply runs them only when you
 select them by id. The Docker step is opt in because of its restart.
 
 ## Steps in this version
@@ -135,8 +136,8 @@ content, their SHA-256 (`old_sha256`, `new_sha256`), a unified `diff`, the
 `mode` of a created file, and optionally `validate`, a command that checks
 the staged new file before it replaces the old one.
 
-The old content and its hash are a precondition: the script below (and apply,
-later) refuses to touch a file that changed since the audit.
+The old content and its hash are a precondition: the script below and apply
+refuse to touch a file that changed since the audit.
 
 ### Redaction
 
@@ -144,8 +145,8 @@ A plan goes through the same redaction as the report: secret shaped values
 are masked in every message, command and file content. The hashes are taken
 before redaction, so they still say what the host holds. An edit where
 something was masked is marked `"redacted": true`; such a plan cannot be
-applied from its own text (the script refuses that step), so plan again on
-the host and look at the file yourself.
+applied from its own text (the script and apply refuse that step), so plan
+again on the host and look at the file yourself.
 
 ## The script (`--emit-script`)
 

@@ -3,8 +3,10 @@
 ## Version 0.1: read only
 
 Version 0.1 audits. It does not change your server, so it cannot lock you
-out or break a service. The promise, enforced by design and, on supported
-kernels, by the Landlock sandbox described in the
+out or break a service. From 0.2 on the same holds for `audit`, `probe`,
+`tui` and `plan`; only `apply` and `undo` write, and only what the plan's
+selected steps say (see [below](#apply-rules)). The promise, enforced by
+design and, on supported kernels, by the Landlock sandbox described in the
 [threat model](threat-model.md):
 
 - no file writes except the report you ask for with `--out`;
@@ -106,10 +108,11 @@ command is run.
 
 ## Version 0.2: plan and apply
 
-`stackward plan` exists now (in the upcoming 0.2, not yet released). Everything
-from "Apply rules" on is still a design, not something you can run today. It
-is written down now so the safety rules are settled before any code changes a
-server.
+`stackward plan` and `stackward apply` exist now (in the upcoming 0.2, not yet
+released). The access critical transaction and the lockout guard below are
+still a design, not something you can run today: until they exist, apply
+refuses every access-critical step. They are written down now so the safety
+rules are settled before any code changes SSH, the firewall or users.
 
 Fixing a finding on a remote machine is riskier than finding it. A wrong SSH
 or firewall change can lock you out, and a hardening profile can break
@@ -141,19 +144,63 @@ You read the plan, remove what you do not want, and only then apply it.
 This version ships only `safe` steps and one opt in `networking` step (Docker
 log rotation); no step touches SSH, the firewall or users yet.
 
-### Apply rules (planned)
+### Apply rules
 
-`stackward apply plan.json` will follow these rules:
+`stackward apply plan.json` follows these rules; [apply.md](apply.md) has the
+details.
 
-- **Idempotent.** A step whose check already passes is skipped.
-- **No blind overwrites.** A file whose content no longer matches the hash
-  in the plan is not touched; plan again.
-- **Backups.** The first time a file is changed, a `FILE.orig` copy is kept.
-  Every overwrite is also copied to a per run backup directory, and a run
-  journal records the old and new values, so you always have a change log.
-- **Never touched.** The kernel setting `ip_forward`, Docker daemon firewall
-  settings, files managed by your platform (other than an opt in permission
-  fix) and the provider firewall.
+- **Root, Linux, this host.** Apply refuses without root (effective uid 0)
+  and says why, and refuses a plan whose hostname hash is not this host's or
+  whose schema is not `stackward.plan.v1`. There is no override.
+- **You choose.** Nothing runs unless selected: `--step ID` or
+  `--all-safe` (safe steps that are not opt in). Opt in and `networking`
+  steps run only when named. `access-critical` steps are refused outright
+  until the transaction below exists. Apply prints every step, file,
+  command and restart, then asks `[y/N]` on a terminal (or needs `--yes`).
+- **A plan file is not trusted.** Every step is re-derived from the code of
+  the generator that owns its id: a hand edited plan cannot name another
+  path, other content, another command or another undo command. Commands
+  run as argument vectors, without a shell, with a fixed `PATH`. An edit
+  whose content was redacted in the plan is refused.
+- **No blind overwrites.** A file whose content no longer matches
+  `old_sha256` (or that exists when the plan creates it) is not touched;
+  plan again. Symlinks are never written through.
+- **Validate before the move.** The new content is written to a temporary
+  file in the same directory with the right mode and owner, synced,
+  checked with the step's validation command (`dockerd --validate` for
+  `daemon.json`), and only then renamed into place. A failed check leaves
+  the file untouched.
+- **Backups.** The first time a file is replaced, a `FILE.orig` copy is
+  kept and never replaced. Every overwrite is also copied, with its mode and
+  owner, to `/var/backups/stackward/<run-id>/<path>`.
+- **A journal.** `/var/backups/stackward/<run-id>/journal.json` (0600)
+  records the old and new values (redacted), every command with its exit
+  code, and the timings, and is saved after every change.
+- **Idempotent.** Each step's check decides whether it is already in place;
+  a second run changes nothing, restarts nothing and says so.
+- **Stop on failure.** The first failure stops the run and prints how to
+  undo it from the journal: `stackward undo --run RUN_ID`, and the same as
+  plain commands.
+- **No sandbox.** The Landlock sandbox forbids writes, so apply and undo do
+  not apply it; their header says so.
+- **Never touched.** No step can reach the kernel setting `ip_forward`,
+  Docker daemon firewall settings, files managed by your platform or the
+  provider firewall: no generator produces such a change and apply refuses
+  anything a generator would not produce. The explicit list, checked at
+  plan time, is [#27](https://github.com/Shironex/stackward/issues/27).
+
+#### Commands apply runs
+
+Apply and undo start no program but these, each only as part of a step you
+selected (or of the run you undo):
+
+| Command | Step | When |
+|---|---|---|
+| `systemctl restart systemd-journald` | journald-cap | after the drop-in is written; undo |
+| `sysctl -p /etc/sysctl.d/90-stackward-hardening.conf` | sysctl-hardening | when the step is not already applied |
+| `sysctl -w KEY=VALUE` | sysctl-hardening | undo only: the running values the audit saw |
+| `dockerd --validate --config-file <staged file>` | docker-log-rotation | before the new `daemon.json` is moved into place |
+| `systemctl restart docker` | docker-log-rotation | after `daemon.json` changed; undo |
 
 ### Access critical changes: rollback timer and second session confirm
 
@@ -186,5 +233,7 @@ provider console is, because that is the recovery path of last resort.
 ### What will still go wrong
 
 No design removes all risk. Keep provider console access, keep a second
-session open while you work, and read the plan. These steps are tested in
-virtual machines, not on your production server first.
+session open while you work, and read the plan. Apply is tested on
+disposable GitHub runner VMs (the `apply` scenario in
+[testing.md](testing.md)), never on a developer's own machine, and not on
+your production server first.
