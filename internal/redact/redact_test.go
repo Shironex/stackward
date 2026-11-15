@@ -121,3 +121,18 @@ func TestIsSecretKey(t *testing.T) {
 		}
 	}
 }
+
+// A message that mentions passwords in prose is not a secret, while a real
+// "password: value" shape still is masked.
+func TestStringKeepsPasswordProseAndMasksRealValues(t *testing.T) {
+	prose := "root has a password set; it works on the console and for su, keep it in a password manager"
+	if got := String(prose); got != prose {
+		t.Errorf("prose mangled: %q", got)
+	}
+	for _, in := range []string{"password: hunter2", "login failed, password: hunter2 was tried", "PASSWORD=hunter2"} {
+		out := String(in)
+		if strings.Contains(out, "hunter2") || !strings.Contains(out, Mask) {
+			t.Errorf("value survived: %q -> %q", in, out)
+		}
+	}
+}

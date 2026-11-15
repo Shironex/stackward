@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Shironex/stackward/internal/facts"
+	"github.com/Shironex/stackward/internal/redact"
 )
 
 func bp(b bool) *bool { return &b }
@@ -460,5 +461,13 @@ func TestSYS004And005(t *testing.T) {
 	same := &facts.Facts{Disk: &facts.Disk{Mounts: []facts.DiskMount{{Path: "/", Mount: "/", UsedPercent: 90}, {Path: "/var", Mount: "/", UsedPercent: 90}}}}
 	if rs := checkDiskUsage(Input{Facts: same}); len(rs) != 1 {
 		t.Errorf("paths on one filesystem must give one result: %v", rs)
+	}
+}
+
+func TestUSR007MessageSurvivesRedaction(t *testing.T) {
+	f := &facts.Facts{CollectedAt: now, Users: users(facts.Account{Name: "root", UID: 0, PasswordStatus: "P"})}
+	msg := checkRootPassword(Input{Facts: f})[0].Message
+	if got := redact.String(msg); got != msg || strings.Contains(msg, redact.Mask) {
+		t.Errorf("message changed by redaction: %q -> %q", msg, got)
 	}
 }
