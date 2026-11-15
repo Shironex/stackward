@@ -1,0 +1,5 @@
+# Project swb: a database on its own project network, as its own user.
+services:
+  db:
+    image: ${REDIS_IMAGE:?}
+    user: "999:999"

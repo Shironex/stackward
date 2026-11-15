@@ -1,0 +1,9 @@
+# Project swb: a database on a network another project joins.
+services:
+  db:
+    image: ${REDIS_IMAGE:?}
+    networks: [shared]
+networks:
+  shared:
+    name: sw-shared
+    external: true
