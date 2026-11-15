@@ -44,11 +44,7 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	p("- **OS:** %s, kernel %s\n", mdOrDash(strings.TrimSpace(r.Host.OS)), mdOrDash(r.Host.Kernel))
 	p("- **Collected:** %s\n", mdOrDash(r.GeneratedAt))
 	p("- **Profile:** %s (%s)\n", mdEscape(string(r.Profile.Name)), mdEscape(r.Profile.Source))
-	root := "yes"
-	if !r.Coverage.Root {
-		root = "no, run with sudo for full coverage"
-	}
-	p("- **Root:** %s\n", root)
+	p("- **Root:** %s\n", yesNo(r.Coverage.Root))
 	p("- **Sandbox:** %s\n", mdEscape(sandboxLine(r.Coverage.Sandbox)))
 	p("- **Coverage:** %s, root: %s\n", CoverageLine(r.Coverage), yesNo(r.Coverage.Root))
 	for _, c := range r.Coverage.Collectors {
@@ -103,8 +99,8 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	}
 	if len(unknown) > 0 {
 		p("\n## Not inspected\n\n")
-		if !r.Coverage.Root {
-			p("Not running as root: run with sudo for full coverage.\n\n")
+		if n := NotRootNote(r); n != "" {
+			p("%s.\n\n", mdEscape(strings.ToUpper(n[:1])+n[1:]))
 		}
 		writeCompact(&b, plural(len(unknown), "check not inspected", "checks not inspected"), unknown, "Reason")
 	}

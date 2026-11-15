@@ -55,13 +55,9 @@ func (s secScan) run(f *facts.Facts) []Result {
 		}
 		out = append(out, Result{Subject: "file:" + file.Path, Level: level, Message: msg, Evidence: secFileEvidence(file)})
 	}
-	sudo := ""
-	if !f.IsRoot() {
-		sudo = "; run with sudo for full coverage"
-	}
 	for _, d := range scan.Denied {
 		out = append(out, Result{Subject: "file:" + d, Level: Unknown,
-			Message:  "could not inspect: permission denied" + sudo,
+			Message:  "could not inspect " + d + ": permission denied",
 			Evidence: map[string]any{"path": d}})
 	}
 	if scan.Truncated {

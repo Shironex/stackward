@@ -139,13 +139,12 @@ func writeAuditHeader(p printer, r *Report) {
 	p("kernel:    %s\n", orDash(r.Host.Kernel))
 	p("collected: %s\n", orDash(r.GeneratedAt))
 	p("profile:   %s (%s)\n", r.Profile.Name, r.Profile.Source)
-	root := "yes"
-	if !r.Coverage.Root {
-		root = "no, run with sudo for full coverage"
-	}
-	p("root:      %s\n", root)
+	p("root:      %s\n", yesNo(r.Coverage.Root))
 	p("sandbox:   %s\n", sandboxLine(r.Coverage.Sandbox))
 	writeCoverageLine(p, r)
+	if n := NotRootNote(r); n != "" {
+		p("note:      %s\n", n)
+	}
 }
 
 // writeProbeHeader replaces the host block of an audit with the target, its
@@ -189,6 +188,17 @@ func writeProbeHeader(p printer, r *Report) {
 func CoverageLine(c Coverage) string {
 	return fmt.Sprintf("%d checks, %d results: %d checked, %d unknown, %d skipped",
 		c.Checks, c.Results, c.Checked, c.Unknown, c.Skipped)
+}
+
+// NotRootNote is the one line that says a run without root left results
+// unknown, so no result has to repeat the advice. It is empty for a root run
+// and for a run where nothing is unknown.
+func NotRootNote(r *Report) string {
+	if r.Coverage.Root || r.Summary.Unknown == 0 {
+		return ""
+	}
+	return fmt.Sprintf("not root: %s could not be inspected; run with sudo for full coverage",
+		plural(r.Summary.Unknown, "result", "results"))
 }
 
 func writeCoverageLine(p printer, r *Report) {
