@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/transaction.v1.json",
+  "title": "stackward transaction state v1",
+  "description": "The state of the current access-critical transaction, at /var/lib/stackward/transaction.json (mode 0600), written atomically and only under the run lock. stackward apply writes it before it arms the rollback timer; the timer's rollback, stackward undo --transaction and stackward confirm change it. One transaction at a time: a new one replaces the file once the old one is confirmed, aborted or its rollback acknowledged. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs transaction.v2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tool",
+    "id",
+    "status",
+    "steps",
+    "opened_at",
+    "deadline",
+    "confirm_within",
+    "timer_unit",
+    "rollback",
+    "session"
+  ],
+  "properties": {
+    "schema": {
+      "const": "stackward.transaction.v1"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "stackward"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "id": {
+      "description": "The run id of the apply run; its journal is /var/backups/stackward/<id>/journal.json.",
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$"
+    },
+    "status": {
+      "description": "open: applied and validated, waiting for stackward confirm until the deadline. confirmed: the change stays. rolled-back: undone. rollback-failed: the undo failed part way. aborted: the timer could not be armed and nothing changed. Access-critical steps are refused while the status is open, and while it is rolled-back or rollback-failed without acked_at.",
+      "enum": [
+        "open",
+        "confirmed",
+        "rolled-back",
+        "rollback-failed",
+        "aborted"
+      ]
+    },
+    "steps": {
+      "description": "The step ids of the transaction.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "opened_at": {
+      "description": "RFC 3339 UTC.",
+      "type": "string"
+    },
+    "deadline": {
+      "description": "When the rollback timer fires, RFC 3339 UTC.",
+      "type": "string"
+    },
+    "confirm_within": {
+      "description": "The --confirm-within duration, as Go prints it (5m0s).",
+      "type": "string"
+    },
+    "timer_unit": {
+      "description": "The transient systemd units, NAME.timer and NAME.service.",
+      "type": "string",
+      "pattern": "^stackward-rollback-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$"
+    },
+    "rollback": {
+      "description": "The command the timer runs: the root only copy of stackward under /var/lib/stackward/transactions/<id>/ with undo --transaction <id> --yes --by-timer.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "session": {
+      "description": "The session that applied.",
+      "$ref": "#/$defs/session"
+    },
+    "confirmed_at": {
+      "type": "string"
+    },
+    "confirmed_via": {
+      "description": "new-ssh-session: confirmed from a session that differs from the one that applied. console: confirmed with --console, the provider console path.",
+      "enum": [
+        "new-ssh-session",
+        "console"
+      ]
+    },
+    "confirm_session": {
+      "description": "The session that confirmed.",
+      "$ref": "#/$defs/session"
+    },
+    "rolled_back_at": {
+      "type": "string"
+    },
+    "cause": {
+      "description": "Why it rolled back: timer, validation, apply-failed or manual.",
+      "enum": [
+        "timer",
+        "validation",
+        "apply-failed",
+        "manual"
+      ]
+    },
+    "error": {
+      "description": "Why the rollback or the arming failed.",
+      "type": "string"
+    },
+    "acked_at": {
+      "description": "When the rollback was acknowledged (stackward confirm --ack-rollback). A rollback the person watched (validation, apply-failed, manual) is acknowledged when it happens.",
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "session": {
+      "description": "The facts that tell one login session from another. Every field is absent when it could not be read.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ssh_connection": {
+          "description": "SSH_CONNECTION: client address, client port, server address, server port. From the environment, or from the login shell when sudo dropped it.",
+          "type": "string"
+        },
+        "audit_session": {
+          "description": "/proc/self/sessionid, the kernel audit session opened at login (kept across sudo and su).",
+          "type": "string"
+        },
+        "login_uid": {
+          "description": "/proc/self/loginuid, the user who logged in. Recorded, not compared.",
+          "type": "string"
+        },
+        "xdg_session": {
+          "description": "XDG_SESSION_ID, the logind session.",
+          "type": "string"
+        },
+        "sshd": {
+          "description": "The per session sshd process this command descends from, as PID:START (start time in clock ticks after boot).",
+          "type": "string",
+          "pattern": "^[0-9]+:[0-9]+$"
+        }
+      }
+    }
+  }
+}
