@@ -174,9 +174,9 @@ func Skip(kind, format string, a ...any) Outcome {
 // OptIn from the generator itself, so a plan can never disagree with the
 // registry about them.
 //
-// stackward apply (issue #24) adds per step Check and Apply functions as
-// fields of this struct, looked up by Step.ID; the serialized Step does not
-// change for that.
+// `stackward apply` looks the generator up by Step.ID and uses Authorize
+// and Check; a shared executor (internal/apply) does the edits and runs
+// the commands, so a step needs no apply code of its own.
 type Generator struct {
 	ID    string
 	Title string
@@ -184,6 +184,19 @@ type Generator struct {
 	Risk  Risk
 	OptIn bool
 	Plan  func(in Input) Outcome
+	// Authorize refuses a step this generator would not produce: an edit
+	// of a path it does not own, content it would not write, a command or
+	// undo command it would not run. It re-derives what it can (content
+	// from the old side, the drop-in from its keys) instead of trusting
+	// the plan file, so a hand edited plan cannot reach anything else.
+	Authorize func(s Step) error
+	// Check reads the host and reports whether the step's change is
+	// already in place, so a second apply does nothing. It must only read.
+	Check func(r Reader, s Step) (applied bool, why string, err error)
+	// CommandsOnChange runs the commands only when an edit changed a file
+	// in this run (a restart that only loads a new file). Otherwise they
+	// run whenever the step is not already applied.
+	CommandsOnChange bool
 }
 
 // Veto lets a policy refuse a planned step before it reaches the plan (the
@@ -205,6 +218,9 @@ func Register(g Generator) {
 	}
 	if g.Plan == nil || len(g.Fixes) == 0 || g.Title == "" {
 		panic("plan: step " + g.ID + " needs a title, the checks it fixes and a Plan function")
+	}
+	if g.Authorize == nil || g.Check == nil {
+		panic("plan: step " + g.ID + " needs Authorize and Check, so apply can run it safely")
 	}
 	switch g.Risk {
 	case Safe, Networking, AccessCritical:
@@ -280,7 +296,9 @@ func sha(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func cmd(why string, args ...string) Command { return Command{Args: args, Why: why} }
+func cmd(why string, args ...string) Command {
+	return Command{Args: append([]string{}, args...), Why: why}
+}
 
 func joinAnd(items []string) string {
 	switch len(items) {

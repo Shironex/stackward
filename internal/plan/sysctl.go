@@ -3,10 +3,12 @@ package plan
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/Shironex/stackward/internal/checks"
+	"github.com/Shironex/stackward/internal/facts"
 )
 
 // sysctl-hardening: one sysctl.d drop-in with the hardening values that
@@ -21,6 +23,15 @@ const sysctlConfFile = "/etc/sysctl.conf"
 
 var sysctlChecks = []string{"KRN-002", "KRN-003", "KRN-004"}
 
+// sysctlBPFKey cannot be lowered again without a reboot, so the undo
+// does not try.
+const sysctlBPFKey = "kernel.unprivileged_bpf_disabled"
+
+var (
+	sysctlLoad   = []string{"sysctl", "-p", sysctlDropin}
+	sysctlRemove = []string{"rm", "-f", sysctlDropin}
+)
+
 func init() {
 	Register(Generator{
 		ID:    "sysctl-hardening",
@@ -28,7 +39,24 @@ func init() {
 		Fixes: sysctlChecks,
 		Risk:  Safe,
 		Plan:  planSysctlHardening,
+
+		Authorize: authorizeSysctlHardening,
+		Check:     checkSysctlHardening,
 	})
+}
+
+// renderSysctlDropin is the drop-in for the given fixes. Authorize renders
+// it again from the keys a plan names, so a plan cannot carry other text.
+func renderSysctlDropin(fixList []string, fixes []checks.SysctlFix) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Written by stackward: plan step sysctl-hardening, fixes %s.\n", strings.Join(fixList, ", "))
+	b.WriteString("# Hardening values only: net.ipv4.ip_forward and the other settings\n")
+	b.WriteString("# Docker needs are never set here. Remove this file to undo at the\n")
+	b.WriteString("# next boot.\n")
+	for _, f := range fixes {
+		fmt.Fprintf(&b, "%s = %d\n", f.Key, f.Want)
+	}
+	return b.String()
 }
 
 func planSysctlHardening(in Input) Outcome {
@@ -62,25 +90,19 @@ func planSysctlHardening(in Input) Outcome {
 		return Skip(SkipManual, "the KRN findings name no running value a drop-in can fix")
 	}
 
-	var b strings.Builder
 	var fixList []string
 	for _, id := range sysctlChecks {
 		if fixed[id] {
 			fixList = append(fixList, id)
 		}
 	}
-	fmt.Fprintf(&b, "# Written by stackward: plan step sysctl-hardening, fixes %s.\n", strings.Join(fixList, ", "))
-	b.WriteString("# Hardening values only: net.ipv4.ip_forward and the other settings\n")
-	b.WriteString("# Docker needs are never set here. Remove this file to undo at the\n")
-	b.WriteString("# next boot.\n")
 	touches := []string{"file:" + sysctlDropin}
 	var undo []Command
 	notes := []string{}
 	irreversible := false
 	for _, f := range fixes {
-		fmt.Fprintf(&b, "%s = %d\n", f.Key, f.Want)
 		touches = append(touches, "sysctl:"+f.Key)
-		if f.Key == "kernel.unprivileged_bpf_disabled" {
+		if f.Key == sysctlBPFKey {
 			irreversible = true
 			continue // the kernel refuses to lower it again
 		}
@@ -100,13 +122,13 @@ func planSysctlHardening(in Input) Outcome {
 		Fixes:    fixList,
 		Restarts: []string{},
 		Touches:  touches,
-		Edits:    []FileEdit{newEdit(sysctlDropin, Create, "0644", "", b.String())},
+		Edits:    []FileEdit{newEdit(sysctlDropin, Create, "0644", "", renderSysctlDropin(fixList, fixes))},
 		Commands: []Command{
-			cmd("apply this drop-in now, and only this file, not the whole sysctl.d tree", "sysctl", "-p", sysctlDropin),
+			cmd("apply this drop-in now, and only this file, not the whole sysctl.d tree", sysctlLoad...),
 		},
 		Undo: Undo{
 			Description: "Remove the drop-in so the old values return at the next boot, and set the old running values now.",
-			Commands:    append([]Command{cmd("remove the drop-in", "rm", "-f", sysctlDropin)}, undo...),
+			Commands:    append([]Command{cmd("remove the drop-in", sysctlRemove...)}, undo...),
 		},
 		Notes: notes,
 	}}
@@ -122,4 +144,132 @@ func laterSetting(file string) string {
 		return file
 	}
 	return ""
+}
+
+// sysctlTargets is every setting the drop-in may hold, with the value it
+// sets and the check it fixes. It asks checks.SysctlFixes itself, over a
+// Docker host where every watched key is first 1 and then 0, so the plan
+// and apply share the checks' one baseline. ip_forward is never in it.
+var sysctlTargets = func() map[string]checks.SysctlFix {
+	out := map[string]checks.SysctlFix{}
+	for _, v := range []string{"0", "1"} {
+		s := &facts.Sysctl{Values: map[string]string{}, DockerPresent: true}
+		for _, k := range facts.WatchedSysctls {
+			s.Values[k] = v
+		}
+		for _, f := range checks.SysctlFixes(s) {
+			f.Current = 0
+			out[f.Key] = f
+		}
+	}
+	delete(out, "net.ipv4.ip_forward")
+	return out
+}()
+
+// parseSysctlDropin reads the key = value lines of a drop-in stackward
+// wrote, refusing any key it does not set and any repeated key.
+func parseSysctlDropin(content string) ([]checks.SysctlFix, error) {
+	var out []checks.SysctlFix
+	seen := map[string]bool{}
+	for _, line := range strings.Split(content, "\n") {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, " = ")
+		if !ok {
+			return nil, fmt.Errorf("%s: line %q is not key = value", sysctlDropin, line)
+		}
+		t, known := sysctlTargets[key]
+		if !known {
+			return nil, fmt.Errorf("%s: %s is not a setting the step manages", sysctlDropin, key)
+		}
+		if val != strconv.Itoa(t.Want) {
+			return nil, fmt.Errorf("%s: %s = %s, the step only ever sets %d", sysctlDropin, key, val, t.Want)
+		}
+		if seen[key] {
+			return nil, fmt.Errorf("%s: %s is set twice", sysctlDropin, key)
+		}
+		seen[key] = true
+		out = append(out, t)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%s sets nothing", sysctlDropin)
+	}
+	return out, nil
+}
+
+func authorizeSysctlHardening(s Step) error {
+	e, err := wantOneEdit(s, sysctlDropin, Create)
+	if err != nil {
+		return err
+	}
+	fixes, err := parseSysctlDropin(e.New)
+	if err != nil {
+		return err
+	}
+	if err := wantContent(e, renderSysctlDropin(s.Fixes, fixes)); err != nil {
+		return err
+	}
+	if err := wantValidate(e, nil); err != nil {
+		return err
+	}
+	if err := wantRestarts(s); err != nil {
+		return err
+	}
+	if err := wantCommands("commands", s.Commands, sysctlLoad); err != nil {
+		return err
+	}
+	// Undo: remove the drop-in, then restore each running value (any
+	// number: it is what the audit saw), key for key in drop-in order.
+	if len(s.Undo.Commands) == 0 || !slices.Equal(s.Undo.Commands[0].Args, sysctlRemove) {
+		return fmt.Errorf("undo: the first command must be %s", strings.Join(sysctlRemove, " "))
+	}
+	rest := s.Undo.Commands[1:]
+	i := 0
+	for _, f := range fixes {
+		if f.Key == sysctlBPFKey {
+			continue
+		}
+		if i >= len(rest) {
+			return fmt.Errorf("undo: no command restores %s", f.Key)
+		}
+		a := rest[i].Args
+		if len(a) != 3 || a[0] != "sysctl" || a[1] != "-w" || !strings.HasPrefix(a[2], f.Key+"=") {
+			return fmt.Errorf("undo: command %q does not restore %s", strings.Join(a, " "), f.Key)
+		}
+		val := strings.TrimPrefix(a[2], f.Key+"=")
+		if _, err := strconv.Atoi(val); err != nil {
+			return fmt.Errorf("undo: %s=%s is not a number", f.Key, val)
+		}
+		i++
+	}
+	if i != len(rest) {
+		return fmt.Errorf("undo: %d commands more than the step runs", len(rest)-i)
+	}
+	return nil
+}
+
+// checkSysctlHardening: applied when the drop-in holds the planned content
+// and every value in it is also the running value.
+func checkSysctlHardening(r Reader, s Step) (bool, string, error) {
+	e := s.Edits[0]
+	ok, err := FileHolds(r, sysctlDropin, e.NewSHA256)
+	if err != nil || !ok {
+		return false, "", err
+	}
+	fixes, err := parseSysctlDropin(e.New)
+	if err != nil {
+		return false, "", err
+	}
+	for _, f := range fixes {
+		p := "/proc/sys/" + strings.ReplaceAll(f.Key, ".", "/")
+		b, err := r.ReadFile(p)
+		if err != nil {
+			return false, "", fmt.Errorf("reading the running value of %s: %w", f.Key, err)
+		}
+		if strings.TrimSpace(string(b)) != strconv.Itoa(f.Want) {
+			return false, "", nil
+		}
+	}
+	return true, sysctlDropin + " already holds the planned content and the running values match it", nil
 }

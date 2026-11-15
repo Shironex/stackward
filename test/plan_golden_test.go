@@ -33,6 +33,12 @@ func TestGoldenPlans(t *testing.T) {
 			if err := p.Validate(); err != nil {
 				t.Errorf("plan breaks an invariant: %v", err)
 			}
+			// Apply must accept every step its own generator planned.
+			for _, s := range p.Steps {
+				if err := plan.Authorize(s); err != nil {
+					t.Errorf("apply would refuse a step its generator planned: %v", err)
+				}
+			}
 			outputs := map[string]func(*bytes.Buffer) error{
 				"plan.json": func(b *bytes.Buffer) error { return plan.WriteJSON(b, p) },
 				"plan.txt":  func(b *bytes.Buffer) error { return plan.WriteText(b, p) },
