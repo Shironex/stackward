@@ -1,6 +1,6 @@
 ---
 title: The outside view with probe
-description: Why some things can only be verified from another machine, how to check your own server from outside without scanning anyone, and what stackward probe will do.
+description: Why some things can only be verified from another machine, how to check your own server from outside without scanning anyone, and how stackward probe does it for you.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -66,20 +66,36 @@ normal status code. Repeat for IPv6 if the server has a global IPv6 address
 (`2001:db8::20` in this example): firewalls are often configured for one
 family and forgotten for the other.
 
-## What stackward probe will do
+## Run it with stackward probe
 
-`stackward probe` is **planned** for the next wave and is not in the current
-build. The design:
+`stackward probe` does the same checks for you, from another machine (Linux,
+macOS and Windows builds exist for the laptop side):
 
-- Runs on another machine (Linux, macOS or Windows builds).
-- Plain TCP connects, over IPv4 and IPv6, to a short fixed list of ports:
-  SSH, 80 and 443 on the raw address, the Docker API (2375, 2376), common
-  panel and dashboard ports, and common database ports. No range scanning.
-- An optional hostname check over HTTPS, to confirm the tunnel path answers.
-- Prints a warning that probing hosts you do not own may be illegal, and needs
-  `--i-own-this` to run without a prompt.
-- Cross checks with the audit: a raw address that answers on 443 while the
-  audit says ingress is a tunnel is an origin bypass.
+```sh
+stackward probe 203.0.113.10 --profile tunnel --hostname app.example.com
+```
+
+- It takes one host name or one address. Ranges, CIDR blocks, lists and URLs
+  are refused.
+- It makes plain TCP connects, over IPv4 and IPv6, to a short fixed list of
+  ports: SSH, 80 and 443, the Docker API, common panel and dashboard ports and
+  common database ports. `--ports` adds up to 16 more.
+- It reads the SSH banner, asks the raw address for `/` over HTTP and HTTPS,
+  and with `--hostname` checks the app name over HTTPS for redirect loops and
+  certificate problems.
+- It prints that probing a host you do not own may be illegal, and asks for
+  `y` on a terminal. In a script, pass `--i-own-this`.
+- It has no host facts, so tell it how traffic is meant to arrive with
+  `--profile`. With `auto` it judges an open port as if nothing should be
+  public, and says so.
+- Probe the origin address, not a CDN or tunnel edge, and pass the app name
+  with `--hostname`. If the host's audit shows a tunnel and
+  [PRB-002](/stackward/checks/prb-002/) fails, the origin answers directly:
+  that is the bypass [CF-005](/stackward/checks/cf-005/) describes.
+
+The full list of flags and what probe sends is on the
+[usage page](/stackward/usage/#stackward-probe) and in the
+[threat model](/stackward/project/threat-model/#what-probe-does-on-the-network).
 
 On the host, the audit's `NET-009` result is always `unknown` for this reason:
 the provider firewall cannot be seen from inside.

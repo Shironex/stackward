@@ -15,7 +15,7 @@ const live = rows.filter((r) => r.entry).length;
 
 <div class="checks not-content">
   <p class="checks-count">
-    {live} of {rows.length} in the catalog today{rows.length - live > 0 ? `; ${rows.length - live} planned for v0.1` : ''}.
+    {live === rows.length ? `${live} ${live === 1 ? 'check' : 'checks'}` : `${live} of ${rows.length} in the catalog today; ${rows.length - live} planned`}.
   </p>
   <ul>
     {

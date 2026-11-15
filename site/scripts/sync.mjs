@@ -137,6 +137,9 @@ export function checkPage(entry, groupName, known, order) {
     '',
     facts,
     '',
+    ...(entry.group === 'PRB'
+      ? [`<p class="check-note not-content">This check is run by <a href="${url('usage#stackward-probe')}"><code>stackward probe</code></a> from another machine. <code>stackward audit</code> on the server never runs it.</p>`, '']
+      : []),
     '## Why it matters',
     '',
     proseWithIds(entry.rationale, known),
