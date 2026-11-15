@@ -1,0 +1,346 @@
+  stackward audit  test (stackward.report.v1)
+
+  host:      sha256:82c1a34869ebe223
+  os:        Ubuntu 24.04.1 LTS
+  kernel:    6.8.0-48-generic
+  collected: 2026-03-01T12:00:00Z
+  profile:   tunnel (inferred)
+  root:      yes
+  sandbox:   unavailable (golden test)
+  coverage:  104 checks, 181 results: 169 checked, 3 unknown, 9 skipped
+
+  +- Summary -----------------------------------------------------------------------------------+
+  | x 4 fail   ! 5 warn   ? 3 unknown   i 17 info   + 143 pass   - 9 skip                       |
+  |                                                                                             |
+  | Fails, most severe first                                                                    |
+  | x critical  DKR-001   coolify is reachable from anywhere past the host firewall...          |
+  | x critical  SEC-003   SSH key folder is open to group or others (mode 0755, want 0700)      |
+  | x high      NET-002   UFW has IPV6=no while the host has a global IPv6 address: IPv6...     |
+  | x high      PAAS-003  coolify panel port 8000 listens on all interfaces and the firewall... |
+  |                                                                                             |
+  | Dig in                                                                                      |
+  |   stackward tui           browse every result                                               |
+  |   stackward explain <id>  why a check matters and how to fix it                             |
+  |   stackward audit --md    the report as Markdown for an issue                               |
+  +---------------------------------------------------------------------------------------------+
+
+  -- FAIL (4) --------------------------------------------------------------------------------------
+
+  x coolify is reachable from anywhere past the host firewall: 0.0.0.0:8000->8080/tcp: DOCKER-USER
+    has no filtering rules, and UFW's input rules do not apply to published ports
+    DKR-001, critical, container:coolify/coolify
+    rule: Published container ports do not bypass the host firewall
+    fix:  Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service
+          behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it
+          in DOCKER-USER (for example drop new connections on the public interface except from
+          allowed sources), or install ufw-docker and open it with a route rule for the sources that
+          need it.
+
+  x SSH key folder is open to group or others (mode 0755, want 0700)
+    SEC-003, critical, file:/data/coolify/ssh/keys
+    rule: Platform SSH key folder is closed to other users
+    fix:  chmod 700 the folder and chmod 600 every key in it.
+
+  x UFW has IPV6=no while the host has a global IPv6 address: IPv6 traffic is not filtered
+    NET-002, high
+    rule: UFW filters IPv6 when the host has a global IPv6 address
+    fix:  Set IPV6=yes in /etc/default/ufw, then ufw reload
+
+  x coolify panel port 8000 listens on all interfaces and the firewall does not filter it
+    PAAS-003, high, port:tcp/8000
+    rule: Platform panel ports are not open to the world
+    fix:  Reach the panel over the tailnet or behind an access proxy, and publish its ports on
+          127.0.0.1 or the tailnet address.
+
+  -- WARN (5) --------------------------------------------------------------------------------------
+
+  ! coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected
+    for a proxy, but it is root on the host if compromised; a read only mount does not stop
+    connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel
+    does not let you change
+    DKR-010, critical
+    rule: No container mounts the Docker socket
+    fix:  Remove the socket mount. If the container needs to read Docker state, put a socket proxy
+          in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the
+          container at it.
+
+  ! tunnel-1 uses the host network (worst of 2 replicas)
+    DKR-023, high, container:tunnel/cloudflared
+    rule: No host network, PID or IPC namespace
+    fix:  Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy);
+          remove pid: host and ipc: host.
+
+  ! running kernel 6.8.0-48-generic is older than installed 6.8.0-51-generic
+    SYS-003, moderate
+    rule: Running kernel is the newest installed
+    fix:  Reboot to load the patched kernel.
+
+  ! tcp/8000 is a published container port on wildcard and nothing filters it: DOCKER-USER has no
+    filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)
+    NET-004, moderate
+    rule: Exposure: every listening socket and who can reach it
+    fix:  Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port
+          in the host firewall
+
+  ! Docker Engine 27 left upstream support on 2025-05-03
+    DKR-034, moderate
+    rule: Docker Engine is supported upstream
+    fix:  Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release
+          line.
+
+  -- UNKNOWN (3) -----------------------------------------------------------------------------------
+
+  ? only an outside view proves the origin does not answer; run `stackward probe` against the origin
+    address from another machine
+    CF-005, high
+    rule: The origin IP does not answer on 80/443 from outside (probe)
+
+  ? proxy bouncers pulled within the last 60 s; the interval itself is in the bouncer config, which
+    holds the API key and is not read
+    CS-008, low
+    rule: The proxy bouncer refreshes decisions often
+
+  ? the provider firewall cannot be seen from inside the host; run `stackward probe` from another
+    machine to see what is reachable
+    NET-009, info
+    rule: Provider firewall (outside view)
+
+  -- INFO (17) -------------------------------------------------------------------------------------
+
+  i root password is locked: recovery is the provider console or rescue mode; note where that path
+    is stored
+    USR-007
+
+  i tcp/20241 (cloudflared) listens on loopback addresses only
+    NET-004
+
+  i tcp/20242 (cloudflared) listens on loopback addresses only
+    NET-004
+
+  i tcp/443 (docker-proxy) listens on loopback addresses only
+    NET-004
+
+  i tcp/6001 (docker-proxy) listens on loopback addresses only
+    NET-004
+
+  i tcp/6002 (docker-proxy) listens on loopback addresses only
+    NET-004
+
+  i tcp/80 (docker-proxy) listens on loopback addresses only
+    NET-004
+
+  i tcp/8080 (crowdsec) listens on private addresses only
+    NET-004
+
+  i DOCKER-USER exists with no filtering rules: published ports are not filtered by the host
+    firewall
+    NET-006
+
+  i Tailnet Lock is off
+    TS-005
+
+  i a Cloudflare Tunnel is present: 2 connector(s), 2 in a container
+    CF-001
+
+  i automatic reboot is off
+    UPD-004
+
+  i the journal uses 300.0 MiB
+    LOG-003
+
+  i metrics agent found: node_exporter
+    LOG-004
+
+  i coolify detected, role panel, version 4.0.0-beta.420
+    PAAS-001, file:/data/coolify
+
+  i 4 files in the platform backup folder, newest 2 days old; keep a copy off the server
+    BAK-001, file:/data/coolify
+
+  i no restic, borg, borgmatic, kopia or rclone found
+    BAK-002
+
+  -- PASS (143) ------------------------------------------------------------------------------------
+
+  + SYS-001   ubuntu 24.04 is a tested release
+  + SYS-002   no reboot pending
+  + SYS-004   the clock is synchronized
+  + SYS-005   / is 42% full (holds [/ /var])
+  + SSH-001   password authentication is off
+  + SSH-002   keyboard-interactive authentication is off
+  + SSH-003   root login is off
+  + SSH-004   empty passwords are refused
+  + SSH-005   MaxAuthTries is 3
+  + SSH-006   logins limited to 1 user and 0 groups
+  + SSH-007   X11 and agent forwarding are off
+  + SSH-008   no insecure value shadows a later setting in 3 files
+  + SSH-010   sshd listens on every configured address: [::]:22, 0.0.0.0:22
+  + SSH-011   sshd is not reachable from anywhere: tcp/22: UFW allows it only from specific sources
+              or interfaces, or not at all
+  + SSH-012   Host keys are strong and private (2 results)
+              /etc/ssh/ssh_host_ed25519_key: ssh-ed25519 host key is fine
+              /etc/ssh/ssh_host_rsa_key: ssh-rsa host key is fine
+  + SSH-013   alice: home, ~/.ssh and authorized keys are private
+  + SSH-014   alice: 1 authorized key, none weak
+  + SSH-015   no weak key exchange, cipher or MAC algorithms enabled
+  + SSH-016   Tailscale SSH is off; OpenSSH is the only SSH server
+  + USR-001   root is the only account with uid 0
+  + USR-002   no login account has an empty password
+  + USR-003   no default cloud account (ubuntu, debian, admin, ec2-user) exists
+  + USR-004   sudoers files are root owned and not writable by others; no NOPASSWD entries
+  + USR-006   every login account was seen in the last 90 days
+  + NET-001   UFW is active with default incoming deny
+  + NET-003   SSH is not reachable from anywhere: tcp/22: UFW allows it only from specific sources
+              or interfaces, or not at all
+  + NET-004   Exposure: every listening socket and who can reach it (2 results)
+              tcp/22 (sshd) listens on wildcard, but UFW allows it only from specific sources or
+              interfaces, or not at all
+              udp/41641 (tailscaled) listens on wildcard, but UFW allows it only from specific
+              sources or interfaces, or not at all
+  + NET-005   no UFW rule opens 80/443 to anywhere
+  + DKR-001   Published container ports do not bypass the host firewall (7 results)
+              coolify-proxy publishes on loopback, tailnet or private addresses only
+              coolify/postgres: coolify-db publishes no port
+              coolify/redis: coolify-redis publishes no port
+              coolify/soketi: coolify-realtime publishes on loopback, tailnet or private addresses
+              only
+              shop/db: shop-db-k4s9d2 publishes no port
+              shop/web: shop-web-k4s9d2 publishes no port
+              tunnel/cloudflared: tunnel-1 publishes no port (worst of 2 replicas)
+  + DKR-002   Docker API listens only on the Unix socket
+  + DKR-003   /var/run/docker.sock is not world writable (0660)
+  + DKR-010   No container mounts the Docker socket (7 results)
+              coolify/coolify: coolify does not mount the Docker socket
+              coolify/postgres: coolify-db does not mount the Docker socket
+              coolify/redis: coolify-redis does not mount the Docker socket
+              coolify/soketi: coolify-realtime does not mount the Docker socket
+              shop/db: shop-db-k4s9d2 does not mount the Docker socket
+              shop/web: shop-web-k4s9d2 does not mount the Docker socket
+              tunnel/cloudflared: tunnel-1 does not mount the Docker socket (worst of 2 replicas)
+  + DKR-012   No container mounts a sensitive host path (8 results)
+              coolify-proxy mounts no sensitive host path
+              coolify/coolify: coolify mounts no sensitive host path
+              coolify/postgres: coolify-db mounts no sensitive host path
+              coolify/redis: coolify-redis mounts no sensitive host path
+              coolify/soketi: coolify-realtime mounts no sensitive host path
+              shop/db: shop-db-k4s9d2 mounts no sensitive host path
+              shop/web: shop-web-k4s9d2 mounts no sensitive host path
+              tunnel/cloudflared: tunnel-1 mounts no sensitive host path (worst of 2 replicas)
+  + DKR-020   Containers do not run as root (8 results)
+              coolify-proxy runs as "10001"
+              coolify/coolify: coolify runs as "9999"
+              coolify/postgres: coolify-db runs as "postgres"
+              coolify/redis: coolify-redis runs as "redis"
+              coolify/soketi: coolify-realtime runs as "9999"
+              shop/db: shop-db-k4s9d2 runs as "postgres"
+              shop/web: shop-web-k4s9d2 runs as "10001:10001"
+              tunnel/cloudflared: tunnel-1 runs as "nonroot" (worst of 2 replicas)
+  + DKR-021   No privileged containers (8 results)
+              coolify-proxy is not privileged
+              coolify/coolify: coolify is not privileged
+              coolify/postgres: coolify-db is not privileged
+              coolify/redis: coolify-redis is not privileged
+              coolify/soketi: coolify-realtime is not privileged
+              shop/db: shop-db-k4s9d2 is not privileged
+              shop/web: shop-web-k4s9d2 is not privileged
+              tunnel/cloudflared: tunnel-1 is not privileged (worst of 2 replicas)
+  + DKR-022   No dangerous added capabilities (8 results)
+              coolify-proxy adds no dangerous capability
+              coolify/coolify: coolify adds no dangerous capability
+              coolify/postgres: coolify-db adds no dangerous capability
+              coolify/redis: coolify-redis adds no dangerous capability
+              coolify/soketi: coolify-realtime adds no dangerous capability
+              shop/db: shop-db-k4s9d2 adds no dangerous capability
+              shop/web: shop-web-k4s9d2 adds no dangerous capability
+              tunnel/cloudflared: tunnel-1 adds no dangerous capability (worst of 2 replicas)
+  + DKR-023   No host network, PID or IPC namespace (7 results)
+              coolify-proxy uses its own network, PID and IPC namespaces
+              coolify/coolify: coolify uses its own network, PID and IPC namespaces
+              coolify/postgres: coolify-db uses its own network, PID and IPC namespaces
+              coolify/redis: coolify-redis uses its own network, PID and IPC namespaces
+              coolify/soketi: coolify-realtime uses its own network, PID and IPC namespaces
+              shop/db: shop-db-k4s9d2 uses its own network, PID and IPC namespaces
+              shop/web: shop-web-k4s9d2 uses its own network, PID and IPC namespaces
+  + DKR-024   Containers keep seccomp and AppArmor, and public ones set no-new-privileges (8
+              results)
+              coolify-proxy keeps the default seccomp and AppArmor confinement
+              coolify/coolify: coolify keeps the default seccomp and AppArmor confinement
+              coolify/postgres: coolify-db keeps the default seccomp and AppArmor confinement
+              coolify/redis: coolify-redis keeps the default seccomp and AppArmor confinement
+              coolify/soketi: coolify-realtime keeps the default seccomp and AppArmor confinement
+              shop/db: shop-db-k4s9d2 keeps the default seccomp and AppArmor confinement
+              shop/web: shop-web-k4s9d2 keeps the default seccomp and AppArmor confinement
+              tunnel/cloudflared: tunnel-1 keeps the default seccomp and AppArmor confinement (worst
+              of 2 replicas)
+  + DKR-030   Projects do not share networks (6 results)
+              coolify/coolify: coolify shares no network with another project
+              coolify/postgres: coolify-db shares no network with another project
+              coolify/redis: coolify-redis shares no network with another project
+              coolify/soketi: coolify-realtime shares no network with another project
+              shop/db: shop-db-k4s9d2 shares no network with another project
+              shop/web: shop-web-k4s9d2 shares no network with another project
+  + DKR-031   json-file container logs rotate at 10m
+  + DKR-032   Infrastructure containers run pinned images (2 results)
+              coolify-proxy runs a pinned tag (v3.1.4)
+              tunnel/cloudflared: tunnel-1 runs a pinned tag (2026.10.0) (worst of 2 replicas)
+  + DKR-033   Docker manages the firewall rules for its networks
+  + TS-001    Tailscale is logged in and Running
+  + TS-002    node key expiry is disabled
+  + TS-003    no Tailscale Serve or Funnel configuration
+  + TS-004    1 UFW rule(s) name tailscale0 and Tailscale is Running
+  + CF-002    2 cloudflared connectors run
+  + CF-003    80/443 are not reachable from anywhere: tcp/80: loopback or private bind only;
+              tcp/443: loopback or private bind only
+  + CF-004    no connector takes the token as a command line argument
+  + CS-001    the CrowdSec engine is running
+  + CS-002    1 bouncer(s) registered and pulling decisions
+  + CS-003    an L7 (proxy or Cloudflare) bouncer enforces bans behind the tunnel
+  + CS-004    a parser takes the real client address from a header for local sources
+  + CS-005    a reverse proxy access log is acquired (its format is not checked)
+  + CS-006    the local API listens on 172.17.0.1:8080 (private)
+  + CS-010    SSH is not reachable from anywhere, so brute force protection is optional
+  + CS-011    every enabled jail ignores the tailnet range 100.64.0.0/10
+  + UPD-001   unattended-upgrades is installed and enabled
+  + UPD-002   unattended-upgrades ran 1 days ago
+  + UPD-003   the security pocket is in the allowed origins
+  + UPD-005   ubuntu 24.04 is supported until 2029-05-31
+  + UPD-006   no pending security updates
+  + KRN-001   net.ipv4.ip_forward is on, as Docker needs
+  + KRN-002   rp_filter is not strict
+  + KRN-003   network sysctls match the baseline
+  + KRN-004   kernel hardening sysctls match the baseline
+  + KRN-005   accept_ra is not switched off in a way that breaks IPv6 here
+  + LOG-001   journald SystemMaxUse is capped at 1G
+  + LOG-002   no proxy log over 1 GiB without a logrotate rule
+  + LOG-005   the journal is persistent across reboots
+  + SEC-001   3 app .env files are readable by the owner only
+  + SEC-002   platform main .env is not world readable
+  + SEC-003   1 SSH key path is closed to other users
+  + SEC-004   2 files in the proxy dynamic folder are not a backup or editor copy
+  + SEC-005   1 private key file is readable by the owner only
+  + SEC-006   1 Docker client config is readable by the owner only
+  + SEC-007   no world writable folders under the platform data root
+  + PAAS-002  coolify-proxy: proxy is published on loopback or private addresses only
+  + PAAS-003  Platform panel ports are not open to the world (2 results)
+              tcp/6001: coolify panel port 6001 listens on loopback, tailnet or private addresses
+              only
+              tcp/6002: coolify panel port 6002 listens on loopback, tailnet or private addresses
+              only
+  + PAAS-004  no platform database publishes a port publicly (1 checked)
+  + PAAS-005  coolify network coolify holds apps of 0 project(s)
+
+  -- SKIP (9) --------------------------------------------------------------------------------------
+
+  - SSH-009   effective configuration read with sshd -T
+  - USR-005   no docker group on this host
+  - NET-007   ufw-docker is not installed
+  - NET-008   ufw-docker is not installed
+  - DKR-011   no Docker socket proxy container found
+  - DKR-030   Projects do not share networks (2 results)
+              coolify-proxy is a reverse proxy; it joins project networks by design
+              tunnel/cloudflared: tunnel-1 uses the host network (see DKR-023) (worst of 2 replicas)
+  - CS-007    behind a tunnel a firewall bouncer is the wrong tool (see CS-003)
+  - PAAS-008  Dokploy not found; Swarm ports are only judged on Dokploy hosts
+
+  summary: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip
+  explain any check with: stackward explain <id>

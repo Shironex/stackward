@@ -1,0 +1,134 @@
+  stackward audit  test (stackward.report.v1)
+
+  host:      sha256:82c1a34869ebe223
+  os:        Ubuntu 24.04.1 LTS
+  kernel:    6.8.0-48-generic
+  collected: 2026-03-01T12:00:00Z
+  profile:   tunnel (inferred)
+  root:      yes
+  sandbox:   unavailable (golden test)
+  coverage:  104 checks, 181 results: 169 checked, 3 unknown, 9 skipped
+
+  +- Summary -----------------------------------------------------------------------------------+
+  | x 4 fail   ! 5 warn   ? 3 unknown   i 17 info   + 143 pass   - 9 skip                       |
+  |                                                                                             |
+  | Fails, most severe first                                                                    |
+  | x critical  DKR-001   coolify is reachable from anywhere past the host firewall...          |
+  | x critical  SEC-003   SSH key folder is open to group or others (mode 0755, want 0700)      |
+  | x high      NET-002   UFW has IPV6=no while the host has a global IPv6 address: IPv6...     |
+  | x high      PAAS-003  coolify panel port 8000 listens on all interfaces and the firewall... |
+  |                                                                                             |
+  | Dig in                                                                                      |
+  |   stackward tui           browse every result                                               |
+  |   stackward explain <id>  why a check matters and how to fix it                             |
+  |   stackward audit --md    the report as Markdown for an issue                               |
+  |   stackward audit --all   passing results and every info in full                            |
+  +---------------------------------------------------------------------------------------------+
+
+  -- FAIL (4) --------------------------------------------------------------------------------------
+
+  x coolify is reachable from anywhere past the host firewall: 0.0.0.0:8000->8080/tcp: DOCKER-USER
+    has no filtering rules, and UFW's input rules do not apply to published ports
+    DKR-001, critical, container:coolify/coolify
+    rule: Published container ports do not bypass the host firewall
+    fix:  Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service
+          behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it
+          in DOCKER-USER (for example drop new connections on the public interface except from
+          allowed sources), or install ufw-docker and open it with a route rule for the sources that
+          need it.
+
+  x SSH key folder is open to group or others (mode 0755, want 0700)
+    SEC-003, critical, file:/data/coolify/ssh/keys
+    rule: Platform SSH key folder is closed to other users
+    fix:  chmod 700 the folder and chmod 600 every key in it.
+
+  x UFW has IPV6=no while the host has a global IPv6 address: IPv6 traffic is not filtered
+    NET-002, high
+    rule: UFW filters IPv6 when the host has a global IPv6 address
+    fix:  Set IPV6=yes in /etc/default/ufw, then ufw reload
+
+  x coolify panel port 8000 listens on all interfaces and the firewall does not filter it
+    PAAS-003, high, port:tcp/8000
+    rule: Platform panel ports are not open to the world
+    fix:  Reach the panel over the tailnet or behind an access proxy, and publish its ports on
+          127.0.0.1 or the tailnet address.
+
+  -- WARN (5) --------------------------------------------------------------------------------------
+
+  ! coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected
+    for a proxy, but it is root on the host if compromised; a read only mount does not stop
+    connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel
+    does not let you change
+    DKR-010, critical
+    rule: No container mounts the Docker socket
+    fix:  Remove the socket mount. If the container needs to read Docker state, put a socket proxy
+          in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the
+          container at it.
+
+  ! tunnel-1 uses the host network (worst of 2 replicas)
+    DKR-023, high, container:tunnel/cloudflared
+    rule: No host network, PID or IPC namespace
+    fix:  Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy);
+          remove pid: host and ipc: host.
+
+  ! running kernel 6.8.0-48-generic is older than installed 6.8.0-51-generic
+    SYS-003, moderate
+    rule: Running kernel is the newest installed
+    fix:  Reboot to load the patched kernel.
+
+  ! tcp/8000 is a published container port on wildcard and nothing filters it: DOCKER-USER has no
+    filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)
+    NET-004, moderate
+    rule: Exposure: every listening socket and who can reach it
+    fix:  Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port
+          in the host firewall
+
+  ! Docker Engine 27 left upstream support on 2025-05-03
+    DKR-034, moderate
+    rule: Docker Engine is supported upstream
+    fix:  Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release
+          line.
+
+  -- UNKNOWN (3) -----------------------------------------------------------------------------------
+
+  ? only an outside view proves the origin does not answer; run `stackward probe` against the origin
+    address from another machine
+    CF-005, high
+    rule: The origin IP does not answer on 80/443 from outside (probe)
+
+  ? proxy bouncers pulled within the last 60 s; the interval itself is in the bouncer config, which
+    holds the API key and is not read
+    CS-008, low
+    rule: The proxy bouncer refreshes decisions often
+
+  ? the provider firewall cannot be seen from inside the host; run `stackward probe` from another
+    machine to see what is reachable
+    NET-009, info
+    rule: Provider firewall (outside view)
+
+  -- INFO (17), one line each; --info lists them in full -------------------------------------------
+
+  i USR-007   root password is locked: recovery is the provider console or rescue mode; note where
+              that path is stored
+  i NET-004   Exposure: every listening socket and who can reach it (7 results)
+              tcp/20241 (cloudflared) listens on loopback addresses only
+              tcp/20242 (cloudflared) listens on loopback addresses only
+              tcp/443 (docker-proxy) listens on loopback addresses only
+              tcp/6001 (docker-proxy) listens on loopback addresses only
+              tcp/6002 (docker-proxy) listens on loopback addresses only
+              tcp/80 (docker-proxy) listens on loopback addresses only
+              tcp/8080 (crowdsec) listens on private addresses only
+  i NET-006   DOCKER-USER exists with no filtering rules: published ports are not filtered by the
+              host firewall
+  i TS-005    Tailnet Lock is off
+  i CF-001    a Cloudflare Tunnel is present: 2 connector(s), 2 in a container
+  i UPD-004   automatic reboot is off
+  i LOG-003   the journal uses 300.0 MiB
+  i LOG-004   metrics agent found: node_exporter
+  i PAAS-001  /data/coolify: coolify detected, role panel, version 4.0.0-beta.420
+  i BAK-001   /data/coolify: 4 files in the platform backup folder, newest 2 days old; keep a copy
+              off the server
+  i BAK-002   no restic, borg, borgmatic, kopia or rclone found
+
+  summary: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip
+  explain any check with: stackward explain <id>
