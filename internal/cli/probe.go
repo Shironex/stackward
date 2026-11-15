@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +27,10 @@ var (
 		return err == nil && fi.Mode()&os.ModeCharDevice != 0
 	}
 )
+
+// probeLocalAddrs is the seam for this machine's addresses, so tests can
+// pretend to be any host.
+var probeLocalAddrs probe.LocalAddrs = probe.InterfaceAddrs
 
 type probeFlags struct {
 	hostname  string
@@ -136,7 +141,11 @@ func runProbe(args []string, stdout, stderr io.Writer) int {
 	defer stop()
 	facts := probe.Run(ctx, probe.Options{
 		Target: target, Hostname: hostname, Extra: extra, Timeout: pf.timeout,
-		UserAgent: "stackward-probe/" + version.String(),
+		UserAgent:  "stackward-probe/" + version.String(),
+		LocalAddrs: probeLocalAddrs,
+		OnSelfTarget: func(addrs []string) {
+			fmt.Fprintf(stderr, "stackward probe: warning: %s is this machine (%s). %s\n", target, strings.Join(addrs, ", "), probe.SelfNote)
+		},
 	})
 	rep, err := probe.Evaluate(facts, probe.EvalOptions{
 		Version: version.String(), Sandbox: sb, Profile: prof, ProfileSet: profSet,
