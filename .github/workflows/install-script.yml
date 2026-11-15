@@ -1,0 +1,53 @@
+name: install-script
+
+# Runs scripts/install.sh against a local fake release (a python http server
+# standing in for the GitHub release URLs, with stub packages) on disposable
+# runners: install, re-install, update, uninstall, a tampered checksum, plain
+# and terminal output, the tarball path with --prefix, and the apt path with a
+# fake .deb. The apt scenarios change the runner, so they only run here
+# (STACKWARD_TEST_DEB=1). See docs/testing.md.
+on:
+  pull_request:
+    paths:
+      - 'scripts/install.sh'
+      - 'test/install/**'
+      - '.github/workflows/install-script.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/install.sh'
+      - 'test/install/**'
+      - '.github/workflows/install-script.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: install-script-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  install-script:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-24.04-arm]
+    name: install.sh (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        run: shellcheck -s sh -x scripts/install.sh test/install/*.sh
+      - name: scenarios
+        env:
+          STACKWARD_TEST_DEB: "1"
+          SAMPLE_OUT: ${{ runner.temp }}/terminal-sample.raw
+        run: sh test/install/run.sh
+      - name: terminal recording (escape codes shown as text)
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/terminal-sample.raw" ]; then cat -v "$RUNNER_TEMP/terminal-sample.raw"; fi
