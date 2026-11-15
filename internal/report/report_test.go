@@ -136,3 +136,81 @@ func TestText(t *testing.T) {
 		t.Error("colors without Color option")
 	}
 }
+
+func sampleProbe(t *testing.T) *Report {
+	t.Helper()
+	cat, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &facts.Facts{
+		CollectedAt: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC),
+		Collectors:  []facts.CollectorStatus{{Name: "tcp", Status: facts.StatusOK}},
+	}
+	results := []checks.Result{{ID: "SYS-001", Subject: "port:tcp/22", Level: checks.Warn, Message: "open"}}
+	secret := "hunter" + "2-not-real"
+	return Build(f, results, cat, Meta{
+		Version: "test", Sandbox: sandbox.Status{State: sandbox.Unavailable, Reason: "test"},
+		Profile: profile.Unknown, ProfileSource: "inferred", ChecksRun: 1,
+		Probe: &Probe{
+			Target:    "203.0.113.10",
+			Addresses: []ProbeAddress{{Address: "203.0.113.10", Family: "ipv4"}},
+			Families:  []ProbeFamily{{Family: "ipv4", Status: "probed"}, {Family: "ipv6", Status: "no-address", Detail: "the target is an IPv4 address"}},
+			Ports: []ProbePort{
+				{Address: "203.0.113.10", Family: "ipv4", Port: 22, State: "open", Banner: "SSH-2.0-OpenSSH_9.6 password=" + secret},
+				{Address: "203.0.113.10", Family: "ipv4", Port: 80, State: "closed"},
+			},
+			Notes: []string{"profile unknown: judged conservatively"},
+		},
+	})
+}
+
+func TestProbeReport(t *testing.T) {
+	r := sampleProbe(t)
+	if r.Probe == nil || strings.Contains(r.Probe.Ports[0].Banner, "hunter") {
+		t.Fatalf("probe section missing or not redacted: %+v", r.Probe)
+	}
+	schema, err := os.ReadFile(filepath.Join("..", "..", "schema", "report.v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := WriteJSON(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range schemacheck.Validate(schema, buf.Bytes()) {
+		t.Error(e)
+	}
+	bad := strings.Replace(buf.String(), `"state": "open"`, `"state": "ajar"`, 1)
+	if len(schemacheck.Validate(schema, []byte(bad))) == 0 {
+		t.Error("schema check accepted an invalid port state")
+	}
+	buf.Reset()
+	if err := WriteText(&buf, r, TextOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"stackward test probe (",
+		"target:    203.0.113.10",
+		"addresses: 203.0.113.10 (ipv4)",
+		"ipv6:      no-address: the target is an IPv4 address",
+		"open:      tcp/22 on 203.0.113.10",
+		"note:      profile unknown: judged conservatively",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "root:") || strings.Contains(out, "kernel:") {
+		t.Errorf("probe header must not print host lines:\n%s", out)
+	}
+	// Audit reports never carry the probe section.
+	buf.Reset()
+	if err := WriteJSON(&buf, sample(t)); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), `"probe"`) {
+		t.Error("audit report has a probe section")
+	}
+}

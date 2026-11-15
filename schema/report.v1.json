@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Shironex/stackward/blob/main/schema/report.v1.json",
   "title": "stackward report v1",
-  "description": "Output of `stackward audit --json`. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs report.v2. Results are ordered by group (catalog order), then check id, then subject.",
+  "description": "Output of `stackward audit --json` and `stackward probe --json`. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs report.v2. Results are ordered by group (catalog order), then check id, then subject.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "tool", "generated_at", "host", "profile", "coverage", "summary", "results"],
@@ -75,9 +75,61 @@
         "skip": { "type": "integer", "minimum": 0 }
       }
     },
-    "results": { "type": "array", "items": { "$ref": "#/$defs/result" } }
+    "results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+    "probe": { "$ref": "#/$defs/probe" }
   },
   "$defs": {
+    "probe": {
+      "description": "Present only in reports of `stackward probe`: the target as given, what it resolved to, how each address family went and every TCP connect tried.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "addresses", "families", "ports"],
+      "properties": {
+        "target": { "description": "Host name or IP address as given on the command line.", "type": "string" },
+        "hostname": { "description": "The --hostname checked over HTTPS, if any.", "type": "string" },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "family"],
+            "properties": {
+              "address": { "type": "string" },
+              "family": { "enum": ["ipv4", "ipv6"] }
+            }
+          }
+        },
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["family", "status"],
+            "properties": {
+              "family": { "enum": ["ipv4", "ipv6"] },
+              "status": { "description": "probed, no-address (nothing to probe) or unreachable (this machine has no route to the family).", "enum": ["probed", "no-address", "unreachable"] },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "family", "port", "state"],
+            "properties": {
+              "address": { "type": "string" },
+              "family": { "enum": ["ipv4", "ipv6"] },
+              "port": { "type": "integer", "minimum": 1 },
+              "state": { "description": "open (connected), closed (refused), filtered (no answer before the timeout), unreachable (no route from this machine) or error.", "enum": ["open", "closed", "filtered", "unreachable", "error"] },
+              "banner": { "description": "First line the service sent, capped and reduced to printable ASCII (SSH banners).", "type": "string" }
+            }
+          }
+        },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "sandbox": {
       "type": "object",
       "additionalProperties": false,
