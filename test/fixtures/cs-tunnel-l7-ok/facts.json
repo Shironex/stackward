@@ -1,0 +1,121 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": { "hostname": "app1.example.com", "uid": 0, "euid": 0, "root": true },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "interface": "tailscale0" },
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "interface": "tailscale0", "v6": true },
+        { "action": "allow", "direction": "in", "port": "8080", "proto": "tcp", "from": "172.16.0.0/12" }
+      ]
+    },
+    "nft": { "installed": true, "listed": true },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": { "FORWARD": "DROP", "INPUT": "DROP", "OUTPUT": "ACCEPT" },
+      "chains": [ "DOCKER", "DOCKER-USER", "FORWARD", "INPUT", "OUTPUT", "ufw-before-input", "ufw-user-input" ],
+      "input_rules": 7,
+      "docker_user_rules": [ "-A DOCKER-USER -j RETURN" ]
+    },
+    "ufw_docker": { "in_files": "absent", "loaded": "no" },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      { "proto": "tcp", "address": "0.0.0.0", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 80, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 443, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "172.17.0.1", "port": 8080, "processes": [ "crowdsec" ] },
+      { "proto": "udp", "address": "0.0.0.0", "port": 41641, "processes": [ "tailscaled" ] }
+    ],
+    "addresses": [
+      { "interface": "lo", "address": "127.0.0.1", "prefix": 8, "scope": "host" },
+      { "interface": "eth0", "address": "203.0.113.40", "prefix": 24, "scope": "global" },
+      { "interface": "tailscale0", "address": "100.101.102.104", "prefix": 32, "scope": "global" }
+    ],
+    "addresses_source": "ip"
+  },
+  "tailscale": {
+    "installed": true,
+    "unit": { "name": "tailscaled.service", "load_state": "loaded", "active_state": "active", "sub_state": "running", "unit_file_state": "enabled" },
+    "status_read": true,
+    "backend_state": "Running",
+    "version": "1.80.0",
+    "serve": {},
+    "lock_enabled": false
+  },
+  "cloudflared": {
+    "installed": true,
+    "processes_read": true,
+    "processes_visible": true,
+    "connectors": [
+      { "container": true, "args_read": true, "mode": "named" },
+      { "container": true, "args_read": true, "mode": "named" }
+    ]
+  },
+  "crowdsec": {
+    "installed": true,
+    "unit": { "name": "crowdsec.service", "load_state": "loaded", "active_state": "active", "sub_state": "running", "unit_file_state": "enabled" },
+    "processes_read": true,
+    "processes_visible": true,
+    "engine_processes": 1,
+    "cscli": true,
+    "version": "v1.6.4",
+    "bouncers_read": true,
+    "bouncers": [
+      { "name": "traefik-bouncer", "type": "crowdsec-bouncer-traefik-plugin", "version": "1.4.1", "kind": "proxy", "last_pull": "2026-03-01T11:59:48Z" }
+    ],
+    "hub_read": true,
+    "collections": [ "crowdsecurity/linux", "crowdsecurity/sshd", "crowdsecurity/traefik" ],
+    "parsers": [ "crowdsecurity/sshd-logs", "crowdsecurity/traefik-logs", "crowdsecurity/whitelists" ],
+    "lapi_listen": "172.17.0.1:8080",
+    "acquisition_read": true,
+    "acquisition": [
+      { "file": "/etc/crowdsec/acquis.yaml", "source": "file", "type": "syslog", "paths": [ "/var/log/auth.log" ] },
+      { "file": "/etc/crowdsec/acquis.d/traefik.yaml", "source": "docker", "type": "traefik", "containers": [ "traefik" ] }
+    ],
+    "parser_files_read": true,
+    "parser_files": [
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/whitelists.yaml",
+        "name": "crowdsecurity/whitelists",
+        "whitelist_cidrs": [ "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12" ],
+        "whitelist_ips": [ "127.0.0.1", "::1" ]
+      },
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/cf-real-ip.yaml",
+        "name": "local/cf-real-ip",
+        "real_ip_header": "cf-connecting-ip"
+      }
+    ]
+  },
+  "fail2ban": {
+    "installed": true,
+    "unit": { "name": "fail2ban.service", "load_state": "loaded", "active_state": "active", "sub_state": "running", "unit_file_state": "enabled" },
+    "status_read": true,
+    "active_jails": [ "sshd" ],
+    "config_read": true,
+    "jails": [ { "name": "sshd", "enabled": true, "port": "ssh", "ignoreip": [ "127.0.0.1/8", "::1", "100.64.0.0/10" ] } ]
+  },
+  "collectors": [
+    { "name": "cloudflared", "status": "ok" },
+    { "name": "crowdsec", "status": "ok" },
+    { "name": "fail2ban", "status": "ok" },
+    { "name": "firewall", "status": "ok" },
+    { "name": "listeners", "status": "ok" },
+    { "name": "tailscale", "status": "ok" }
+  ]
+}
