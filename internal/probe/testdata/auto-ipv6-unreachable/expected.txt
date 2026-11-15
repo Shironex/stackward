@@ -10,7 +10,7 @@ sandbox:   unavailable (golden test)
 open:      tcp/22 on 192.0.2.30
 note:      profile unknown: probe has no host facts, so open SSH and web ports are judged as if nothing should be public; pass --profile tunnel, public-web, tailnet-only or paas-panel
 note:      the target is a name: if it points at a CDN or tunnel edge, probe the origin IP instead and pass the name with --hostname
-coverage:  1 checked, 18 unknown, 1 skipped (6 checks)
+coverage:  6 checks, 20 results: 1 checked, 18 unknown, 1 skipped
 collector: http-raw skipped: no web port answered
 collector: https-hostname skipped: no --hostname given
 

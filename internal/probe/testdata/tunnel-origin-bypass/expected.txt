@@ -10,7 +10,7 @@ sandbox:   unavailable (golden test)
 open:      tcp/22 on 203.0.113.10, tcp/443 on 203.0.113.10, tcp/6379 on 203.0.113.10
 note:      the raw IP HTTPS check skips certificate verification (an IP has no certificate name); the --hostname check verifies normally
 note:      the target is a name: if it points at a CDN or tunnel edge, probe the origin IP instead and pass the name with --hostname
-coverage:  20 checked, 0 unknown, 0 skipped (6 checks)
+coverage:  6 checks, 20 results: 20 checked, 0 unknown, 0 skipped
 
 PRB  Outside view
   WARN    PRB-001 port:tcp/22  SSH is not reachable from the internet on a private ingress host [moderate]

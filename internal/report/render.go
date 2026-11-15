@@ -183,9 +183,16 @@ func writeProbeHeader(p printer, r *Report) {
 	writeCoverageLine(p, r)
 }
 
+// CoverageLine says how many checks ran and how their results split. A
+// check gives one result per subject (a container, a port, a file), so
+// results outnumber checks; the counts after the colon are results.
+func CoverageLine(c Coverage) string {
+	return fmt.Sprintf("%d checks, %d results: %d checked, %d unknown, %d skipped",
+		c.Checks, c.Results, c.Checked, c.Unknown, c.Skipped)
+}
+
 func writeCoverageLine(p printer, r *Report) {
-	p("coverage:  %d checked, %d unknown, %d skipped (%d checks)\n",
-		r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped, r.Coverage.Checks)
+	p("coverage:  %s\n", CoverageLine(r.Coverage))
 }
 
 func sandboxLine(s sandbox.Status) string {

@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 13 checked, 93 unknown, 0 skipped (102 checks), root: yes
+- **Coverage:** 102 checks, 106 results: 13 checked, 93 unknown, 0 skipped, root: yes
 
 ## Summary
 

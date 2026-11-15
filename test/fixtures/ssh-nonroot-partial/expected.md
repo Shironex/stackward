@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no, run with sudo for full coverage
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 6 checked, 98 unknown, 0 skipped (102 checks), root: no
+- **Coverage:** 102 checks, 104 results: 6 checked, 98 unknown, 0 skipped, root: no
 
 ## Summary
 
