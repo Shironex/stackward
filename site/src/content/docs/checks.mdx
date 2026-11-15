@@ -1,0 +1,17 @@
+---
+title: Check reference
+description: Every stackward check, generated from the catalog at build time, with severity, rationale, how to verify, how to fix and what a fix can break.
+---
+
+import CheckTable from '../../components/CheckTable.astro';
+
+Every page in this reference is generated from the check catalog in
+[`internal/catalog/data/`](https://github.com/Shironex/stackward/tree/main/internal/catalog/data)
+when the site builds, so it always matches the tool. `stackward explain <id>`
+prints the same text in your terminal.
+
+Severity says how bad a failing check is. The level a check reports on your
+server (pass, warn, fail, unknown or skip) is a separate thing; see
+[reading a report](/stackward/usage/#reading-a-report).
+
+<CheckTable />

@@ -1,0 +1,40 @@
+---
+/**
+ * The checks a Learn topic covers. Ids in the catalog link to their page with
+ * title and severity; ids that have not landed yet show as planned, and link
+ * up on their own once their catalog entry exists.
+ */
+import { checkUrl, lookup } from '../lib/catalog.mjs';
+
+interface Props {
+  ids: string[];
+}
+const rows = Astro.props.ids.map((id) => ({ id, entry: lookup(id) }));
+const live = rows.filter((r) => r.entry).length;
+---
+
+<div class="checks not-content">
+  <p class="checks-count">
+    {live} of {rows.length} in the catalog today{rows.length - live > 0 ? `; ${rows.length - live} planned for v0.1` : ''}.
+  </p>
+  <ul>
+    {
+      rows.map(({ id, entry }) =>
+        entry ? (
+          <li>
+            <a href={checkUrl(id)}>
+              <code class="check-id">{id}</code>
+              <span class="checks-title">{entry.title}</span>
+              <span class={`sev sev-${entry.severity}`}>{entry.severity}</span>
+            </a>
+          </li>
+        ) : (
+          <li class="checks-planned">
+            <code class="check-id">{id}</code>
+            <span class="checks-title">planned, not in the catalog yet</span>
+          </li>
+        ),
+      )
+    }
+  </ul>
+</div>
