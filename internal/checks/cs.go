@@ -352,26 +352,31 @@ func checkLAPIListen(in Input) []Result {
 		}
 		return One(Pass, fmt.Sprintf("the local API listens on %s (%s)", c.LAPIListen, class), ev)
 	}
-	if f.Listeners != nil {
-		var binds []string
-		exposed := false
-		for _, s := range f.Listeners.Sockets {
-			if s.Proto == "tcp" && s.HasProcess("crowdsec") {
-				binds = append(binds, net.JoinHostPort(s.Address, strconv.Itoa(s.Port)))
-				if s.Class().Exposed() {
-					exposed = true
-				}
-			}
+	if binds, exposed := crowdsecListenerBinds(f); len(binds) > 0 {
+		ev := map[string]any{"listen": binds, "source": "listeners"}
+		if exposed {
+			return One(Warn, "a crowdsec listener is on a wildcard or public address: "+strings.Join(binds, ", "), ev)
 		}
-		if len(binds) > 0 {
-			ev := map[string]any{"listen": binds, "source": "listeners"}
-			if exposed {
-				return One(Warn, "a crowdsec listener is on a wildcard or public address: "+strings.Join(binds, ", "), ev)
-			}
-			return One(Pass, "crowdsec listens on loopback or private addresses only: "+strings.Join(binds, ", "), ev)
-		}
+		return One(Pass, "crowdsec listens on loopback or private addresses only: "+strings.Join(binds, ", "), ev)
 	}
 	return One(Unknown, "the local API listen address could not be read", map[string]any{"listen": "unknown"})
+}
+
+// crowdsecListenerBinds lists the TCP sockets a crowdsec process holds and
+// whether any of them is on a wildcard or public address.
+func crowdsecListenerBinds(f *facts.Facts) (binds []string, exposed bool) {
+	if f.Listeners == nil {
+		return nil, false
+	}
+	for _, s := range f.Listeners.Sockets {
+		if s.Proto == "tcp" && s.HasProcess("crowdsec") {
+			binds = append(binds, net.JoinHostPort(s.Address, strconv.Itoa(s.Port)))
+			if s.Class().Exposed() {
+				exposed = true
+			}
+		}
+	}
+	return binds, exposed
 }
 
 // firewallBouncerSeen reports whether a firewall bouncer is registered or
