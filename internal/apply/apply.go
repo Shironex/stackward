@@ -294,8 +294,9 @@ func (r *runner) step(ctx context.Context, i int, s plan.Step) error {
 	js.StartedAt = stamp(start)
 	defer func() { js.DurationMS = r.o.Now().Sub(start).Milliseconds() }()
 	changed := false
+	pending := len(s.Commands) > 0
 	for _, e := range s.Edits {
-		c, err := r.edit(ctx, js, e)
+		c, err := r.edit(ctx, js, e, pending)
 		if err != nil {
 			return err
 		}
@@ -310,12 +311,15 @@ func (r *runner) step(ctx context.Context, i int, s plan.Step) error {
 			return err
 		}
 	}
+	js.RestartPending = false
 	js.Status = StepApplied
 	return r.save()
 }
 
 // edit applies one file edit and reports whether it changed the file.
-func (r *runner) edit(ctx context.Context, js *JournalStep, e plan.FileEdit) (bool, error) {
+// With pending, the step is marked restart-pending before the file is
+// written, so a failure or a crash before its commands ran leaves the mark.
+func (r *runner) edit(ctx context.Context, js *JournalStep, e plan.FileEdit, pending bool) (bool, error) {
 	h := r.h
 	now, err := precondition(h, e)
 	if err != nil {
@@ -371,7 +375,18 @@ func (r *runner) edit(ctx context.Context, js *JournalStep, e plan.FileEdit) (bo
 			return nil
 		}
 	}
+	wasPending := js.RestartPending
+	if pending {
+		js.RestartPending = true
+		if err := r.save(); err != nil {
+			js.RestartPending = wasPending
+			return false, err
+		}
+	}
 	if err := h.WriteAtomic(e.Path, []byte(e.New), write, check); err != nil {
+		if written, _ := plan.FileHolds(h, e.Path, e.NewSHA256); !written {
+			js.RestartPending = wasPending
+		}
 		js.Files = append(js.Files, jf)
 		_ = r.save()
 		return false, err

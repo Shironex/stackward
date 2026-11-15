@@ -166,6 +166,10 @@
           "type": "integer",
           "minimum": 0
         },
+        "restart_pending": {
+          "description": "Optional. True from the moment a file of the step is written until its commands have run: the files are in place but the restart or load did not finish. The next apply finishes it first. Absent means not pending.",
+          "type": "boolean"
+        },
         "step": {
           "description": "The plan step as applied, in the shape of a step of plan.v1 (schema/plan.v1.json), with old and new file content redacted. Undo authorizes it again and runs its undo commands.",
           "type": "object"

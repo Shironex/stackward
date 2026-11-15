@@ -161,6 +161,7 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 				return changed, fmt.Errorf("step %s: %w", js.ID, err)
 			}
 		}
+		js.RestartPending = false // the undo restored the files and ran its commands
 		o.Progress("%s: undone", js.ID)
 	}
 	j.Status, j.UndoneAt = RunUndone, stamp(o.Now())
