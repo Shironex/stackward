@@ -16,10 +16,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 65,
-    "results": 69,
+    "checks": 80,
+    "results": 84,
     "checked": 13,
-    "unknown": 56,
+    "unknown": 71,
     "skipped": 0,
     "root": true,
     "sandbox": {
@@ -40,7 +40,7 @@
   "summary": {
     "fail": 3,
     "warn": 7,
-    "unknown": 56,
+    "unknown": 71,
     "info": 1,
     "pass": 2,
     "skip": 0
@@ -683,6 +683,249 @@
       },
       "fix": {
         "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "DKR-002",
+      "group": "DKR",
+      "title": "Docker API is not on TCP without TLS",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove -H tcp:// from the unit and \"hosts\" from daemon.json. For remote access use DOCKER_HOST=ssh://user@host, or a socket proxy that allows only the GET endpoints needed. If TCP is truly needed, use 2376 with tlsverify and client certificates.",
+        "docs": "https://docs.docker.com/engine/security/protect-access/"
+      }
+    },
+    {
+      "id": "DKR-003",
+      "group": "DKR",
+      "title": "Docker socket is not world writable",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Restore the default: chown root:docker /var/run/docker.sock \u0026\u0026 chmod 660 /var/run/docker.sock, then find what changed it (often a chmod 666 in a setup script or a unit override) and remove that."
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-011",
+      "group": "DKR",
+      "title": "Socket proxies do not allow writes",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set POST=0 and EXEC=0, and enable only the read sections the client needs (for example CONTAINERS=1, NETWORKS=1). If a client truly needs writes, give it its own proxy with the narrowest flags and keep it off shared networks."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-031",
+      "group": "DKR",
+      "title": "Container logs rotate",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set {\"log-driver\":\"json-file\",\"log-opts\":{\"max-size\":\"10m\",\"max-file\":\"3\"}} in /etc/docker/daemon.json (or use the local driver) and restart Docker. Existing containers keep their old settings until they are recreated."
+      }
+    },
+    {
+      "id": "DKR-032",
+      "group": "DKR",
+      "title": "Infrastructure containers run pinned images",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out."
+      }
+    },
+    {
+      "id": "DKR-033",
+      "group": "DKR",
+      "title": "Docker manages the firewall",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Know why it was set. Usually remove \"iptables\": false and filter published ports in the DOCKER-USER chain or with ufw-docker instead."
+      }
+    },
+    {
+      "id": "DKR-034",
+      "group": "DKR",
+      "title": "Docker Engine is supported upstream",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
+        "docs": "https://endoflife.date/docker-engine"
       }
     },
     {
