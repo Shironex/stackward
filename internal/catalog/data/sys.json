@@ -1,0 +1,31 @@
+{
+  "group": "SYS",
+  "checks": [
+    {
+      "id": "SYS-001",
+      "title": "Distribution is one stackward is tested on",
+      "severity": "info",
+      "rationale": "Collectors detect mechanisms rather than assume versions, but parsers are only tested on Ubuntu 22.04, 24.04 and 26.04 and Debian 12 and 13. On anything else results are more likely to come back unknown, and a pass deserves less trust.",
+      "verify": "cat /etc/os-release",
+      "fix": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+    },
+    {
+      "id": "SYS-002",
+      "title": "No reboot pending",
+      "severity": "moderate",
+      "rationale": "When /var/run/reboot-required exists, an update installed a new kernel or core library that only takes effect after a reboot. Until then the host runs the old, vulnerable code even though the package manager reports it as patched. Pending for more than 14 days fails.",
+      "verify": "ls -l /var/run/reboot-required; cat /var/run/reboot-required.pkgs",
+      "fix": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004).",
+      "breaks": "A reboot interrupts every service on the host; containers without a restart policy stay down."
+    },
+    {
+      "id": "SYS-003",
+      "title": "Running kernel is the newest installed",
+      "severity": "moderate",
+      "rationale": "A kernel update is installed to /boot but only runs after a reboot. A running kernel older than the newest installed one means kernel security fixes are on disk and not in effect.",
+      "verify": "uname -r; ls /boot/vmlinuz-*",
+      "fix": "Reboot to load the patched kernel.",
+      "breaks": "A reboot interrupts every service on the host."
+    }
+  ]
+}
