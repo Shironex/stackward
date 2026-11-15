@@ -116,11 +116,11 @@ Unattended-Upgrade::Automatic-Reboot-Time "03:30";
 `
 
 func TestParseAptConf(t *testing.T) {
-	c := ParseAptConf(aptDump)
+	c := parseAptConf(aptDump)
 	if c.scalar("APT::Periodic::Unattended-Upgrade") != "1" || len(c.list("Unattended-Upgrade::Allowed-Origins")) != 2 {
 		t.Errorf("dump parse: %v", c)
 	}
-	blocks := ParseAptConf(`// comment
+	blocks := parseAptConf(`// comment
 Unattended-Upgrade::Allowed-Origins {
 	"${distro_id}:${distro_codename}"; // trailing
 	/* "disabled"; */
