@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"time"
 )
 
-// RunLockPath is the lock every run that changes the host takes: apply and
-// undo today, and the access-critical transaction later ("only one
-// transaction at a time"). It lives under /run, so a reboot clears it.
+// RunLockPath is the lock every run that changes the host takes: apply,
+// undo, confirm and the rollback timer. Every change to the transaction
+// state is made under it, which is what keeps one transaction open at a
+// time. It lives under /run, so a reboot clears it.
 const RunLockPath = "/run/stackward/apply.lock"
 
 // HeldError is the refusal of a second run: another process holds the lock.
@@ -36,6 +38,20 @@ func IsHeld(err error) bool {
 // read a run depends on and keep it until the run ends.
 func AcquireRunLock(h Host, holder string) (release func() error, err error) {
 	return h.Lock(RunLockPath, holder)
+}
+
+// AcquireRunLockWait is AcquireRunLock for the rollback timer, which must
+// not give up because an apply or a confirm holds the lock for a moment:
+// it tries again every interval until wait has passed. sleep is the
+// clock (tests pass a fake).
+func AcquireRunLockWait(h Host, holder string, wait, interval time.Duration, sleep func(time.Duration)) (release func() error, err error) {
+	for waited := time.Duration(0); ; waited += interval {
+		release, err = h.Lock(RunLockPath, holder)
+		if err == nil || !IsHeld(err) || waited >= wait {
+			return release, err
+		}
+		sleep(interval)
+	}
 }
 
 // lockDir is the directory of a lock file.

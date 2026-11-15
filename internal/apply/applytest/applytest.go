@@ -29,6 +29,8 @@ const Hostname = "test-host.example.com"
 type Runner struct {
 	Root string
 	Exit map[string]int
+	// Respond, when set, answers a command first (see System).
+	Respond func(args []string) (apply.CmdResult, bool)
 
 	mu    sync.Mutex
 	calls [][]string
@@ -42,6 +44,11 @@ func (r *Runner) Run(_ context.Context, args []string) apply.CmdResult {
 	code := r.Exit[args[0]]
 	if code != 0 {
 		return apply.CmdResult{ExitCode: code, Output: []byte(args[0] + ": refused by the test")}
+	}
+	if r.Respond != nil {
+		if res, ok := r.Respond(args); ok {
+			return res
+		}
 	}
 	if len(args) == 3 && args[0] == "sysctl" && args[1] == "-p" {
 		b, err := os.ReadFile(filepath.Join(r.Root, args[2]))

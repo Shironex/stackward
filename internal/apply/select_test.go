@@ -7,23 +7,15 @@ import (
 	"github.com/Shironex/stackward/internal/apply"
 	"github.com/Shironex/stackward/internal/apply/applytest"
 	"github.com/Shironex/stackward/internal/plan"
+	"github.com/Shironex/stackward/internal/plan/txntest"
 	"github.com/Shironex/stackward/internal/report"
 )
 
-// An access-critical generator exists only in this test binary: no real
-// step is access-critical yet.
-func init() {
-	plan.Register(plan.Generator{
-		ID: "test-access-step", Title: "test", Fixes: []string{"SSH-001"}, Risk: plan.AccessCritical,
-		Plan:      func(plan.Input) plan.Outcome { return plan.Outcome{} },
-		Authorize: func(plan.Step) error { return nil },
-		Check:     func(plan.Reader, plan.Step) (bool, string, error) { return false, "", nil },
-	})
-}
+func init() { txntest.Register() }
 
 func withAccessStep(p *plan.Plan) *plan.Plan {
 	cp := *p
-	cp.Steps = append(append([]plan.Step{}, p.Steps...), plan.Step{ID: "test-access-step", Risk: plan.AccessCritical, Fixes: []string{"SSH-001"}})
+	cp.Steps = append(append([]plan.Step{}, p.Steps...), plan.Step{ID: txntest.GoodID, Risk: plan.AccessCritical, Fixes: []string{txntest.Fixes}})
 	return &cp
 }
 
@@ -36,15 +28,24 @@ func TestSelect(t *testing.T) {
 	if _, err := apply.Select(p, []string{"make-coffee"}, false); err == nil || !strings.Contains(err.Error(), "not in this plan") {
 		t.Errorf("unknown id: %v", err)
 	}
-	if _, err := apply.Select(p, []string{"test-access-step"}, false); err == nil || !strings.Contains(err.Error(), "#26") {
-		t.Errorf("access-critical named: %v", err)
+	// An access-critical step runs when named, alone: never with
+	// --all-safe or another step, so its rollback undoes exactly it.
+	sel, err := apply.Select(p, []string{txntest.GoodID}, false)
+	if err != nil || len(sel.Steps) != 1 || !sel.AccessCritical() {
+		t.Errorf("access-critical named: %v %+v", err, sel)
+	}
+	if _, err := apply.Select(p, []string{txntest.GoodID}, true); err == nil || !strings.Contains(err.Error(), "run of their own") || !strings.Contains(err.Error(), "--all-safe") {
+		t.Errorf("access-critical with --all-safe: %v", err)
+	}
+	if _, err := apply.Select(p, []string{txntest.GoodID, "docker-log-rotation"}, false); err == nil || !strings.Contains(err.Error(), "docker-log-rotation") {
+		t.Errorf("access-critical with another step: %v", err)
 	}
 
-	sel, err := apply.Select(p, nil, true)
+	sel, err = apply.Select(p, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(ids(sel.Steps), ","); got != "journald-cap,sysctl-hardening" {
+	if got := strings.Join(ids(sel.Steps), ","); got != "journald-cap,sysctl-hardening" || sel.AccessCritical() {
 		t.Errorf("--all-safe: %s", got)
 	}
 	reasons := map[string]string{}
@@ -54,8 +55,8 @@ func TestSelect(t *testing.T) {
 	if !strings.Contains(reasons["docker-log-rotation"], "--step docker-log-rotation") || !strings.Contains(reasons["docker-log-rotation"], "restarts docker") {
 		t.Errorf("docker reason %q", reasons["docker-log-rotation"])
 	}
-	if !strings.Contains(reasons["test-access-step"], "#26") {
-		t.Errorf("access reason %q", reasons["test-access-step"])
+	if !strings.Contains(reasons[txntest.GoodID], "--step "+txntest.GoodID) || !strings.Contains(reasons[txntest.GoodID], "transaction") {
+		t.Errorf("access reason %q", reasons[txntest.GoodID])
 	}
 
 	sel, err = apply.Select(p, []string{"docker-log-rotation"}, false)

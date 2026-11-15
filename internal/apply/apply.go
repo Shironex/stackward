@@ -24,8 +24,9 @@ import (
 	"github.com/Shironex/stackward/internal/report"
 )
 
-// AccessCriticalRefusal is why an access-critical step never runs here.
-const AccessCriticalRefusal = "it is access-critical and needs the transaction from #26 (not built yet)"
+// accessCriticalNote is why an access-critical step that was not named
+// does not run.
+const accessCriticalNote = "access-critical: runs only with --step %s, in a run of its own, inside the rollback transaction"
 
 // CheckPlan refuses a plan that is not for this tool, this schema or this
 // host. hostname is this host's name; the plan may hold it or its hash.
@@ -66,22 +67,34 @@ type Selection struct {
 
 // Select picks steps by id (--step) and every safe step that is not opt in
 // (--all-safe). The risk class and opt in come from the registered
-// generator, not the plan file. An access-critical step is refused even
-// when named; an unknown id is refused.
+// generator, not the plan file. An access-critical step runs only when
+// named, and only with other access-critical steps: those run inside the
+// rollback transaction, and its rollback must undo exactly them. An
+// unknown id is refused.
 func Select(p *plan.Plan, ids []string, allSafe bool) (Selection, error) {
 	if len(ids) == 0 && !allSafe {
 		return Selection{}, fmt.Errorf("choose the steps to apply with --step ID (repeatable) or --all-safe; this plan has %s", stepList(p))
 	}
 	named := map[string]bool{}
+	var access, other []string
 	for _, id := range ids {
 		if !slices.ContainsFunc(p.Steps, func(s plan.Step) bool { return s.ID == id }) {
 			return Selection{}, fmt.Errorf("step %s is not in this plan; it has %s", id, stepList(p))
 		}
 		g, _ := plan.Lookup(id)
 		if g.Risk == plan.AccessCritical {
-			return Selection{}, fmt.Errorf("step %s cannot be applied: %s", id, AccessCriticalRefusal)
+			access = append(access, id)
+		} else {
+			other = append(other, id)
 		}
 		named[id] = true
+	}
+	if len(access) > 0 && (len(other) > 0 || allSafe) {
+		with := "--all-safe"
+		if len(other) > 0 {
+			with = strings.Join(other, ", ")
+		}
+		return Selection{}, fmt.Errorf("access-critical steps (%s) run inside the rollback transaction, in a run of their own; apply %s in a separate run first", strings.Join(access, ", "), with)
 	}
 	var sel Selection
 	for _, s := range p.Steps {
@@ -93,7 +106,7 @@ func Select(p *plan.Plan, ids []string, allSafe bool) (Selection, error) {
 		case named[s.ID]:
 			sel.Steps = append(sel.Steps, s)
 		case g.Risk == plan.AccessCritical:
-			sel.NotRun = append(sel.NotRun, NotRun{s.ID, AccessCriticalRefusal})
+			sel.NotRun = append(sel.NotRun, NotRun{s.ID, fmt.Sprintf(accessCriticalNote, s.ID)})
 		case g.Risk == plan.Networking:
 			sel.NotRun = append(sel.NotRun, NotRun{s.ID, fmt.Sprintf("networking (restarts %s): runs only with --step %s", orNone(strings.Join(s.Restarts, ", ")), s.ID)})
 		case g.OptIn:
@@ -105,6 +118,18 @@ func Select(p *plan.Plan, ids []string, allSafe bool) (Selection, error) {
 		}
 	}
 	return sel, nil
+}
+
+// AccessCritical reports whether the selection holds access-critical
+// steps (then it holds nothing else, see Select): it must run as a
+// transaction.
+func (s Selection) AccessCritical() bool {
+	for _, st := range s.Steps {
+		if g, ok := plan.Lookup(st.ID); ok && g.Risk == plan.AccessCritical {
+			return true
+		}
+	}
+	return false
 }
 
 func stepList(p *plan.Plan) string {
@@ -210,6 +235,9 @@ type Options struct {
 	CommandTimeout time.Duration
 	// Progress, when set, is told about each step as it starts and ends.
 	Progress func(format string, a ...any)
+	// Transaction, when set, marks the run as an access-critical
+	// transaction in its journal from the first write on.
+	Transaction *JournalTxn
 }
 
 // NewRunID returns a run id: the UTC time and six random hex digits.
@@ -240,7 +268,7 @@ func Execute(ctx context.Context, prepared []Prepared, o Options) (*Journal, err
 		Schema: JournalSchema, Tool: report.Tool{Name: "stackward", Version: o.Version},
 		RunID: o.RunID, Status: RunRunning, StartedAt: stamp(o.Now()),
 		Host: o.HostRef, Plan: o.Plan, Selected: []string{}, BackupDir: RunDir(o.RunID),
-		Steps: []JournalStep{},
+		Steps: []JournalStep{}, Transaction: o.Transaction,
 	}
 	for _, p := range prepared {
 		j.Selected = append(j.Selected, p.Step.ID)

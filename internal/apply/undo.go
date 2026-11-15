@@ -2,6 +2,7 @@ package apply
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"regexp"
@@ -68,6 +69,9 @@ func UndoScript(j *Journal) []string {
 	return out
 }
 
+// errAlreadyUndone is the refusal to undo a run twice.
+var errAlreadyUndone = errors.New("already undone")
+
 // UndoOptions configure Undo.
 type UndoOptions struct {
 	Host           Host
@@ -93,7 +97,7 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 		o.Progress = func(string, ...any) {}
 	}
 	if j.Status == RunUndone {
-		return false, fmt.Errorf("run %s was already undone at %s", j.RunID, j.UndoneAt)
+		return false, fmt.Errorf("run %s was %w at %s", j.RunID, errAlreadyUndone, j.UndoneAt)
 	}
 	h := o.Host
 	// Check everything first, so a refusal changes nothing.
