@@ -65,6 +65,7 @@ export default defineConfig({
           items: [
             { label: 'Threat model', link: '/project/threat-model/' },
             { label: 'Safety design', link: '/project/safety/' },
+            { label: 'Roadmap', link: '/project/roadmap/' },
             { label: 'Architecture', link: '/contributing/architecture/' },
             { label: 'Contributing', link: `${REPO}/blob/main/CONTRIBUTING.md`, attrs: { rel: 'external' } },
           ],
