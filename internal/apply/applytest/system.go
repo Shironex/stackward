@@ -29,8 +29,11 @@ type System struct {
 	// Listening are the TCP ports ss reports as listened on.
 	Listening []string
 	// FailArm makes arming the timer fail; FailProve makes the test run
-	// of the binary copy as a service fail.
-	FailArm, FailProve bool
+	// of the binary copy as a service fail; FailEnable makes systemctl
+	// enable of the boot unit fail.
+	FailArm, FailProve, FailEnable bool
+	// Reloads counts systemctl daemon-reload.
+	Reloads int
 
 	mu     sync.Mutex
 	active map[string]bool
@@ -103,6 +106,11 @@ func (s *System) Respond(args []string) (apply.CmdResult, bool) {
 		}
 		s.active[unit+".timer"] = true
 		return ok("")
+	case len(args) == 3 && args[0] == "systemctl" && args[1] == "enable":
+		return s.enable(args[2])
+	case len(args) == 2 && args[0] == "systemctl" && args[1] == "daemon-reload":
+		s.Reloads++
+		return ok("")
 	case len(args) >= 2 && args[0] == "systemctl" && args[1] == "stop":
 		for _, u := range args[2:] {
 			delete(s.active, u)
@@ -133,6 +141,26 @@ func (s *System) Respond(args []string) (apply.CmdResult, bool) {
 		return ok(b.String())
 	}
 	return apply.CmdResult{}, false
+}
+
+// enable does what systemctl enable does with the boot unit: the link in
+// the wants directory of its WantedBy target, under Root.
+func (s *System) enable(unit string) (apply.CmdResult, bool) {
+	if s.FailEnable {
+		return exit(1, "Failed to enable unit: refused by the test\n")
+	}
+	unitFile := filepath.Join(s.Root, "etc", "systemd", "system", unit)
+	if _, err := os.Stat(unitFile); err != nil {
+		return exit(1, "Failed to enable unit: Unit file "+unit+" does not exist.\n")
+	}
+	wants := filepath.Join(s.Root, "etc", "systemd", "system", apply.BootTarget+".wants")
+	if err := os.MkdirAll(wants, 0o750); err != nil {
+		return exit(1, err.Error())
+	}
+	if err := os.Symlink("/etc/systemd/system/"+unit, filepath.Join(wants, unit)); err != nil {
+		return exit(1, err.Error())
+	}
+	return ok("Created symlink.\n")
 }
 
 var digits = regexp.MustCompile(`^[0-9]+$`)
