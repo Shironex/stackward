@@ -50,7 +50,7 @@ func devNullRights(abi int) uint64 {
 	return r
 }
 
-func apply() Status {
+func apply(opts Options) Status {
 	abi, err := landlockABI()
 	if err != nil {
 		return Status{State: Unavailable, Reason: err.Error()}
@@ -59,7 +59,7 @@ func apply() Status {
 
 	attr := rulesetAttr{handledFS: writeRights(abi)}
 	size := unsafe.Sizeof(attr.handledFS)
-	if abi >= 4 {
+	if abi >= 4 && !opts.AllowNetwork {
 		// Deny all TCP bind and connect: audit makes no network calls.
 		// Unix sockets (the Docker API) are not affected.
 		attr.handledNet = unix.LANDLOCK_ACCESS_NET_BIND_TCP | unix.LANDLOCK_ACCESS_NET_CONNECT_TCP
