@@ -73,6 +73,7 @@ func TestStringKeepsHarmlessText(t *testing.T) {
 		"port:tcp/5432 published on 0.0.0.0",
 		"container:app/web runs as root",
 		"sha256:0123456789abcdef",
+		"ops ALL=(ALL:ALL) NOPASSWD: ALL",
 	} {
 		if got := String(s); got != s {
 			t.Errorf("String(%q) = %q, want unchanged", s, got)
