@@ -302,6 +302,7 @@ func TestListenersCollectorProcFallbackSnapshot(t *testing.T) {
 
 func TestPublishedByContainer(t *testing.T) {
 	d := &Docker{API: "ok", Containers: []DockerContainer{{Name: "web", Ports: []DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 80}}}}}
+	proxy := &Docker{API: "ok", Containers: []DockerContainer{{Name: "socket-proxy", Ports: []DockerPort{{HostIP: "127.0.0.1", HostPort: 2375, ContainerPort: 2375, Proto: "tcp"}}}}}
 	cases := []struct {
 		name string
 		l    Listener
@@ -315,6 +316,14 @@ func TestPublishedByContainer(t *testing.T) {
 		{"another process owns it", Listener{Proto: "tcp", Port: 8080, Processes: []string{"nginx"}}, d, false},
 		{"no owner, Docker API not read", Listener{Proto: "tcp", Port: 8080}, &Docker{API: "denied"}, false},
 		{"no owner, no Docker facts", Listener{Proto: "tcp", Port: 8080}, nil, false},
+		{"dockerd holds it, a container publishes it", Listener{Proto: "tcp", Address: "0.0.0.0", Port: 8080, Processes: []string{"dockerd"}}, d, true},
+		{"dockerd holds it on ::, published on 0.0.0.0", Listener{Proto: "tcp", Address: "::", Port: 8080, Processes: []string{"dockerd"}}, d, true},
+		{"dockerd holds loopback 2375, socket proxy publishes it", Listener{Proto: "tcp", Address: "127.0.0.1", Port: 2375, Processes: []string{"dockerd"}}, proxy, true},
+		{"dockerd holds 2375 on another address", Listener{Proto: "tcp", Address: "192.0.2.10", Port: 2375, Processes: []string{"dockerd"}}, proxy, false},
+		{"dockerd holds it, no container publishes it", Listener{Proto: "tcp", Address: "127.0.0.1", Port: 2375, Processes: []string{"dockerd"}}, d, false},
+		{"dockerd holds it, Docker API not read", Listener{Proto: "tcp", Address: "127.0.0.1", Port: 2375, Processes: []string{"dockerd"}}, &Docker{API: "denied"}, false},
+		{"dockerd and another process", Listener{Proto: "tcp", Address: "0.0.0.0", Port: 8080, Processes: []string{"dockerd", "nginx"}}, d, false},
+		{"no owner, wildcard published, specific bind", Listener{Proto: "tcp", Address: "192.0.2.10", Port: 8080}, d, false},
 	}
 	for _, c := range cases {
 		if got := c.l.PublishedByContainer(c.d); got != c.want {

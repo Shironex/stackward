@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/netip"
 	"path"
 	"sort"
 	"strconv"
@@ -168,6 +169,48 @@ type DockerPort struct {
 	Proto         string `json:"proto"`
 	HostIP        string `json:"host_ip"`
 	HostPort      int    `json:"host_port"`
+}
+
+// Publishing lists the containers that publish proto/port on a host
+// address matching addr, the bind address of a listening socket. An
+// empty, 0.0.0.0 or :: host address matches any wildcard bind, of either
+// family, since Docker binds both for it. Nothing matches when the Docker
+// API was not read.
+func (d *Docker) Publishing(proto, addr string, port int) []DockerContainer {
+	if d == nil || d.API != "ok" {
+		return nil
+	}
+	var out []DockerContainer
+	for _, c := range d.Containers {
+		for _, p := range c.Ports {
+			pp := p.Proto
+			if pp == "" {
+				pp = "tcp"
+			}
+			if p.HostPort == port && pp == proto && sameHostAddr(p.HostIP, addr) {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// sameHostAddr reports whether a published host address and a socket's
+// bind address name the same binding.
+func sameHostAddr(published, bind string) bool {
+	wild := func(a string) bool { return a == "" || a == "0.0.0.0" || a == "::" || a == "*" }
+	published = strings.Trim(strings.TrimSpace(published), "[]")
+	bind = strings.Trim(strings.TrimSpace(bind), "[]")
+	if wild(published) || wild(bind) {
+		return wild(published) && wild(bind)
+	}
+	a, errA := netip.ParseAddr(published)
+	b, errB := netip.ParseAddr(bind)
+	if errA != nil || errB != nil {
+		return published == bind
+	}
+	return a.Unmap() == b.Unmap()
 }
 
 // DockerNetwork is one network from GET /networks.

@@ -124,33 +124,26 @@ func (l Listener) HasProcess(name string) bool {
 }
 
 // PublishedByContainer reports whether a container publishes the
-// listener's port: docker-proxy holds it, or no process name is known for
-// the socket and a container the Docker API listed publishes the same
-// protocol and port. Process names are missing without root, and under the
-// Landlock sandbox when the ownership snapshot taken before it could not
-// be read (the sandbox scopes ptrace access and so stops ss from reading
-// other processes' /proc/<pid>/fd); the Docker API still says which ports
-// containers publish, and Docker without the userland proxy publishes
-// ports with no owning process at all.
+// listener's port. docker-proxy holding it settles that. Otherwise the
+// Docker API must list a container publishing the same protocol, port and
+// a matching host address, and the socket must have no owner name, or
+// only dockerd: Docker without the userland proxy, and Docker on its
+// nftables firewall backend, reserve published ports in dockerd itself.
+// Process names are missing without root, and under the Landlock sandbox
+// when the ownership snapshot taken before it could not be read (the
+// sandbox scopes ptrace access and so stops ss from reading other
+// processes' /proc/<pid>/fd); the Docker API still says which ports
+// containers publish.
 func (l Listener) PublishedByContainer(d *Docker) bool {
 	if l.HasProcess("docker-proxy") {
 		return true
 	}
-	if len(l.Processes) > 0 || d == nil || d.API != "ok" {
-		return false
-	}
-	for _, c := range d.Containers {
-		for _, p := range c.Ports {
-			proto := p.Proto
-			if proto == "" {
-				proto = "tcp"
-			}
-			if p.HostPort == l.Port && proto == l.Proto {
-				return true
-			}
+	for _, p := range l.Processes {
+		if p != "dockerd" {
+			return false
 		}
 	}
-	return false
+	return len(d.Publishing(l.Proto, l.Address, l.Port)) > 0
 }
 
 // HasGlobalIPv6 reports whether a global unicast IPv6 address (not ULA,
