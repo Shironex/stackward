@@ -1,0 +1,119 @@
+---
+title: Unattended upgrades and end of support
+description: Security updates that install themselves, patches that are on disk but not running until a reboot, and releases that no longer get patches at all.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="updates" />
+
+Most break ins do not use clever new attacks. They use known holes that a
+patch fixed months ago, on servers that never got the patch, or got it and
+never restarted.
+
+## Why it is dangerous
+
+Three separate things have to be true for a fix to protect you:
+
+1. **The update is installed.** On Ubuntu, the `unattended-upgrades` package is
+   installed by default and applies security updates automatically when
+   `/etc/apt/apt.conf.d/20auto-upgrades` enables it. On Debian you install
+   and enable it yourself; its default configuration installs security updates
+   and not new features.
+2. **The patched code is running.** A new kernel only runs after a reboot.
+   Long running services keep using the old copy of a library until they
+   restart. Ubuntu's unattended upgrades does not reboot unless you set
+   `Unattended-Upgrade::Automatic-Reboot "true"`; the default is false.
+3. **The release still gets updates.** Ubuntu LTS releases get five years of
+   standard security maintenance. Debian releases get three years of full
+   support and two more of Long Term Support. After that, nothing new arrives,
+   however often you run `apt upgrade`.
+
+## What an attacker can actually do
+
+When a serious vulnerability in a common component is published, scanners
+start looking for unpatched versions soon after. A server that is a few weeks behind
+on a public facing package, or still running last year's kernel because nobody
+rebooted, is exactly what they look for. A release past its end of support is
+worse: every hole found from then on stays open forever on that server.
+
+The attacker does not need to know you exist. They need one version string
+that matches a public advisory.
+
+## See it on your own server
+
+Are automatic updates on, and when did they last run?
+
+```sh
+cat /etc/apt/apt.conf.d/20auto-upgrades
+systemctl status apt-daily-upgrade.timer --no-pager
+ls -l /var/log/unattended-upgrades/
+```
+
+Look for `APT::Periodic::Unattended-Upgrade "1";` and a recent log.
+
+Is a reboot pending, and is the running kernel the newest installed one?
+
+```sh
+ls -l /var/run/reboot-required
+cat /var/run/reboot-required.pkgs
+uname -r
+ls /boot/vmlinuz-*
+```
+
+Which updates are waiting (a simulation, it installs nothing)?
+
+```sh
+apt-get -s upgrade | grep -i security
+```
+
+Which release is this, and when does its support end?
+
+```sh
+cat /etc/os-release
+```
+
+Compare with the Ubuntu release cycle page or the Debian releases page in the
+sources below.
+
+<Aside type="caution" title="Debian 12 is already in LTS">
+Debian 12 (bookworm) reached the end of its regular support on 2026-07-11 and
+is now covered by Debian LTS until 2028-06-30. LTS covers fewer packages than
+regular security support; plan the move to Debian 13.
+</Aside>
+
+## What the fix changes
+
+- **Turn on unattended security upgrades**, so holes in packages you use
+  close within a day without anyone logging in.
+- **Decide on reboots.** Either set an automatic reboot window
+  (`Automatic-Reboot "true"` with `Automatic-Reboot-Time`), staggered across
+  servers, or put a weekly manual reboot in your calendar. A pending reboot
+  that lasts weeks means the kernel fix is on disk and not in effect.
+- **Upgrade releases before they end.** Plan the move to the next LTS while
+  the current one still has a year or more of support.
+
+## What the fix can break
+
+- **Automatic reboots** take every service down for a minute. Containers
+  without a restart policy stay down afterwards. Set `restart:
+  unless-stopped` and test a reboot on a quiet day.
+- **An update that changes behaviour** can break an app, although security
+  pockets keep such changes rare. Keep backups, and watch the
+  unattended-upgrades log.
+- **Release upgrades** are real migrations: new major versions of system
+  packages, sometimes of Docker's dependencies. Rehearse on a copy first.
+
+## Checks that cover it
+
+<Checks ids={['UPD-001', 'UPD-002', 'UPD-003', 'UPD-004', 'UPD-005', 'UPD-006', 'SYS-002', 'SYS-003']} />
+
+## Sources
+
+- Ubuntu Server docs, [automatic updates](https://ubuntu.com/server/docs/how-to/software/automatic-updates/): unattended-upgrades installed by default, `20auto-upgrades`, `Automatic-Reboot` default false.
+- Debian wiki, [UnattendedUpgrades](https://wiki.debian.org/UnattendedUpgrades): installing it, default configuration installs security updates.
+- Ubuntu, [release cycle](https://ubuntu.com/about/release-cycle): five years of standard security maintenance for LTS.
+- Debian, [releases](https://www.debian.org/releases/): three years of full support and two of LTS; Debian 12 and 13 dates.
+- Debian, [LTS](https://www.debian.org/lts/): extends every stable release to at least five years.

@@ -1,0 +1,133 @@
+---
+title: Glossary
+description: Short definitions of the terms used across the stackward docs and Learn track.
+next: false
+---
+
+Terms are in alphabetical order. Links go to the page that explains each one
+in context.
+
+AppArmor
+: A Linux security module that limits what a program may do. Docker applies a
+  default AppArmor profile to containers where AppArmor is available.
+  ([Containers as root](/stackward/learn/containers-as-root/))
+
+Bouncer
+: CrowdSec's name for a remediation component: the part that enforces a ban,
+  in the firewall or in a proxy.
+  ([CrowdSec and fail2ban](/stackward/learn/crowdsec-and-fail2ban/))
+
+Capability
+: One slice of root's power in Linux, such as `NET_ADMIN` or `SYS_ADMIN`.
+  Containers get a reduced default set.
+  ([Containers as root](/stackward/learn/containers-as-root/))
+
+CF-Connecting-IP
+: An HTTP header Cloudflare adds with the visitor's real address, so an origin
+  behind Cloudflare can see who connected.
+
+Check id
+: A stable name for one stackward check, like `SSH-001`: group, dash, three
+  digits. Ids never change meaning and are never reused.
+  ([Check reference](/stackward/checks/))
+
+Coverage
+: The part of a stackward report that says how many results were checked,
+  unknown and skipped, whether it ran as root, and whether the sandbox applied.
+  ([Usage](/stackward/usage/#reading-a-report))
+
+DOCKER-USER
+: An iptables chain Docker creates and leaves empty for your own rules. It is
+  processed before Docker's rules for forwarded container traffic.
+  ([Firewall and Docker](/stackward/learn/firewall-and-docker/))
+
+Docker socket
+: The Unix socket `/var/run/docker.sock` through which clients control the
+  Docker daemon. Access to it is root access.
+  ([Docker socket](/stackward/learn/docker-socket/))
+
+Drop-in
+: A small configuration file in a `.d` directory (`sshd_config.d`,
+  `sysctl.d`) that is read along with the main file. Order matters.
+  ([SSH access](/stackward/learn/ssh/))
+
+Effective configuration
+: What a program actually uses after every include, drop-in and default is
+  applied. `sshd -T` prints it for OpenSSH.
+
+End of support
+: The date after which a release gets no more security updates.
+  ([Updates](/stackward/learn/updates/))
+
+fail2ban
+: A log watcher that bans addresses after repeated failures, using jails.
+  ([CrowdSec and fail2ban](/stackward/learn/crowdsec-and-fail2ban/))
+
+Facts
+: The JSON document stackward's collectors produce. Checks only read facts,
+  so a saved facts file reproduces a report exactly.
+  ([Architecture](/stackward/contributing/architecture/))
+
+Funnel
+: A Tailscale feature that publishes a local service to the whole internet.
+  ([The only way in](/stackward/learn/private-ingress/))
+
+Ingress profile
+: How traffic is meant to reach a server: `tunnel`, `public-web`,
+  `tailnet-only` or `paas-panel`. It changes what counts as a problem, never
+  what is shown. ([Usage](/stackward/usage/))
+
+Landlock
+: A Linux feature (kernel 5.13 and later) that lets a program take away its
+  own right to write files. stackward applies it to itself before it collects
+  anything. ([Threat model](/stackward/project/threat-model/))
+
+Loopback
+: The address a machine uses to talk to itself, `127.0.0.1` or `::1`. A port
+  bound there cannot be reached from the network.
+
+Origin bypass
+: Reaching a server directly on its public address, skipping the tunnel or
+  CDN that is supposed to be the only way in.
+  ([The only way in](/stackward/learn/private-ingress/))
+
+Published port
+: A container port Docker makes reachable on the host, by default on every
+  host address. ([Firewall and Docker](/stackward/learn/firewall-and-docker/))
+
+Reverse path filter
+: The kernel's `rp_filter`: drops packets whose source would not be routed
+  back out the interface they came in on. Strict mode can break VPNs and
+  Docker; loose mode rarely does.
+  ([Kernel settings](/stackward/learn/kernel-settings/))
+
+Seccomp
+: A Linux feature that limits which system calls a process may make. Docker's
+  default profile blocks dozens of dangerous ones.
+
+Severity
+: How bad a failure of a check is: critical, high, moderate, low or info. It
+  belongs to the check, not to your server.
+
+Socket proxy
+: A small service between a tool and the Docker socket that allows only the
+  API calls you switch on. ([Docker socket](/stackward/learn/docker-socket/))
+
+Tailnet
+: Your private Tailscale network. Devices get addresses in `100.64.0.0/10`.
+
+Tunnel
+: Here, a Cloudflare Tunnel: `cloudflared` on the server opens outbound
+  connections to Cloudflare, so visitors arrive without any open inbound port.
+
+UFW
+: Uncomplicated Firewall, the usual firewall front end on Ubuntu and Debian.
+  It does not filter Docker's published ports.
+
+Unknown
+: A stackward result that means "could not inspect". It is never counted as a
+  pass.
+
+Unattended upgrades
+: The Debian and Ubuntu package that installs security updates automatically.
+  ([Updates](/stackward/learn/updates/))

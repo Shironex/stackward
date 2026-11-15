@@ -1,0 +1,145 @@
+---
+title: SSH access
+description: Why password logins and root logins are the first thing to close, how to read the configuration sshd actually uses, and the drop-in trap where the first value wins.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="ssh" />
+
+SSH is the front door of a server. Every other fix assumes it is shut to
+strangers and open to you. Most VPS images ship with settings that are fine
+for the first login and wrong for the next five years.
+
+## Why it is dangerous
+
+A server with a public address is probed for SSH soon after it boots.
+Automated scanners try common user names and leaked passwords around the
+clock. Three settings decide whether that noise can ever succeed:
+
+- **`PasswordAuthentication`.** If it is `yes`, any account with a guessable
+  or reused password can be logged into from anywhere. The OpenSSH default is
+  `yes`.
+- **`KbdInteractiveAuthentication`.** Keyboard interactive login is a second
+  way to ask for a password (through PAM). Turning off only
+  `PasswordAuthentication` can leave this one open. Its default is also `yes`.
+- **`PermitRootLogin`.** Root can do anything, and its name is known, so an
+  attacker only has to guess one secret. The default is `prohibit-password`:
+  root may log in with a key, not a password.
+
+There is a second, quieter problem: **the file you edited may not be the
+configuration sshd uses.** The `sshd_config` manual says that for each
+keyword, the first value obtained is the one used. Files pulled in with
+`Include` are read in lexical order. Provisioning tools write drop-ins too:
+cloud-init's `ssh_pwauth` setting, for example, controls
+`PasswordAuthentication` through its own file in `/etc/ssh/sshd_config.d/`.
+If such a file sorts before yours and says `yes`, your `no` is read second
+and ignored.
+
+## What an attacker can actually do
+
+With password login open, a botnet does not need to know anything about you.
+It tries thousands of user name and password pairs per day from many
+addresses. One weak password on any account, even a forgotten test user, gives
+it a shell. From a shell it can read every file that account can read, use the
+server to attack others, mine cryptocurrency, and look for a way to root (for
+example membership of the `docker` group, which is root in all but name; see
+[the Docker socket](/stackward/learn/docker-socket/)).
+
+With root login by password, that first guess is already root. With root
+login by key only, the risk drops to "someone stole a key", which is why
+`prohibit-password` is a reasonable default and `no` is better: every action
+then goes through a named account and `sudo`, which leaves a trail.
+
+## See it on your own server
+
+Ask sshd for the configuration it actually uses. `sshd -T` is the extended
+test mode: it checks the files and prints the effective result, after every
+`Include` and default has been applied.
+
+```sh
+sudo sshd -T | grep -Ei '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|permitemptypasswords|maxauthtries|allowusers|allowgroups) '
+```
+
+Then look at the order in which drop-ins are read, and which of them set the
+same keywords:
+
+```sh
+ls -1 /etc/ssh/sshd_config.d/
+sudo grep -RniE '^\s*(passwordauthentication|kbdinteractiveauthentication|permitrootlogin)' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/
+```
+
+Check where sshd is listening, and compare with the `port` and
+`listenaddress` lines from `sshd -T`:
+
+```sh
+sudo ss -tlnp | grep -E 'sshd|systemd'
+systemctl is-active ssh.socket ssh.service
+```
+
+<Aside type="caution" title="Socket activation moves the listener">
+Since Ubuntu 22.10, OpenSSH is started by systemd socket activation by
+default, so `ssh.socket` owns the listening port. On Ubuntu 24.04 the port and
+address are read from the sshd configuration by a systemd generator. If you
+change `Port` or `ListenAddress`, confirm with `ss` that the listener actually
+moved before you close the old port in the firewall.
+</Aside>
+
+## What the fix changes
+
+The usual fix is one small drop-in, named so it sorts **before** anything a
+cloud image ships:
+
+```text title="/etc/ssh/sshd_config.d/00-hardening.conf"
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+PermitEmptyPasswords no
+MaxAuthTries 3
+AllowUsers admin
+```
+
+- With password and keyboard interactive login off, a guessed password is
+  worthless: only a private key that matches an `authorized_keys` entry gets
+  in. Botnet guessing stops being a risk and becomes log noise.
+- With root login off, there is no single all powerful account to aim at, and
+  every privileged action is tied to a person through `sudo`.
+- `AllowUsers` turns the list of accounts that may log in from "everyone with
+  a shell" into a short, deliberate list.
+- `MaxAuthTries` limits how many attempts one connection may make (the
+  default is 6).
+
+`sudo sshd -t` checks the syntax, and `sudo sshd -T` shows the effective
+result, both before you reload anything.
+
+## What the fix can break
+
+- **You.** If your key is not in `authorized_keys`, or `AllowUsers` misses
+  your account, the next login fails. Keep your current session open, reload
+  sshd, and test a new login from a second terminal before you close the
+  first.
+- **Automation that logs in with a password**, such as an old backup job or a
+  platform that was set up with one. Move it to a key first.
+- **A platform that connects as root.** Coolify can manage a server through a
+  non root user with passwordless sudo; set that up before `PermitRootLogin
+  no`. See [Coolify and Dokploy](/stackward/learn/coolify-and-dokploy/).
+- **PAM based two factor login** uses keyboard interactive authentication.
+  If you rely on it, keep `KbdInteractiveAuthentication yes` deliberately.
+
+The safest next step after this page is to stop exposing SSH to the whole
+internet at all. That is covered in
+[Tailscale and tunnels as the only way in](/stackward/learn/private-ingress/).
+
+## Checks that cover it
+
+<Checks ids={['SSH-001', 'SSH-002', 'SSH-003', 'SSH-004', 'SSH-005', 'SSH-006', 'SSH-008', 'SSH-009', 'SSH-010', 'SSH-011', 'SSH-013', 'SSH-014']} />
+
+## Sources
+
+- OpenBSD manual, [sshd_config(5)](https://man.openbsd.org/sshd_config): first obtained value wins, `Include` order, defaults for `PasswordAuthentication`, `KbdInteractiveAuthentication`, `PermitRootLogin` and `MaxAuthTries`.
+- OpenBSD manual, [sshd(8)](https://man.openbsd.org/sshd.8): `-T` extended test mode prints the effective configuration.
+- Ubuntu Discourse, [sshd now uses socket-based activation](https://discourse.ubuntu.com/t/sshd-now-uses-socket-based-activation-ubuntu-22-10-and-later/30189): socket activation since 22.10, and how 24.04 reads the port and address through a generator.
+- cloud-init docs, [set passwords module](https://docs.cloud-init.io/en/latest/reference/modules.html#set-passwords): `ssh_pwauth` and the sshd setting it manages.
+- Coolify docs, [non root user](https://coolify.io/docs/core/infrastructure/servers/non-root-user).

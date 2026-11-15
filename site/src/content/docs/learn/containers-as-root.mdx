@@ -1,0 +1,119 @@
+---
+title: Containers that run as root
+description: What root inside a container means for the host, privileged mode, Linux capabilities, host mounts and the settings that contain a break in.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="containers-as-root" />
+
+A container is a normal Linux process with a fenced off view of the system.
+The fence is good, but it is made of kernel features, and how much it holds
+depends on who is inside it and which gates you left open.
+
+## Why it is dangerous
+
+Unless the image sets a user, processes in a container run as **root**, user
+id 0. Without user namespace remapping, that is the same user id 0 as root on
+the host. The container's limits (namespaces, a reduced set of capabilities,
+seccomp and AppArmor profiles) are what stop it from acting like host root.
+Docker's documentation says the best way to prevent privilege escalation from
+inside a container is to run the applications as unprivileged users.
+
+Several common settings remove parts of that fence:
+
+- **`--privileged`** (`privileged: true` in Compose) enables all Linux
+  capabilities, turns off the default seccomp and AppArmor profiles, and gives
+  access to all host devices.
+- **Added capabilities** such as `SYS_ADMIN` or `SYS_PTRACE` give back powers
+  the default set removes on purpose.
+- **Host namespaces**: `network_mode: host` shares the host's network stack,
+  `pid: host` lets the container see and signal host processes.
+- **Host bind mounts** of `/`, `/etc`, `/root`, `/home`, `/proc` or `/sys`
+  hand host files to whoever is root inside.
+- **`seccomp=unconfined`** or **`apparmor=unconfined`** switch off profiles
+  that block dangerous system calls.
+
+## What an attacker can actually do
+
+Suppose an attacker gets code running in a web app container through an app
+bug. If the process runs as an unprivileged user with default capabilities and
+no host mounts, they are confined to what that user can touch in that
+container. They still have the app's data and secrets, but the host is behind
+several more locks.
+
+If the process runs as root in a privileged container, or with `/` mounted
+writable, they effectively are root on the host: they can write to host files
+such as cron jobs or SSH keys, load kernel modules, or reach host devices. If
+it runs as root without those gates, they are one kernel or runtime
+vulnerability away from the same outcome, and container escape
+vulnerabilities in the runtime and kernel do appear from time to time. Running
+as a normal user puts one more barrier in their way.
+
+## See it on your own server
+
+The user, privileged flag, added capabilities and namespaces of every running
+container. This format string prints only those fields, never the environment:
+
+```sh
+docker ps -q | xargs docker inspect --format '{{.Name}} user={{if .Config.User}}{{.Config.User}}{{else}}root{{end}} privileged={{.HostConfig.Privileged}} capadd={{.HostConfig.CapAdd}} net={{.HostConfig.NetworkMode}} pid={{.HostConfig.PidMode}} secopt={{.HostConfig.SecurityOpt}}'
+```
+
+An empty `Config.User`, `root`, `0` or `0:0` all mean root. Only the part
+before the colon decides.
+
+Host bind mounts:
+
+```sh
+docker ps -q | xargs docker inspect --format '{{.Name}} {{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}->{{.Destination}}(rw={{.RW}}) {{end}}{{end}}'
+```
+
+## What the fix changes
+
+- **Set a non root user** in the image (`USER 10001` in the Dockerfile) or at
+  run time (`user: "10001:10001"` in Compose). Pick a high uid that no host
+  account uses, so a file written through a mount does not end up owned by a
+  real host user.
+- **Drop capabilities**: `cap_drop: [ALL]`, then add back only what the
+  process needs (a web server binding port 80 as non root needs
+  `NET_BIND_SERVICE`, or simply listens on 8080 behind the proxy).
+- **Add `no-new-privileges`** (`security_opt: ["no-new-privileges:true"]`) so a
+  setuid binary inside the container cannot raise privileges.
+- **Remove `privileged`** and host namespaces. If a tool really needs one
+  device or one capability, grant exactly that.
+- **Mount only the files a container needs**, read only where possible.
+
+Each change shrinks what a compromised process can reach, so a bug in the app
+stays a bug in the app.
+
+## What the fix can break
+
+- Images that write to paths owned by root (`/var/lib/...`, `/app` built as
+  root) fail with permission errors under a non root user. Fix ownership in
+  the image or use a volume owned by that uid.
+- Volumes created earlier by a root container keep root owned files; a non
+  root container cannot write them until you change their owner.
+- Dropping all capabilities breaks images that quietly relied on one (binding
+  to a low port, changing file ownership at start). Read the error, add back
+  that one capability.
+- Monitoring agents and some VPN containers genuinely need host networking or
+  extra capabilities. Keep those deliberate and few.
+
+<Aside type="tip" title="Platform images">
+Many official images already ship a non root user (look for `USER` in the
+Dockerfile or the image docs). Coolify and Dokploy let you set the user and
+capabilities per service in the Compose file.
+</Aside>
+
+## Checks that cover it
+
+<Checks ids={['DKR-020', 'DKR-021', 'DKR-022', 'DKR-023', 'DKR-024', 'DKR-012']} />
+
+## Sources
+
+- Docker docs, [isolate containers with a user namespace](https://docs.docker.com/engine/security/userns-remap/): run applications as unprivileged users to prevent privilege escalation.
+- Docker docs, [Dockerfile reference, USER](https://docs.docker.com/reference/dockerfile/#user).
+- Docker docs, [docker container run](https://docs.docker.com/reference/cli/docker/container/run/): what `--privileged` enables, `--cap-drop`, `--security-opt no-new-privileges`.
+- Docker docs, [Docker security](https://docs.docker.com/engine/security/): kernel namespaces, capabilities and the default profiles.

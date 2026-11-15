@@ -1,0 +1,31 @@
+---
+import Figure from './Figure.astro';
+---
+
+<Figure caption="The Docker daemon runs as root and does what any client on its socket asks. A container that has the socket mounted is such a client. Read only mounts do not help: the client still sends requests, it just cannot replace the socket file.">
+  <svg viewBox="0 0 720 220" role="img" aria-labelledby="sock-t sock-d">
+    <title id="sock-t">Why the Docker socket equals root on the host</title>
+    <desc id="sock-d">A web app container has /var/run/docker.sock mounted. Anyone who takes over the app can send requests through the socket to the Docker daemon, which runs as root. The daemon can start a new container with the host's root filesystem mounted, which gives full control of the host.</desc>
+    <defs>
+      <marker id="sock-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-fill-fail"></path></marker>
+    </defs>
+    <rect x="10" y="60" width="180" height="90" rx="4" class="d-box"></rect>
+    <text x="100" y="88" text-anchor="middle" class="d-label">App container</text>
+    <text x="100" y="106" text-anchor="middle" class="d-small">taken over through</text>
+    <text x="100" y="121" text-anchor="middle" class="d-small">an app bug</text>
+    <text x="100" y="140" text-anchor="middle" class="d-code">docker.sock:ro</text>
+    <path d="M190 105H262" class="d-line-fail" marker-end="url(#sock-a)"></path>
+    <text x="200" y="96" class="d-small">API request</text>
+    <rect x="265" y="60" width="180" height="90" rx="4" class="d-box-fail"></rect>
+    <text x="355" y="92" text-anchor="middle" class="d-label">Docker daemon</text>
+    <text x="355" y="110" text-anchor="middle" class="d-text-fail">runs as root</text>
+    <text x="355" y="128" text-anchor="middle" class="d-small">obeys any client</text>
+    <path d="M445 105H517" class="d-line-fail" marker-end="url(#sock-a)"></path>
+    <text x="450" y="96" class="d-small">new container</text>
+    <rect x="520" y="60" width="190" height="90" rx="4" class="d-box-strong"></rect>
+    <text x="615" y="92" text-anchor="middle" class="d-label">The whole host</text>
+    <text x="615" y="110" text-anchor="middle" class="d-small">host / mounted inside,</text>
+    <text x="615" y="126" text-anchor="middle" class="d-small">as root</text>
+    <text x="10" y="200" class="d-small">No exploit needed after the first step: this is the documented behaviour of the API.</text>
+  </svg>
+</Figure>

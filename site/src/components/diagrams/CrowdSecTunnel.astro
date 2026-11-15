@@ -1,0 +1,35 @@
+---
+import Figure from './Figure.astro';
+---
+
+<Figure caption="Behind a tunnel, every connection the host firewall sees comes from cloudflared on the server itself. The visitor's address only exists inside the HTTP request, in the CF-Connecting-IP header, so a ban has to be enforced where requests are read: in the proxy.">
+  <svg viewBox="0 0 720 230" role="img" aria-labelledby="cs-t cs-d">
+    <title id="cs-t">Where a ban can work behind a tunnel</title>
+    <desc id="cs-d">A scanner at 203.0.113.50 sends requests to the Cloudflare edge. The edge sends them through the tunnel to cloudflared on the server, which connects to Traefik over loopback. The host firewall bouncer sees only local connections and cannot match 203.0.113.50. The proxy bouncer in Traefik reads the CF-Connecting-IP header and can block the scanner.</desc>
+    <defs>
+      <marker id="cs-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-fill-ink3"></path></marker>
+    </defs>
+    <rect x="10" y="60" width="120" height="50" rx="4" class="d-box"></rect>
+    <text x="70" y="82" text-anchor="middle" class="d-label">Scanner</text>
+    <text x="70" y="98" text-anchor="middle" class="d-code">203.0.113.50</text>
+    <path d="M130 85H172" class="d-line" marker-end="url(#cs-a)"></path>
+    <rect x="175" y="60" width="120" height="50" rx="4" class="d-box-strong"></rect>
+    <text x="235" y="82" text-anchor="middle" class="d-label">Edge</text>
+    <text x="235" y="98" text-anchor="middle" class="d-small">adds the header</text>
+    <path d="M295 85H337" class="d-line" marker-end="url(#cs-a)"></path>
+    <rect x="340" y="60" width="120" height="50" rx="4" class="d-box"></rect>
+    <text x="400" y="82" text-anchor="middle" class="d-label">cloudflared</text>
+    <text x="400" y="98" text-anchor="middle" class="d-small">on the host</text>
+    <path d="M460 85H532" class="d-line" marker-end="url(#cs-a)"></path>
+    <text x="470" y="76" class="d-code">127.0.0.1</text>
+    <rect x="535" y="45" width="175" height="80" rx="4" class="d-box-mint"></rect>
+    <text x="622" y="70" text-anchor="middle" class="d-label">Traefik + L7 bouncer</text>
+    <text x="622" y="88" text-anchor="middle" class="d-code">CF-Connecting-IP:</text>
+    <text x="622" y="104" text-anchor="middle" class="d-code">203.0.113.50</text>
+    <text x="622" y="119" text-anchor="middle" class="d-text-mint">can block</text>
+    <rect x="290" y="150" width="230" height="60" rx="4" class="d-box-fail"></rect>
+    <text x="405" y="174" text-anchor="middle" class="d-label">Host firewall bouncer</text>
+    <text x="405" y="194" text-anchor="middle" class="d-text-fail">sees only local traffic</text>
+    <path d="M400 110V148" class="d-line-fail"></path>
+  </svg>
+</Figure>

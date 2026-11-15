@@ -1,0 +1,127 @@
+---
+title: Kernel settings that protect, and settings that break
+description: The sysctl values worth setting on a server, and the hardening profile values that silently break Docker, Tailscale and IPv6.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="kernel-settings" />
+
+The kernel exposes hundreds of tunables through `sysctl`. A few of them close
+real holes. A few others, copied from a generic hardening guide, break the
+very things a Docker host needs.
+
+## Why it is dangerous
+
+Some defaults make sense for a general purpose machine and not for a server:
+
+- **ICMP redirects** (`accept_redirects`) let another machine on the network
+  tell yours to route traffic through it. The kernel accepts them by default
+  on hosts.
+- **Kernel pointers and logs**: with `kptr_restrict` at 0 (the default) kernel
+  addresses are hashed but still printed through `/proc`; `dmesg_restrict` at
+  0 lets any user read the kernel log. Both give an attacker who has a foothold
+  information that helps with the next step.
+- **Unprivileged BPF and ptrace**: `unprivileged_bpf_disabled` and Yama's
+  `ptrace_scope` limit what an ordinary local user can do with two powerful
+  debugging interfaces.
+
+The opposite danger is just as real. Generic hardening profiles often set:
+
+- **`net.ipv4.ip_forward = 0`.** Docker needs IP forwarding for its bridge
+  networks and turns it on itself. Forcing it off breaks container networking
+  in ways that look like an app bug.
+- **`rp_filter = 1`** (strict reverse path filtering, RFC 3704) drops packets
+  that arrive on a different interface than the one the reply would leave
+  from. VPN interfaces such as Tailscale's, and hosts with several Docker
+  networks, can produce exactly those asymmetric paths. Loose mode (`2`) keeps most
+  of the protection without the breakage.
+- **`accept_ra = 0`** stops IPv6 router advertisements, which many VPS
+  providers use to configure IPv6. IPv6 then quietly stops working.
+
+## What an attacker can actually do
+
+On its own, a loose kernel setting rarely lets anyone in. It matters after
+the first step: an attacker with a shell as an unprivileged user (through a
+web app, say) reads kernel addresses or the kernel log to build a privilege
+escalation, or attaches to another user's process. On a shared network,
+accepted redirects let a neighbour push your traffic through a machine they
+control.
+
+The breaking settings have a different cost: an outage, and the temptation to
+"fix" it by turning protections off wholesale.
+
+## See it on your own server
+
+The values that matter, in one read only call:
+
+```sh
+sysctl net.ipv4.ip_forward net.ipv4.conf.all.rp_filter net.ipv4.conf.all.accept_redirects net.ipv4.conf.all.accept_source_route net.ipv4.tcp_syncookies net.ipv4.conf.all.log_martians kernel.kptr_restrict kernel.dmesg_restrict kernel.unprivileged_bpf_disabled kernel.yama.ptrace_scope fs.protected_symlinks fs.protected_hardlinks
+sysctl net.ipv6.conf.all.accept_ra
+```
+
+Where values come from (later files win):
+
+```sh
+ls /etc/sysctl.d/ /usr/lib/sysctl.d/
+grep -s -E 'ip_forward|rp_filter|accept_ra' /etc/sysctl.conf /etc/sysctl.d/*.conf /etc/ufw/sysctl.conf
+```
+
+UFW has its own `/etc/ufw/sysctl.conf`, applied when UFW starts, which can
+override yours.
+
+## What the fix changes
+
+A Docker friendly sysctl drop-in, for example
+`/etc/sysctl.d/60-hardening.conf`:
+
+```text title="/etc/sysctl.d/60-hardening.conf"
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.all.rp_filter = 2
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+kernel.unprivileged_bpf_disabled = 1
+kernel.yama.ptrace_scope = 1
+fs.protected_symlinks = 1
+fs.protected_hardlinks = 1
+```
+
+Note what is **not** there: `ip_forward` and `accept_ra`. Leave those to
+Docker and to your provider's network setup.
+
+<Aside type="caution" title="A hardening profile is not neutral on a Docker host">
+If you apply a published hardening role or script, read its sysctl list first.
+Some set `ip_forward` to 0 by default and document a variable to keep Docker
+working. stackward flags `ip_forward = 0` on a Docker host as a failure for
+exactly this reason.
+</Aside>
+
+## What the fix can break
+
+- `ptrace_scope = 1` stops debuggers and profilers from attaching to processes
+  they did not start. Run them with `sudo` when you need them.
+- `dmesg_restrict = 1` hides the kernel log from non root users and some
+  monitoring agents running as them.
+- `log_martians = 1` can be noisy on hosts with unusual routing.
+- Changing `rp_filter` on a router like host with deliberate asymmetric routes
+  needs care; loose mode is the safe middle.
+
+## Checks that cover it
+
+<Checks ids={['KRN-001', 'KRN-002', 'KRN-003', 'KRN-004', 'KRN-005']} />
+
+## Sources
+
+- Linux kernel docs, [IP sysctl](https://docs.kernel.org/networking/ip-sysctl.html): `ip_forward`, `rp_filter` 0, 1 (strict, RFC 3704) and 2 (loose), `accept_redirects`, `accept_source_route`, `tcp_syncookies`, `log_martians`, `accept_ra`.
+- Linux kernel docs, [kernel sysctl](https://docs.kernel.org/admin-guide/sysctl/kernel.html): `kptr_restrict`, `dmesg_restrict`, `unprivileged_bpf_disabled`.
+- Linux kernel docs, [fs sysctl](https://docs.kernel.org/admin-guide/sysctl/fs.html): `protected_symlinks`, `protected_hardlinks`.
+- Linux kernel docs, [Yama](https://docs.kernel.org/admin-guide/LSM/Yama.html): `ptrace_scope`.
+- Docker docs, [packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/): Docker needs IP forwarding and enables it.

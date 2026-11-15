@@ -1,0 +1,33 @@
+---
+/** The header strip of a Learn topic: where it sits on the path and what it covers. */
+import { TOPICS } from '../lib/learn.mjs';
+import { url } from '../lib/site.mjs';
+
+interface Props {
+  slug: string;
+  /** Minutes to read, roughly. Defaults to the topic's own estimate. */
+  minutes?: number;
+}
+const { slug } = Astro.props;
+const index = TOPICS.findIndex((t) => t.slug === slug);
+if (index < 0) throw new Error(`Step: unknown topic ${slug}`);
+const topic = TOPICS[index]!;
+const minutes = Astro.props.minutes ?? topic.minutes;
+---
+
+<div class="step not-content">
+  <ol class="step-track" aria-label={`Learning path, topic ${index + 1} of ${TOPICS.length}`}>
+    {
+      TOPICS.map((t, i) => (
+        <li class:list={{ done: i < index, here: i === index }}>
+          <a href={url(`learn/${t.slug}`)} aria-current={i === index ? 'step' : undefined} title={t.title}>
+            <span class="sr-only">{`${i + 1}. ${t.title}`}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+  <p class="step-meta">
+    Topic {index + 1} of {TOPICS.length} <span aria-hidden="true">/</span> about {minutes} minutes <span aria-hidden="true">/</span> {topic.summary}
+  </p>
+</div>

@@ -1,0 +1,11 @@
+---
+/** Frame for a teaching diagram: an inline SVG with a title, a long description and a caption. */
+interface Props {
+  caption: string;
+}
+---
+
+<figure class="diagram not-content">
+  <slot />
+  <figcaption>{Astro.props.caption}</figcaption>
+</figure>
