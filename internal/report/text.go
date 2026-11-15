@@ -121,10 +121,26 @@ func (t *textWriter) byLevel(r *Report) {
 			t.compactList(items, l)
 			continue
 		}
+		seen := map[string]ruleFix{}
 		for _, it := range items {
-			t.result(it, false)
+			t.result(it, false, !t.o.Passing && repeatsRuleFix(seen, it))
 		}
 	}
+}
+
+// ruleFix is the rule and fix lines a check printed in one section.
+type ruleFix struct{ rule, fix string }
+
+// repeatsRuleFix reports whether a result's rule and fix were already
+// printed by an earlier row of the same check in this section, and records
+// them when not. Rows whose lines differ keep their own.
+func repeatsRuleFix(seen map[string]ruleFix, it Item) bool {
+	cur := ruleFix{it.Title, it.Fix.Hint}
+	prev, ok := seen[it.ID]
+	if !ok {
+		seen[it.ID] = cur
+	}
+	return ok && prev == cur
 }
 
 // compactLevel reports whether results of level l get one line each.
@@ -177,7 +193,7 @@ func (t *textWriter) group(g string, items []Item) {
 			continue
 		}
 		for _, it := range lv {
-			t.result(it, true)
+			t.result(it, true, false)
 		}
 	}
 }
@@ -198,8 +214,9 @@ func (t *textWriter) section(label string, l checks.Level) {
 // result writes one result in full: the mark and what was found, then the
 // check id, severity and subject, the rule it was measured against and the
 // fix. withLevel puts the level word in front of the id (group layout,
-// where no section names the level).
-func (t *textWriter) result(it Item, withLevel bool) {
+// where no section names the level). brief leaves out the rule and the fix,
+// which an earlier row of the same check in the section already gave.
+func (t *textWriter) result(it Item, withLevel, brief bool) {
 	st := t.st
 	t.blank()
 	lead := indent + st.mark(it.Level) + " "
@@ -208,6 +225,9 @@ func (t *textWriter) result(it Item, withLevel bool) {
 
 	sub := strings.Repeat(" ", leadWidth)
 	t.hang(sub, leadWidth, metaLine(it, withLevel, st.box.sep), st.dim)
+	if brief {
+		return
+	}
 	actionable := it.Level == checks.Fail || it.Level == checks.Warn || it.Level == checks.Unknown
 	if actionable && it.Message != "" && it.Title != "" {
 		t.labelled(sub, leadWidth, "rule:", it.Title, st.dim)
@@ -235,7 +255,11 @@ func metaLine(it Item, withLevel bool, sep string) string {
 	switch it.Level {
 	case checks.Fail, checks.Warn, checks.Unknown:
 		if it.Severity != "" {
-			parts = append(parts, string(it.Severity))
+			sev := string(it.Severity)
+			if ExpectedLowered(it) {
+				sev += ", expected"
+			}
+			parts = append(parts, sev)
 		}
 	}
 	if subj := ShortSubject(it.Subject); subj != "" && !NamesSubject(it.Message, subj) {

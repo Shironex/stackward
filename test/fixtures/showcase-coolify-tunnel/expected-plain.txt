@@ -59,7 +59,7 @@
     for a proxy, but it is root on the host if compromised; a read only mount does not stop
     connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel
     does not let you change
-    DKR-010, critical
+    DKR-010, critical, expected
     rule: No container mounts the Docker socket
     fix:  Remove the socket mount. If the container needs to read Docker state, put a socket proxy
           in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the
