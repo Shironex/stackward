@@ -70,6 +70,18 @@ type Match struct {
 // All reports whether the block applies to every connection ("Match all").
 func (m Match) All() bool { return strings.EqualFold(strings.TrimSpace(m.Criteria), "all") }
 
+// Include is one Include pattern, where it stands and the block it
+// belongs to. A plan step that writes a drop-in reads it to tell where its
+// file would be read, and so whether its values would win.
+type Include struct {
+	// Pattern is the glob, made absolute against Dir as sshd does.
+	Pattern string `json:"pattern"`
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+	// Match is the block the Include line stands in (0 for global).
+	Match int `json:"match,omitempty"`
+}
+
 // File is one configuration file the parser tried to read, in read order.
 type File struct {
 	Path     string `json:"path"`
@@ -86,6 +98,8 @@ type Config struct {
 	Files      []File      `json:"files"`
 	Directives []Directive `json:"directives,omitempty"`
 	Matches    []Match     `json:"matches,omitempty"`
+	// Includes lists every Include pattern in read order.
+	Includes []Include `json:"includes,omitempty"`
 	// Problems are parse problems sshd would also complain about (include
 	// depth exceeded, a line with a keyword and no value).
 	Problems []string `json:"problems,omitempty"`
@@ -244,6 +258,7 @@ func (p *parser) parse(file, body string, match, depth int) {
 				continue
 			}
 			for _, pat := range args {
+				p.cfg.Includes = append(p.cfg.Includes, Include{Pattern: absPattern(pat), File: file, Line: lineNo, Match: ctx})
 				p.include(pat, ctx, depth+1)
 			}
 			continue
@@ -262,10 +277,16 @@ func (p *parser) problem(file string, line int, msg string) {
 	p.cfg.Problems = append(p.cfg.Problems, fmt.Sprintf("%s line %d: %s", file, line, msg))
 }
 
-func (p *parser) include(pattern string, match, depth int) {
+// absPattern resolves a relative Include pattern against Dir.
+func absPattern(pattern string) string {
 	if !path.IsAbs(pattern) {
-		pattern = path.Join(Dir, pattern)
+		return path.Join(Dir, pattern)
 	}
+	return pattern
+}
+
+func (p *parser) include(pattern string, match, depth int) {
+	pattern = absPattern(pattern)
 	files, err := Glob(p.fsys, pattern)
 	if err != nil {
 		// The directory could not be listed, so whatever it holds is
