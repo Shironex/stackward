@@ -1,0 +1,10 @@
+---
+/**
+ * Starlight's page title, except on the overview, whose hero carries the
+ * page's only h1 (src/components/Overview.astro).
+ */
+const route = Astro.locals.starlightRoute;
+const isHome = route.id === '' || route.id === 'index';
+---
+
+{!isHome && <h1 id="_top">{route.entry.data.title}</h1>}

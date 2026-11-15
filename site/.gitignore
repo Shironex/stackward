@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+# Written by scripts/sync.mjs from the repo (catalog JSON and docs/*.md).
+src/generated/
+src/content/docs/checks/
+src/content/docs/project/
+src/content/docs/install.md
+src/content/docs/contributing/architecture.md
