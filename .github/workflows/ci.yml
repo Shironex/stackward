@@ -52,7 +52,7 @@ jobs:
         # cgo free build, so the real sandbox test runs separately.
         env:
           CGO_ENABLED: "0"
-        run: go test -count=1 -v -run TestApplyConfinesProcess ./internal/sandbox/
+        run: go test -count=1 -v -run 'TestApplyConfinesProcess|TestPlanUnderLandlock' ./internal/sandbox/ ./internal/cli/
       - name: cross build
         env:
           CGO_ENABLED: "0"
@@ -85,6 +85,20 @@ jobs:
           if grep -q '"state": "failed"' report.json; then
             echo "sandbox failed to apply"; exit 1
           fi
+      - name: self plan on the runner
+        # stackward plan audits like audit, under the same sandbox, and
+        # writes only the plan file it was given.
+        run: |
+          set -euo pipefail
+          bin=dist/stackward-linux-amd64
+          sudo "$bin" plan --out plan.json
+          sudo "$bin" plan --emit-script > plan.sh
+          sh -n plan.sh
+          # --out is created 0600 by root.
+          sudo jq -e '.schema == "stackward.plan.v1"' plan.json
+          state="$(sudo jq -r '.sandbox.state' plan.json)"
+          echo "plan sandbox state: $state"
+          [ "$state" != "failed" ]
       - name: collectors work under the sandbox
         # A command that needs to write (ufw status opens /run/ufw.lock)
         # dies under the Landlock sandbox and leaves its collector partial,
