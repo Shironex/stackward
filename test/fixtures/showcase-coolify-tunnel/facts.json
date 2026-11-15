@@ -1,0 +1,898 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-48-generic",
+    "installed": [
+      "6.8.0-48-generic",
+      "6.8.0-51-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "users": {
+    "accounts": [
+      {
+        "name": "root",
+        "uid": 0,
+        "gid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "L",
+        "never_logged_in": true
+      },
+      {
+        "name": "alice",
+        "uid": 1000,
+        "gid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P",
+        "last_login": "2026-02-27T09:00:00Z"
+      },
+      {
+        "name": "daemon",
+        "uid": 1,
+        "gid": 1,
+        "home": "/home/daemon",
+        "shell": "/usr/sbin/nologin",
+        "login_shell": false,
+        "password_status": "L"
+      }
+    ],
+    "groups": [
+      {
+        "name": "sudo",
+        "gid": 27,
+        "members": [
+          "alice"
+        ]
+      },
+      {
+        "name": "alice",
+        "gid": 1000
+      }
+    ],
+    "sudoers": [
+      {
+        "path": "/etc/sudoers",
+        "perm": 288,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": false,
+        "readable": true,
+        "principals": [
+          "root",
+          "%sudo"
+        ]
+      }
+    ],
+    "password_status_checked": true,
+    "lastlog_checked": true
+  },
+  "updates": {
+    "apt": true,
+    "unattended_installed": true,
+    "periodic_unattended": "1",
+    "periodic_update_lists": "1",
+    "config_source": "apt-config",
+    "timer_enabled": true,
+    "timer_active": true,
+    "allowed_origins": [
+      "${distro_id}:${distro_codename}",
+      "${distro_id}:${distro_codename}-security"
+    ],
+    "automatic_reboot": false,
+    "last_run": "2026-02-28T06:10:00Z",
+    "lists_updated": "2026-02-28T06:05:00Z",
+    "pending_checked": true,
+    "pending_total": 2,
+    "pending_security": 0
+  },
+  "sysctl": {
+    "values": {
+      "net.ipv4.ip_forward": "1",
+      "net.ipv4.conf.all.rp_filter": "2",
+      "net.ipv4.conf.default.rp_filter": "2",
+      "net.ipv4.conf.all.accept_redirects": "0",
+      "net.ipv4.conf.default.accept_redirects": "0",
+      "net.ipv4.conf.all.send_redirects": "0",
+      "net.ipv4.conf.all.accept_source_route": "0",
+      "net.ipv4.conf.default.accept_source_route": "0",
+      "net.ipv4.tcp_syncookies": "1",
+      "net.ipv4.icmp_echo_ignore_broadcasts": "1",
+      "net.ipv4.conf.all.log_martians": "1",
+      "net.ipv6.conf.all.accept_redirects": "0",
+      "net.ipv6.conf.default.accept_redirects": "0",
+      "net.ipv6.conf.all.accept_source_route": "0",
+      "net.ipv6.conf.all.accept_ra": "1",
+      "net.ipv6.conf.default.accept_ra": "1",
+      "kernel.kptr_restrict": "1",
+      "kernel.dmesg_restrict": "1",
+      "kernel.unprivileged_bpf_disabled": "2",
+      "kernel.yama.ptrace_scope": "1",
+      "fs.protected_hardlinks": "1",
+      "fs.protected_symlinks": "1",
+      "fs.protected_fifos": "2",
+      "fs.protected_regular": "2"
+    },
+    "docker_present": true,
+    "tailscale_present": false,
+    "global_ipv6_dynamic": false
+  },
+  "journal": {
+    "storage": "auto",
+    "system_max_use": "1G",
+    "persistent_dir": true,
+    "persistent": true,
+    "disk_usage_checked": true,
+    "disk_usage_bytes": 314572800,
+    "proxy_logs": [
+      {
+        "path": "/var/log/nginx/access.log",
+        "size_bytes": 52428800,
+        "rotated": true
+      }
+    ],
+    "agents": [
+      "node_exporter"
+    ]
+  },
+  "clock": {
+    "ntp_synchronized": true,
+    "ntp_enabled": true,
+    "can_ntp": true,
+    "timezone": "Etc/UTC"
+  },
+  "disk": {
+    "mounts": [
+      {
+        "path": "/",
+        "mount": "/",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 8400000,
+        "used_percent": 42
+      },
+      {
+        "path": "/var",
+        "mount": "/",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 8400000,
+        "used_percent": 42
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "clock",
+      "status": "ok"
+    },
+    {
+      "name": "disk",
+      "status": "ok"
+    },
+    {
+      "name": "docker",
+      "status": "ok"
+    },
+    {
+      "name": "firewall",
+      "status": "ok"
+    },
+    {
+      "name": "journal",
+      "status": "ok"
+    },
+    {
+      "name": "listeners",
+      "status": "ok"
+    },
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "paas",
+      "status": "ok"
+    },
+    {
+      "name": "secrets",
+      "status": "ok"
+    },
+    {
+      "name": "ssh",
+      "status": "ok"
+    },
+    {
+      "name": "sysctl",
+      "status": "ok"
+    },
+    {
+      "name": "updates",
+      "status": "ok"
+    },
+    {
+      "name": "users",
+      "status": "ok"
+    }
+  ],
+  "ssh": {
+    "installed": true,
+    "source": "sshd -T",
+    "effective": {
+      "port": [
+        "22"
+      ],
+      "listenaddress": [
+        "[::]:22",
+        "0.0.0.0:22"
+      ],
+      "passwordauthentication": [
+        "no"
+      ],
+      "kbdinteractiveauthentication": [
+        "no"
+      ],
+      "permitrootlogin": [
+        "no"
+      ],
+      "permitemptypasswords": [
+        "no"
+      ],
+      "maxauthtries": [
+        "3"
+      ],
+      "allowusers": [
+        "alice"
+      ],
+      "x11forwarding": [
+        "no"
+      ],
+      "allowagentforwarding": [
+        "no"
+      ],
+      "authenticationmethods": [
+        "any"
+      ],
+      "usepam": [
+        "yes"
+      ],
+      "authorizedkeysfile": [
+        ".ssh/authorized_keys .ssh/authorized_keys2"
+      ],
+      "hostkey": [
+        "/etc/ssh/ssh_host_rsa_key",
+        "/etc/ssh/ssh_host_ed25519_key"
+      ],
+      "kexalgorithms": [
+        "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org"
+      ],
+      "ciphers": [
+        "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+      ],
+      "macs": [
+        "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+      ]
+    },
+    "complete": true,
+    "config": {
+      "files": [
+        {
+          "path": "/etc/ssh/sshd_config",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "readable": true
+        }
+      ],
+      "directives": [
+        {
+          "keyword": "passwordauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 2
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 3
+        },
+        {
+          "keyword": "maxauthtries",
+          "value": "3",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 4
+        },
+        {
+          "keyword": "allowusers",
+          "value": "alice",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 5
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 6
+        },
+        {
+          "keyword": "allowagentforwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 7
+        },
+        {
+          "keyword": "kexalgorithms",
+          "value": "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 8
+        },
+        {
+          "keyword": "ciphers",
+          "value": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 9
+        },
+        {
+          "keyword": "macs",
+          "value": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 10
+        },
+        {
+          "keyword": "passwordauthentication",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config",
+          "line": 14
+        },
+        {
+          "keyword": "usepam",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 15
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 16
+        }
+      ]
+    },
+    "listening": [
+      "*:22"
+    ],
+    "listening_inspected": true,
+    "pam_inspected": true,
+    "host_keys": [
+      {
+        "path": "/etc/ssh/ssh_host_rsa_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_rsa_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-rsa",
+        "bits": 3072
+      },
+      {
+        "path": "/etc/ssh/ssh_host_ed25519_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_ed25519_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-ed25519",
+        "bits": 256
+      }
+    ],
+    "users": [
+      {
+        "name": "alice",
+        "uid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/home/alice",
+          "mode": 2147484136,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/home/alice/.ssh",
+          "mode": 2147484096,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/home/alice/.ssh/authorized_keys",
+            "meta": {
+              "path": "/home/alice/.ssh/authorized_keys",
+              "mode": 384,
+              "uid": 1000,
+              "gid": 1000,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "no",
+      "rules_known": true,
+      "rules": [
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "22",
+          "proto": "tcp"
+        }
+      ]
+    },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 8000,
+        "processes": [
+          "docker-proxy"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "interface": "lo",
+        "address": "127.0.0.1",
+        "prefix": 8,
+        "scope": "host"
+      },
+      {
+        "interface": "eth0",
+        "address": "203.0.113.30",
+        "prefix": 24,
+        "scope": "global"
+      },
+      {
+        "interface": "eth0",
+        "address": "2001:db8:10::30",
+        "prefix": 64,
+        "scope": "global"
+      }
+    ],
+    "addresses_source": "ip"
+  },
+  "paas": {
+    "platforms": [
+      {
+        "name": "coolify",
+        "role": "panel",
+        "data_root": "/data/coolify",
+        "evidence": [
+          "path:/data/coolify",
+          "path:/data/coolify/source/docker-compose.yml"
+        ],
+        "proxy_dynamic_dirs": [
+          "/data/coolify/proxy/dynamic"
+        ],
+        "backups": {
+          "dir": "/data/coolify/backups",
+          "readable": true,
+          "files": 4,
+          "newest": "2026-02-27T03:00:00Z"
+        }
+      }
+    ]
+  },
+  "secrets": {
+    "paas_env_files": {
+      "roots": [
+        "/data/coolify/applications",
+        "/data/coolify/services"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/applications/a1b2c3/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/applications/d4e5f6/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/services/g7h8i9/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_main_env": {
+      "roots": [
+        "/data/coolify/source/.env"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/source/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_ssh_keys": {
+      "roots": [
+        "/data/coolify/ssh/keys"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/ssh/keys",
+          "kind": "dir",
+          "mode": "0755",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/ssh/keys/id.root@host.docker.internal",
+          "kind": "key",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "proxy_dynamic": {
+      "roots": [
+        "/data/coolify/proxy/dynamic",
+        "/data/coolify/proxy/caddy/dynamic"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/proxy/dynamic/coolify.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/proxy/dynamic/default_redirect_503.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "private_keys": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.ssh/id_ed25519",
+          "kind": "ssh",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "docker_configs": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.docker/config.json",
+          "kind": "docker",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "world_writable": {
+      "roots": [
+        "/data/coolify"
+      ],
+      "files": []
+    },
+    "backup_configs": {
+      "roots": [],
+      "files": []
+    },
+    "backup_tools": []
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "27.5.1",
+      "api_version": "1.47",
+      "os": "linux",
+      "arch": "arm64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": true,
+      "hosts": [
+        {
+          "addr": "fd://",
+          "source": "/lib/systemd/system/docker.service"
+        }
+      ],
+      "log_driver": "json-file",
+      "log_max_size": "10m",
+      "log_max_file": "3",
+      "no_new_privileges": true,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp_read": true,
+    "containers": [
+      {
+        "id": "000000000000",
+        "name": "coolify",
+        "project": "coolify",
+        "service": "coolify",
+        "image": "ghcr.io/coollabsio/coolify:4.0.0",
+        "running": true,
+        "user": "9999",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "ports": [
+          {
+            "container_port": 8080,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 8000
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "coolify"
+        }
+      },
+      {
+        "id": "111111111111",
+        "name": "proxy",
+        "project": "edge",
+        "service": "proxy",
+        "image": "traefik:v3.1.4",
+        "running": true,
+        "user": "10001",
+        "cap_add": [
+          "NET_BIND_SERVICE"
+        ],
+        "network_mode": "edge_default",
+        "networks": [
+          "app_default",
+          "edge_default"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/srv/traefik/traefik.yml",
+            "target": "/etc/traefik/traefik.yml",
+            "read_only": true
+          }
+        ],
+        "ports": [
+          {
+            "container_port": 443,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 8443
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "edge",
+          "com.docker.compose.service": "proxy"
+        }
+      },
+      {
+        "id": "222222222222",
+        "name": "app-web-1",
+        "project": "app",
+        "service": "web",
+        "image": "ghcr.io/example/app:2.4.1",
+        "running": true,
+        "user": "10001:10001",
+        "network_mode": "app_default",
+        "networks": [
+          "app_default"
+        ],
+        "proxy_routed": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "labels": {
+          "com.docker.compose.project": "app",
+          "com.docker.compose.service": "web",
+          "traefik.enable": "true"
+        }
+      },
+      {
+        "id": "333333333333",
+        "name": "app-db-1",
+        "project": "app",
+        "service": "db",
+        "image": "postgres:17.2",
+        "running": true,
+        "user": "postgres",
+        "network_mode": "app_default",
+        "networks": [
+          "app_default"
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "app_pg",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "app",
+          "com.docker.compose.service": "db"
+        }
+      },
+      {
+        "id": "444444444444",
+        "name": "tunnel",
+        "project": "edge",
+        "service": "tunnel",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "edge_default",
+        "networks": [
+          "edge_default"
+        ],
+        "labels": {
+          "com.docker.compose.project": "edge",
+          "com.docker.compose.service": "tunnel"
+        }
+      }
+    ],
+    "networks": [
+      {
+        "name": "app_default",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "edge_default",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      },
+      {
+        "name": "coolify",
+        "driver": "bridge",
+        "scope": "local"
+      }
+    ]
+  }
+}
