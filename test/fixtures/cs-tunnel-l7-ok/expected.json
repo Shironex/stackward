@@ -1108,6 +1108,7 @@
       "message": "a Cloudflare Tunnel is present: 2 connector(s), 2 in a container",
       "evidence": {
         "connectors": 2,
+        "docker_containers": 0,
         "in_container": 2,
         "tunnel": "present",
         "unit": "unknown"
@@ -1126,6 +1127,7 @@
       "message": "2 cloudflared connectors run",
       "evidence": {
         "connectors": 2,
+        "docker_containers": 0,
         "in_container": 2,
         "profile": "tunnel",
         "unit": "unknown"

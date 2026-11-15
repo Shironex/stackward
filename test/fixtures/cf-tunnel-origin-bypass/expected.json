@@ -1080,6 +1080,7 @@
       "message": "a Cloudflare Tunnel is present: 1 connector(s), 1 in a container",
       "evidence": {
         "connectors": 1,
+        "docker_containers": 0,
         "in_container": 1,
         "tunnel": "present",
         "unit": "unknown"
@@ -1098,6 +1099,7 @@
       "message": "only one cloudflared connector runs: a restart or crash takes every tunnel hostname down",
       "evidence": {
         "connectors": 1,
+        "docker_containers": 0,
         "in_container": 1,
         "profile": "mixed",
         "unit": "unknown"

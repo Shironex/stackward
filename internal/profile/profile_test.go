@@ -149,6 +149,10 @@ func TestInferWithAccessFacts(t *testing.T) {
 		{"no listener hint, node running", &facts.Facts{Listeners: &facts.Listeners{}, Tailscale: running}, TailnetOnly},
 		{"containerised connector, no socket", &facts.Facts{Listeners: &facts.Listeners{}, Cloudflared: connector}, Tunnel},
 		{"cloudflared socket, collector saw none", &facts.Facts{Listeners: &facts.Listeners{Sockets: cloudflaredSock}, Cloudflared: noTunnel}, Unknown},
+		{"hidden processes, cloudflared container in docker", &facts.Facts{Listeners: &facts.Listeners{}, Cloudflared: &facts.Cloudflared{ProcessesRead: true},
+			Docker: &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Image: "docker.io/cloudflare/cloudflared:2026.10.0@sha256:00", Running: true}}}}, Tunnel},
+		{"stopped cloudflared container", &facts.Facts{Listeners: &facts.Listeners{}, Cloudflared: noTunnel,
+			Docker: &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Image: "cloudflare/cloudflared", Running: false}}}}, Unknown},
 		{"connector beside public web", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "docker-proxy")}}, Cloudflared: connector}, Mixed},
 	}
 	for _, c := range cases {

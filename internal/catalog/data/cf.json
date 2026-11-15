@@ -5,7 +5,7 @@
       "id": "CF-001",
       "title": "Cloudflare Tunnel presence",
       "severity": "info",
-      "rationale": "Whether a cloudflared connector runs decides which ingress profile fits the host (tunnel or not) and which other checks apply. Connectors are found as processes, so containerised connectors count without the Docker API.",
+      "rationale": "Whether a cloudflared connector runs decides which ingress profile fits the host (tunnel or not) and which other checks apply. Connectors are found as processes, so containerised connectors count without the Docker API; with it, running cloudflared containers count too, which covers hosts that hide other users' processes.",
       "verify": "pgrep -a cloudflared; systemctl status cloudflared",
       "fix": "Nothing to fix; this records the tunnel for profile inference"
     },

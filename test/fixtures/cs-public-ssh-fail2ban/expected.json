@@ -1136,6 +1136,7 @@
       "message": "no Cloudflare Tunnel connector runs on this host",
       "evidence": {
         "connectors": 0,
+        "docker_containers": 0,
         "in_container": 0,
         "tunnel": "absent",
         "unit": "unknown"
@@ -1154,6 +1155,7 @@
       "message": "no Cloudflare Tunnel on this host",
       "evidence": {
         "connectors": 0,
+        "docker_containers": 0,
         "in_container": 0,
         "profile": "public-web",
         "unit": "unknown"

@@ -8,8 +8,10 @@ import (
 	"github.com/Shironex/stackward/internal/profile"
 )
 
-// CF checks read the cloudflared collector (facts/cloudflared.go); CF-003
-// also reads the listeners and firewall.
+// CF checks read the cloudflared collector (facts/cloudflared.go) and count
+// running cloudflared containers from the Docker facts, so a containerised
+// connector is seen even when the process scan cannot see other users'
+// processes. CF-003 also reads the listeners and firewall.
 
 func init() {
 	Register(Check{ID: "CF-001", Run: checkTunnelPresence})
@@ -19,14 +21,39 @@ func init() {
 	Register(Check{ID: "CF-005", Run: checkTunnelProbe})
 }
 
-func tunnelEvidence(c *facts.Cloudflared) map[string]any {
-	inContainer := 0
+// tunnelView joins the connectors from the process scan with running
+// cloudflared containers from the Docker facts. A container's process is
+// usually in the scan too, so the larger of the two container counts is
+// used, never their sum.
+type tunnelView struct {
+	connectors  int
+	inContainer int
+	docker      int // running cloudflared containers in the Docker facts
+	present     bool
+	known       bool
+}
+
+func tunnelFacts(f *facts.Facts) tunnelView {
+	c := f.Cloudflared
+	v := tunnelView{connectors: len(c.Connectors), docker: profile.TunnelContainers(f)}
 	for _, k := range c.Connectors {
 		if k.Container {
-			inContainer++
+			v.inContainer++
 		}
 	}
-	return map[string]any{"connectors": len(c.Connectors), "in_container": inContainer, "unit": unitWord(c.Unit)}
+	if v.docker > v.inContainer {
+		v.connectors += v.docker - v.inContainer
+		v.inContainer = v.docker
+	}
+	v.present, v.known = c.TunnelPresent()
+	if v.docker > 0 {
+		v.present, v.known = true, true
+	}
+	return v
+}
+
+func tunnelEvidence(c *facts.Cloudflared, v tunnelView) map[string]any {
+	return map[string]any{"connectors": v.connectors, "in_container": v.inContainer, "docker_containers": v.docker, "unit": unitWord(c.Unit)}
 }
 
 func checkTunnelPresence(in Input) []Result {
@@ -34,18 +61,18 @@ func checkTunnelPresence(in Input) []Result {
 	if c == nil {
 		return []Result{NotInspected(in.Facts, "cloudflared")}
 	}
-	ev := tunnelEvidence(c)
-	present, known := c.TunnelPresent()
-	ev["tunnel"] = presentWord(present, known)
+	v := tunnelFacts(in.Facts)
+	ev := tunnelEvidence(c, v)
+	ev["tunnel"] = presentWord(v.present, v.known)
 	switch {
-	case !known:
+	case !v.known:
 		return One(Unknown, "no cloudflared connector seen, but other users' processes are hidden from this user (run with sudo)", ev)
-	case !present:
+	case !v.present:
 		return One(Info, "no Cloudflare Tunnel connector runs on this host", ev)
-	case len(c.Connectors) == 0:
+	case v.connectors == 0:
 		return One(Info, "a Cloudflare Tunnel is present (cloudflared.service is active)", ev)
 	}
-	return One(Info, fmt.Sprintf("a Cloudflare Tunnel is present: %d connector(s), %d in a container", len(c.Connectors), ev["in_container"]), ev)
+	return One(Info, fmt.Sprintf("a Cloudflare Tunnel is present: %d connector(s), %d in a container", v.connectors, v.inContainer), ev)
 }
 
 func presentWord(present, known bool) string {
@@ -63,10 +90,10 @@ func checkTunnelReplicas(in Input) []Result {
 	if c == nil {
 		return []Result{NotInspected(in.Facts, "cloudflared")}
 	}
-	ev := tunnelEvidence(c)
+	v := tunnelFacts(in.Facts)
+	ev := tunnelEvidence(c, v)
 	ev["profile"] = string(in.Profile)
-	n := len(c.Connectors)
-	present, known := c.TunnelPresent()
+	n, present, known := v.connectors, v.present, v.known
 	switch {
 	case n >= 2:
 		return One(Pass, fmt.Sprintf("%d cloudflared connectors run", n), ev)
@@ -139,7 +166,8 @@ func checkOriginBypass(in Input) []Result {
 	if c == nil {
 		return []Result{NotInspected(f, "cloudflared")}
 	}
-	present, known := c.TunnelPresent()
+	v := tunnelFacts(f)
+	present, known := v.present, v.known
 	switch {
 	case !known:
 		return One(Unknown, "whether a tunnel runs is unknown (run with sudo)", map[string]any{"tunnel": "unknown"})
@@ -183,7 +211,7 @@ func checkTunnelTokenArgs(in Input) []Result {
 	case !known:
 		return One(Unknown, "a connector's command line could not be read (run with sudo)", ev)
 	case len(c.Connectors) == 0 && !c.Unit.Loaded():
-		if _, pk := c.TunnelPresent(); !pk {
+		if !tunnelFacts(in.Facts).known {
 			return One(Unknown, "no connector seen, but other users' processes are hidden from this user (run with sudo)", ev)
 		}
 		return One(Skip, "no running connector or cloudflared unit to inspect", ev)
@@ -196,7 +224,8 @@ func checkTunnelProbe(in Input) []Result {
 	if c == nil {
 		return []Result{NotInspected(in.Facts, "cloudflared")}
 	}
-	present, known := c.TunnelPresent()
+	v := tunnelFacts(in.Facts)
+	present, known := v.present, v.known
 	switch {
 	case !known:
 		return One(Unknown, "whether a tunnel runs is unknown (run with sudo)", map[string]any{"tunnel": "unknown"})
