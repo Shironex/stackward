@@ -44,9 +44,11 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
-  # get.sh is published beside the archives and listed in the same file.
+  # get.sh and install.sh are published beside the archives and listed in
+  # the same file.
   extra_files:
     - glob: scripts/get.sh
+    - glob: scripts/install.sh
 
 sboms:
   # One SPDX document per archive, made by syft (installed by the workflow).
@@ -98,6 +100,7 @@ release:
   prerelease: auto
   extra_files:
     - glob: scripts/get.sh
+    - glob: scripts/install.sh
 
 # Release notes come from CHANGELOG.md through --release-notes. Do not set
 # changelog.disable: goreleaser loads the --release-notes file inside its
