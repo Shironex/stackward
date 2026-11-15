@@ -22,16 +22,26 @@ linters:
         - fmt.Fprint
     gosec:
       excludes:
-        # G204: commands are run through facts.System.Run with a fixed PATH
-        # and no shell; arguments come from collectors, not users.
+        # G204: commands are run through facts.System.Run (audit) or the
+        # apply Host (apply, undo) with a fixed PATH and no shell; arguments
+        # come from collectors, or from plan steps their generator's
+        # Authorize accepted, not from users.
         - G204
         # G304: reading files named by a variable is the job of an auditor
-        # (collector paths, --facts); System has no write method.
+        # (collector paths, --facts); facts.System has no write method, and
+        # apply writes only paths a generator's Authorize accepted.
         - G304
   exclusions:
     rules:
       # Tests plant fake secrets and write temp files on purpose.
       - path: _test\.go
+        linters:
+          - gosec
+      # G703 on Linux only: apply opens the plan file the user named on
+      # the command line, which is its job. A rule, not a nolint comment,
+      # because the finding does not appear on other platforms.
+      - path: internal/cli/apply\.go
+        text: G703
         linters:
           - gosec
 formatters:
