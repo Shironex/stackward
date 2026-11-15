@@ -1,0 +1,327 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "ssh",
+      "status": "ok"
+    }
+  ],
+  "ssh": {
+    "installed": true,
+    "source": "files",
+    "sshd_t_error": "Missing privilege separation directory: /run/sshd",
+    "effective": {
+      "port": [
+        "22"
+      ],
+      "listenaddress": [
+        "[::]:22",
+        "0.0.0.0:22"
+      ],
+      "passwordauthentication": [
+        "yes"
+      ],
+      "kbdinteractiveauthentication": [
+        "no"
+      ],
+      "permitrootlogin": [
+        "no"
+      ],
+      "permitemptypasswords": [
+        "no"
+      ],
+      "maxauthtries": [
+        "3"
+      ],
+      "x11forwarding": [
+        "yes"
+      ],
+      "allowagentforwarding": [
+        "yes"
+      ],
+      "authenticationmethods": [
+        "any"
+      ],
+      "usepam": [
+        "yes"
+      ],
+      "pubkeyauthentication": [
+        "yes"
+      ],
+      "allowtcpforwarding": [
+        "yes"
+      ],
+      "addressfamily": [
+        "any"
+      ],
+      "authorizedkeysfile": [
+        ".ssh/authorized_keys .ssh/authorized_keys2"
+      ],
+      "strictmodes": [
+        "yes"
+      ],
+      "logingracetime": [
+        "120"
+      ],
+      "acceptenv": [
+        "LANG",
+        "LC_*"
+      ],
+      "subsystem": [
+        "sftp /usr/lib/openssh/sftp-server"
+      ]
+    },
+    "complete": true,
+    "defaulted": [
+      "addressfamily",
+      "allowagentforwarding",
+      "allowtcpforwarding",
+      "authenticationmethods",
+      "authorizedkeysfile",
+      "logingracetime",
+      "permitemptypasswords",
+      "port",
+      "pubkeyauthentication",
+      "strictmodes"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "/etc/ssh/sshd_config",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/60-hardening.conf",
+          "readable": true
+        }
+      ],
+      "directives": [
+        {
+          "keyword": "passwordauthentication",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "line": 1
+        },
+        {
+          "keyword": "passwordauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/60-hardening.conf",
+          "line": 1
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/60-hardening.conf",
+          "line": 2
+        },
+        {
+          "keyword": "maxauthtries",
+          "value": "3",
+          "file": "/etc/ssh/sshd_config.d/60-hardening.conf",
+          "line": 3
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config",
+          "line": 14
+        },
+        {
+          "keyword": "usepam",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 15
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 16
+        },
+        {
+          "keyword": "acceptenv",
+          "value": "LANG LC_*",
+          "file": "/etc/ssh/sshd_config",
+          "line": 18
+        },
+        {
+          "keyword": "subsystem",
+          "value": "sftp /usr/lib/openssh/sftp-server",
+          "file": "/etc/ssh/sshd_config",
+          "line": 19
+        }
+      ]
+    },
+    "socket": {
+      "unit": "ssh.socket",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "listening",
+      "unit_file_state": "enabled",
+      "listen": [
+        "[::]:22"
+      ]
+    },
+    "listening": [
+      "*:22"
+    ],
+    "listening_inspected": true,
+    "pam_inspected": true,
+    "host_keys": [
+      {
+        "path": "/etc/ssh/ssh_host_rsa_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_rsa_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-rsa",
+        "bits": 2048
+      },
+      {
+        "path": "/etc/ssh/ssh_host_ed25519_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_ed25519_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-ed25519",
+        "bits": 256
+      },
+      {
+        "path": "/etc/ssh/ssh_host_dsa_key",
+        "configured": false,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_dsa_key",
+          "mode": 420,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-dss",
+        "bits": 1024
+      }
+    ],
+    "users": [
+      {
+        "name": "root",
+        "uid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/root",
+          "mode": 2147484096,
+          "uid": 0,
+          "gid": 0,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/root/.ssh",
+          "mode": 2147484096,
+          "uid": 0,
+          "gid": 0,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/root/.ssh/authorized_keys",
+            "meta": {
+              "path": "/root/.ssh/authorized_keys",
+              "mode": 384,
+              "uid": 0,
+              "gid": 0,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "deploy",
+        "uid": 1001,
+        "home": "/home/deploy",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/home/deploy",
+          "mode": 2147484141,
+          "uid": 1001,
+          "gid": 1001,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/home/deploy/.ssh",
+          "mode": 2147484141,
+          "uid": 1001,
+          "gid": 1001,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/home/deploy/.ssh/authorized_keys",
+            "meta": {
+              "path": "/home/deploy/.ssh/authorized_keys",
+              "mode": 436,
+              "uid": 1001,
+              "gid": 1001,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-rsa",
+                "bits": 1024
+              },
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
