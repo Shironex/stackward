@@ -1,0 +1,56 @@
+name: Bug report
+description: stackward crashed, misbehaved or printed something wrong
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Never paste secrets, tokens, private keys or real
+        infrastructure details. If you found a way to make stackward write to the
+        host or leak a secret, use the private security report instead (see SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: stackward version
+      description: Output of `stackward version`
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and kernel
+      description: For example Debian 12, kernel 6.1
+    validations:
+      required: true
+  - type: dropdown
+    id: privilege
+    attributes:
+      label: How did you run it?
+      options:
+        - As root (sudo)
+        - As a normal user
+        - Both, with different results
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and what you expected
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Output or error text. Read it before pasting.
+    validations:
+      required: true
+  - type: textarea
+    id: facts
+    attributes:
+      label: Redacted facts (optional)
+      description: |
+        Attach the output of `stackward audit --dump-facts` as a file. It is redacted
+        and the hostname is hashed, but you are the last reviewer: read it and remove
+        anything that still identifies your server before attaching.

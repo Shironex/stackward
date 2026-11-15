@@ -1,0 +1,37 @@
+name: Check request
+description: Propose a new check
+labels: ["check-request", "needs triage"]
+body:
+  - type: textarea
+    id: detect
+    attributes:
+      label: What should it detect
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: What an attacker or an outage gains from the misconfiguration.
+    validations:
+      required: true
+  - type: textarea
+    id: readonly
+    attributes:
+      label: How can it be read, read only
+      description: |
+        Which file, socket or command output shows it. stackward never writes, never
+        sends non GET requests to Docker and never reads secret file contents.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Vendor documentation, CIS or similar benchmark, advisories.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix and what it can break (optional)

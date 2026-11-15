@@ -1,0 +1,41 @@
+name: False positive
+description: A check reports a problem on a host where the setting is actually fine
+labels: ["false-positive", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A check that says pass where it should fail is more serious. If the details
+        would help an attacker, report it privately (see SECURITY.md). Never paste secrets.
+  - type: input
+    id: check
+    attributes:
+      label: Check id
+      description: For example SYS-002
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: stackward version and distribution
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence printed by stackward
+      description: The evidence lines of the finding, with real hosts and addresses replaced.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the finding is wrong
+      description: What the host really has configured and how you checked it by hand.
+    validations:
+      required: true
+  - type: textarea
+    id: facts
+    attributes:
+      label: Redacted facts (optional)
+      description: Attach `stackward audit --dump-facts` output after reading it.
