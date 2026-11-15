@@ -399,6 +399,10 @@ func summary(pf *Facts, profileSet bool) *report.Probe {
 	for _, pt := range pf.Ports {
 		p.Ports = append(p.Ports, report.ProbePort{Address: pt.Address, Family: pt.Family, Port: pt.Port, State: pt.State, Banner: pt.Banner})
 	}
+	if pf.SelfTarget {
+		p.SelfTarget = true
+		p.Notes = append(p.Notes, SelfNote)
+	}
 	if !profileSet {
 		p.Notes = append(p.Notes, "profile unknown: probe has no host facts, so open SSH and web ports are judged as if nothing should be public; pass --profile tunnel, public-web, tailnet-only or paas-panel")
 	}

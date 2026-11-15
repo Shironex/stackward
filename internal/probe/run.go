@@ -57,6 +57,13 @@ type Options struct {
 	RootCAs *x509.CertPool
 	// Now defaults to time.Now.
 	Now func() time.Time
+	// LocalAddrs lists this machine's own addresses and defaults to
+	// InterfaceAddrs.
+	LocalAddrs LocalAddrs
+	// OnSelfTarget, when set, is called with the matching addresses after
+	// the target resolved and before anything is probed, when the target is
+	// this machine.
+	OnSelfTarget func(addrs []string)
 }
 
 func (o *Options) defaults() {
@@ -71,6 +78,9 @@ func (o *Options) defaults() {
 	}
 	if o.Now == nil {
 		o.Now = time.Now
+	}
+	if o.LocalAddrs == nil {
+		o.LocalAddrs = InterfaceAddrs
 	}
 	if o.UserAgent == "" {
 		o.UserAgent = "stackward-probe"
@@ -100,6 +110,12 @@ func Run(ctx context.Context, o Options) *Facts {
 	}
 
 	f.Steps = append(f.Steps, resolve(ctx, o, f))
+	if self := selfAddresses(f.Addresses, o.LocalAddrs); len(self) > 0 {
+		f.SelfTarget, f.SelfAddresses = true, self
+		if o.OnSelfTarget != nil {
+			o.OnSelfTarget(self)
+		}
+	}
 	f.Steps = append(f.Steps, probeTCP(ctx, o, f))
 	f.Steps = append(f.Steps, probeRawHTTP(ctx, o, f))
 	f.Steps = append(f.Steps, probeHostname(ctx, o, f))

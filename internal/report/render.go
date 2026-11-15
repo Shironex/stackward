@@ -152,6 +152,9 @@ func writeAuditHeader(p printer, r *Report) {
 func writeProbeHeader(p printer, r *Report) {
 	pr := r.Probe
 	p("stackward %s probe (%s)\n", r.Tool.Version, r.Schema)
+	if pr.SelfTarget {
+		p("WARNING:   target is this machine, not an outside view: results do not show what the internet sees\n")
+	}
 	p("target:    %s\n", orDash(pr.Target))
 	p("hostname:  %s\n", orDash(pr.Hostname))
 	addrs := make([]string, 0, len(pr.Addresses))

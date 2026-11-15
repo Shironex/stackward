@@ -87,6 +87,7 @@
       "properties": {
         "target": { "description": "Host name or IP address as given on the command line.", "type": "string" },
         "hostname": { "description": "The --hostname checked over HTTPS, if any.", "type": "string" },
+        "self_target": { "description": "True when the target is the machine probe ran on (loopback or a local interface address), so the results are not an outside view. Absent otherwise.", "type": "boolean" },
         "addresses": {
           "type": "array",
           "items": {
