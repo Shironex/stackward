@@ -200,3 +200,67 @@ func TestListenersCollectorNothing(t *testing.T) {
 		t.Error("listeners set although nothing was read")
 	}
 }
+
+// ssScoped holds the shapes a real Ubuntu 24.04 host with Docker, Tailscale
+// and cloudflared prints on top of ssCapture: scoped IPv6 in both bracket
+// orders, a scoped wildcard, mapped IPv4, several processes and no process.
+const ssScoped = `udp   UNCONN 0      0     [fe80::a00:27ff:fe4a:1]%eth0:546      [::]:*    users:(("systemd-network",pid=590,fd=23))
+udp   UNCONN 0      0               [::1]%lo:323        [::]:*
+udp   UNCONN 0      0        100.100.100.100%tailscale0:53   0.0.0.0:*    users:(("tailscaled",pid=801,fd=17))
+udp   UNCONN 0      0                  *%docker0:5353      *:*    users:(("avahi-daemon",pid=700,fd=12))
+tcp   LISTEN 0      4096   [::ffff:192.0.2.7]:2019     *:*    users:(("cloudflared",pid=910,fd=3),("cloudflared",pid=910,fd=4))
+tcp   LISTEN 0      4096     [fe80::1%eth0]:9000        [::]:*
+`
+
+func TestParseSSScopedAndMappedShapes(t *testing.T) {
+	ls, err := ParseSS([]byte(ssScoped))
+	if err != nil {
+		t.Fatalf("real shapes must not be reported as unreadable: %v", err)
+	}
+	want := []Listener{
+		{Proto: "udp", Address: "fe80::a00:27ff:fe4a:1", Interface: "eth0", Port: 546, Processes: []string{"systemd-network"}},
+		{Proto: "udp", Address: "::1", Interface: "lo", Port: 323},
+		{Proto: "udp", Address: "100.100.100.100", Interface: "tailscale0", Port: 53, Processes: []string{"tailscaled"}},
+		{Proto: "udp", Address: "*", Interface: "docker0", Port: 5353, Processes: []string{"avahi-daemon"}},
+		{Proto: "tcp", Address: "192.0.2.7", Port: 2019, Processes: []string{"cloudflared"}},
+		{Proto: "tcp", Address: "fe80::1", Interface: "eth0", Port: 9000},
+	}
+	if !reflect.DeepEqual(ls, want) {
+		t.Errorf("got  %+v\nwant %+v", ls, want)
+	}
+}
+
+func TestSplitHostPort(t *testing.T) {
+	good := []struct {
+		in, addr, iface string
+		port            int
+	}{
+		{"0.0.0.0:22", "0.0.0.0", "", 22},
+		{"[::]:22", "::", "", 22},
+		{"*:22", "*", "", 22},
+		{"127.0.0.53%lo:53", "127.0.0.53", "lo", 53},
+		{"[fe80::1]%eth0:546", "fe80::1", "eth0", 546},
+		{"[fe80::1%eth0]:546", "fe80::1", "eth0", 546},
+		{"*%eth0:546", "*", "eth0", 546},
+		{"[::ffff:192.0.2.1]:80", "192.0.2.1", "", 80},
+		{"[2001:db8::1]%ens3:0", "2001:db8::1", "ens3", 0},
+	}
+	for _, c := range good {
+		addr, iface, port, ok := splitHostPort(c.in)
+		if !ok || addr != c.addr || iface != c.iface || port != c.port {
+			t.Errorf("splitHostPort(%q) = %q %q %d %v", c.in, addr, iface, port, ok)
+		}
+	}
+	for _, in := range []string{"", "22", ":22", "0.0.0.0:", "0.0.0.0:http", "0.0.0.0:70000", "[::1:22", "[::1]x:22", "[::1]%:22", "[fe80::1%a]%b:22", "host.example:22", "*:*"} {
+		if _, _, _, ok := splitHostPort(in); ok {
+			t.Errorf("splitHostPort(%q) should be rejected", in)
+		}
+	}
+}
+
+func TestParseSSOnlyMalformedLinesArePartial(t *testing.T) {
+	_, err := ParseSS([]byte("tcp LISTEN 0 4096 0.0.0.0:22 0.0.0.0:*\ntcp LISTEN 0 4096 not-an-address 0.0.0.0:*\nshort line\n"))
+	if err == nil || !strings.Contains(err.Error(), "2 unreadable") {
+		t.Errorf("want two unreadable lines, got %v", err)
+	}
+}

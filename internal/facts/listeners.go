@@ -260,8 +260,11 @@ func ParseSS(b []byte) ([]Listener, error) {
 	return out, err
 }
 
-// splitHostPort reads "0.0.0.0:22", "[::]:22", "*:22", "127.0.0.53%lo:53"
-// and "[fe80::1%eth0]:546".
+// splitHostPort reads the local address column of ss: "0.0.0.0:22",
+// "[::]:22", "*:22", "127.0.0.53%lo:53", "*%eth0:546", "[fe80::1%eth0]:546"
+// and the form iproute2 prints for scoped IPv6, "[fe80::1]%eth0:546". An
+// IPv4 mapped address ("[::ffff:192.0.2.1]:80") is reported as the IPv4
+// address it stands for.
 func splitHostPort(s string) (addr, iface string, port int, ok bool) {
 	i := strings.LastIndexByte(s, ':')
 	if i <= 0 {
@@ -272,7 +275,20 @@ func splitHostPort(s string) (addr, iface string, port int, ok bool) {
 	if err != nil || p < 0 || p > 65535 {
 		return "", "", 0, false
 	}
-	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	if strings.HasPrefix(host, "[") {
+		end := strings.IndexByte(host, ']')
+		if end < 0 {
+			return "", "", 0, false
+		}
+		rest := host[end+1:] // "" or "%iface"
+		host = host[1:end]
+		if rest != "" {
+			if rest[0] != '%' || len(rest) == 1 || strings.Contains(host, "%") {
+				return "", "", 0, false
+			}
+			iface = rest[1:]
+		}
+	}
 	if j := strings.IndexByte(host, '%'); j >= 0 {
 		host, iface = host[:j], host[j+1:]
 	}
@@ -281,7 +297,7 @@ func splitHostPort(s string) (addr, iface string, port int, ok bool) {
 		if err != nil {
 			return "", "", 0, false
 		}
-		host = a.String()
+		host = a.Unmap().String()
 	}
 	return host, iface, p, true
 }
