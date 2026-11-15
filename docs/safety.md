@@ -162,6 +162,15 @@ details.
   path, other content, another command or another undo command. Commands
   run as argument vectors, without a shell, with a fixed `PATH`. An edit
   whose content was redacted in the plan is refused.
+- **One run at a time.** Apply and undo hold an exclusive lock
+  (`/run/stackward/apply.lock`) for the whole run; a second run is refused
+  with the holder's run id. A dead run releases it.
+- **Undo values are pinned.** The value a `sysctl -w` undo restores must be
+  the key's running value on this host (the one the audit recorded), so a
+  hand edited plan cannot choose it.
+- **Pending restarts are finished first.** A step whose file was written
+  but whose restart did not run or failed is marked in the journal, and the
+  next apply says so and runs the restart before anything else.
 - **No blind overwrites.** A file whose content no longer matches
   `old_sha256` (or that exists when the plan creates it) is not touched;
   plan again. Symlinks are never written through.
