@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 80,
-    "results": 80,
+    "checks": 85,
+    "results": 85,
     "checked": 4,
-    "unknown": 76,
+    "unknown": 81,
     "skipped": 0,
     "root": true,
     "sandbox": {
@@ -37,7 +37,7 @@
   "summary": {
     "fail": 0,
     "warn": 0,
-    "unknown": 76,
+    "unknown": 81,
     "info": 0,
     "pass": 4,
     "skip": 0
@@ -855,6 +855,90 @@
       "fix": {
         "hint": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
         "docs": "https://endoflife.date/docker-engine"
+      }
+    },
+    {
+      "id": "TS-001",
+      "group": "TS",
+      "title": "Tailscale is logged in and Running when installed",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "tailscale up (log the node in again), then prove SSH over the tailnet from a new session before relying on any tailnet only rule",
+        "docs": "https://tailscale.com/kb/1080/cli"
+      }
+    },
+    {
+      "id": "TS-002",
+      "group": "TS",
+      "title": "Node key expiry is disabled on server nodes",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Disable key expiry for this machine in the Tailscale admin console (Machines, the node, Disable key expiry)",
+        "docs": "https://tailscale.com/kb/1028/key-expiry"
+      }
+    },
+    {
+      "id": "TS-003",
+      "group": "TS",
+      "title": "Tailscale Funnel and Serve expose only what is intended",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "tailscale funnel reset (and tailscale serve reset) if the exposure is not intended",
+        "docs": "https://tailscale.com/kb/1223/funnel"
+      }
+    },
+    {
+      "id": "TS-004",
+      "group": "TS",
+      "title": "Firewall rules that mention tailscale0 have a running tailnet behind them",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Install and log in Tailscale, or remove the tailscale0 rules and keep a path you actually have"
+      }
+    },
+    {
+      "id": "TS-005",
+      "group": "TS",
+      "title": "Tailnet Lock state",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Consider Tailnet Lock for tailnets that reach servers (tailscale lock init)",
+        "docs": "https://tailscale.com/kb/1226/tailnet-lock"
       }
     },
     {

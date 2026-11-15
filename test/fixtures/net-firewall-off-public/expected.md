@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 8 checked, 73 unknown, 3 skipped (80 checks), root: yes
+- **Coverage:** 8 checked, 77 unknown, 4 skipped (85 checks), root: yes
 
 ## Summary
 
@@ -14,10 +14,10 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 73 |
+| unknown | 77 |
 | info | 3 |
 | pass | 0 |
-| skip | 3 |
+| skip | 4 |
 
 ## NET: Firewall and exposure
 
@@ -112,7 +112,7 @@
 
 ## Not inspected
 
-<details><summary>73 checks not inspected</summary>
+<details><summary>77 checks not inspected</summary>
 
 **SYS: System**
 
@@ -181,6 +181,15 @@
 | [DKR-032](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-032.md) | Infrastructure containers run pinned images | `host` | not inspected: the docker collector did not run |
 | [DKR-033](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-033.md) | Docker manages the firewall | `host` | not inspected: the docker collector did not run |
 | [DKR-034](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-034.md) | Docker Engine is supported upstream | `host` | not inspected: the docker collector did not run |
+
+**TS: Tailscale**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [TS-001](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-001.md) | Tailscale is logged in and Running when installed | `host` | not inspected: the tailscale collector did not run |
+| [TS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-002.md) | Node key expiry is disabled on server nodes | `host` | not inspected: the tailscale collector did not run |
+| [TS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-003.md) | Tailscale Funnel and Serve expose only what is intended | `host` | not inspected: the tailscale collector did not run |
+| [TS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-005.md) | Tailnet Lock state | `host` | not inspected: the tailscale collector did not run |
 
 **UPD: Updates**
 
