@@ -59,7 +59,7 @@ type hostFirewall struct {
 
 func judgeFirewall(fw *facts.Firewall) hostFirewall {
 	u := fw.UFW
-	if u != nil && u.Installed && u.Source == "status" && u.Status == "active" {
+	if u != nil && u.Installed && u.Live() && u.Status == "active" {
 		switch u.DefaultIncoming {
 		case "deny", "reject":
 			return hostFirewall{triYes, "ufw", "UFW is active with default incoming " + u.DefaultIncoming}
@@ -83,9 +83,12 @@ func judgeFirewall(fw *facts.Firewall) hostFirewall {
 	// Nothing denies. Say so only if every installed mechanism was read.
 	nftSeen := fw.NFT == nil || !fw.NFT.Installed || fw.NFT.Listed
 	iptSeen := fw.Iptables == nil || !fw.Iptables.Installed || fw.Iptables.Listed
-	ufwSeen := u == nil || !u.Installed || u.Source == "status"
+	ufwSeen := u == nil || !u.Installed || u.Live()
 	if nftSeen && iptSeen && ufwSeen {
 		if u != nil && u.Installed && u.Status == "inactive" {
+			if u.Enabled == "yes" {
+				return hostFirewall{triNo, "", "UFW is enabled in ufw.conf but its rules are not loaded, and no other firewall drops incoming traffic"}
+			}
 			return hostFirewall{triNo, "", "UFW is inactive and no other firewall drops incoming traffic"}
 		}
 		return hostFirewall{triNo, "", "no host firewall drops incoming traffic"}
