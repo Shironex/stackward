@@ -17,7 +17,7 @@ var realAccessCritical = map[string]bool{}
 // access-critical steps, nor any access-critical step that is not a real
 // one.
 func TestReleasedBinaryHasNoTestSteps(t *testing.T) {
-	for _, id := range []string{txntest.GoodID, txntest.BadID} {
+	for _, id := range txntest.IDs {
 		if _, ok := plan.Lookup(id); ok {
 			t.Errorf("test step %s is registered in the released binary", id)
 		}
