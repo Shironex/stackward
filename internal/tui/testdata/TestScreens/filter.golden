@@ -2,7 +2,7 @@
  profile public-web (inferred) · sandbox unavailable · root yes                 
  104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  10 of 115              /expo │ DETAIL                       1-17 of 48
+FINDINGS  10 of 115              /expo │ DETAIL                       1-17 of 56
 Firewall and exposure NET      9 of 14 │ NET-004  Firewall and exposure         
 › WARN    NET-004 tcp/443 · Exposure:… │ Exposure: every listening socket and   
   WARN    NET-004 tcp/80 · Exposure: … │ who can reach it                       
