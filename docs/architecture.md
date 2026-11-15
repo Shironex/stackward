@@ -38,6 +38,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
 | `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |
 | `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
+| `internal/lint/guard` | `stackward-guard`, a static analyzer for the safety model: filesystem writes, program starts and network use only in an allowlist of packages; also caps test file length. Run by CI, see CONTRIBUTING |
 | `internal/version` | link time version (`-X .../internal/version.Version=v0.1.0`) |
 | `schema/report.v1.json` | the JSON contract |
 | `schema/plan.v1.json` | the plan JSON contract |
