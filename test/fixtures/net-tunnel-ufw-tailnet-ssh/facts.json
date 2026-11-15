@@ -1,0 +1,67 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": { "hostname": "edge1.example.com", "uid": 0, "euid": 0, "root": true },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "interface": "tailscale0" },
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "from": "198.51.100.7" },
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "interface": "tailscale0", "v6": true }
+      ]
+    },
+    "nft": {
+      "installed": true,
+      "listed": true,
+      "tables": [ { "family": "ip", "name": "filter" }, { "family": "ip", "name": "nat" } ],
+      "chains": [
+        { "family": "ip", "table": "filter", "name": "INPUT", "hook": "input", "policy": "drop", "rules": 9 },
+        { "family": "ip", "table": "filter", "name": "FORWARD", "hook": "forward", "policy": "drop", "rules": 14 }
+      ]
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": { "FORWARD": "DROP", "INPUT": "DROP", "OUTPUT": "ACCEPT" },
+      "chains": [ "DOCKER", "DOCKER-USER", "FORWARD", "INPUT", "OUTPUT", "ufw-before-input", "ufw-user-input" ],
+      "input_rules": 9,
+      "docker_user_rules": [ "-A DOCKER-USER -j RETURN" ]
+    },
+    "ufw_docker": { "in_files": "absent", "loaded": "no" },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      { "proto": "tcp", "address": "0.0.0.0", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "::", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 80, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 443, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 20241, "processes": [ "cloudflared" ] },
+      { "proto": "tcp", "address": "100.101.102.103", "port": 43125, "processes": [ "tailscaled" ] },
+      { "proto": "udp", "address": "127.0.0.53", "interface": "lo", "port": 53, "processes": [ "systemd-resolve" ] },
+      { "proto": "udp", "address": "0.0.0.0", "port": 41641, "processes": [ "tailscaled" ] }
+    ],
+    "addresses": [
+      { "interface": "lo", "address": "127.0.0.1", "prefix": 8, "scope": "host" },
+      { "interface": "eth0", "address": "203.0.113.10", "prefix": 24, "scope": "global" },
+      { "interface": "eth0", "address": "2001:db8:100::10", "prefix": 64, "scope": "global" },
+      { "interface": "tailscale0", "address": "100.101.102.103", "prefix": 32, "scope": "global" }
+    ],
+    "addresses_source": "ip"
+  },
+  "collectors": [
+    { "name": "firewall", "status": "ok" },
+    { "name": "listeners", "status": "ok" }
+  ]
+}

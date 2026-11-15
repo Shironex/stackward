@@ -1,0 +1,58 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": { "hostname": "apps1.example.com", "uid": 0, "euid": 0, "root": true },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        { "action": "allow", "direction": "in", "port": "22", "proto": "tcp", "interface": "tailscale0" },
+        { "action": "allow", "direction": "in", "port": "80,443", "proto": "tcp" },
+        { "action": "allow", "direction": "in", "port": "80,443", "proto": "tcp", "v6": true }
+      ]
+    },
+    "nft": {
+      "installed": true,
+      "listed": true,
+      "tables": [ { "family": "ip", "name": "filter" }, { "family": "ip", "name": "docker-bridges" }, { "family": "ip6", "name": "docker-bridges" } ],
+      "chains": [
+        { "family": "ip", "table": "filter", "name": "INPUT", "hook": "input", "policy": "drop", "rules": 9 }
+      ]
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": { "FORWARD": "DROP", "INPUT": "DROP", "OUTPUT": "ACCEPT" },
+      "chains": [ "FORWARD", "INPUT", "OUTPUT", "ufw-before-input", "ufw-user-forward", "ufw-user-input" ],
+      "input_rules": 9
+    },
+    "ufw_docker": { "in_files": "present", "loaded": "no" },
+    "docker_user": "absent",
+    "docker_backend": "nftables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      { "proto": "tcp", "address": "100.101.102.104", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 443, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 20241, "processes": [ "cloudflared" ] }
+    ],
+    "addresses": [
+      { "interface": "eth0", "address": "198.51.100.30", "prefix": 24, "scope": "global" },
+      { "interface": "tailscale0", "address": "100.101.102.104", "prefix": 32, "scope": "global" }
+    ],
+    "addresses_source": "ip"
+  },
+  "collectors": [
+    { "name": "firewall", "status": "ok" },
+    { "name": "listeners", "status": "ok" }
+  ]
+}
