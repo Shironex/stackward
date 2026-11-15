@@ -1,4 +1,4 @@
- stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
  104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
