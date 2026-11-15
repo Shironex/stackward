@@ -270,7 +270,7 @@ func publishedReach(f *facts.Facts, socks []facts.Listener, proto string, port i
 		}
 	}
 	if len(conts) == 0 {
-		return triUnknown, "unknown", "a published container port; which container port is behind it needs the Docker API"
+		return unmappedReach(f, socks, proto, port)
 	}
 	rank := map[tri]int{triNo: 0, triUnknown: 1, triYes: 2}
 	best, filter, why, found := triNo, "unknown", "", false
@@ -291,7 +291,41 @@ func publishedReach(f *facts.Facts, socks []facts.Listener, proto string, port i
 		}
 	}
 	if !found {
-		return triUnknown, "unknown", "a published container port, but no container the Docker API lists publishes it on all interfaces"
+		return triUnknown, "unknown", "no container the Docker API lists publishes it on all interfaces"
+	}
+	return best, filter, why
+}
+
+// unmappedReach judges a published port whose container port is not known
+// (no Docker API facts). The container port only matters when there are
+// rules to match it against: with no forward filtering at all (no filter
+// chain, or Docker's nftables backend with no other dropping chain) or with
+// Docker's iptables off, the host input rules decide by host port, the answer
+// does not depend on it. Anything else stays unknown.
+func unmappedReach(f *facts.Facts, socks []facts.Listener, proto string, port int) (tri, string, string) {
+	const need = "the Docker API is needed to match this published container port against the filtering rules"
+	d := f.Docker
+	if d == nil {
+		d = &facts.Docker{}
+	}
+	rank := map[tri]int{triNo: 0, triUnknown: 1, triYes: 2}
+	best, filter, why, found := triNo, "unknown", "", false
+	for _, s := range socks {
+		if !s.Class().Exposed() {
+			continue
+		}
+		o, fl, w := forwardFilter(f, d, proto, s.Address, port, 0)
+		independent := fl == "none" || fl == "input" || (fl == "nftables" && o == triYes)
+		if !independent {
+			return triUnknown, "unknown", need
+		}
+		if !found || rank[o] > rank[best] {
+			best, filter, why = o, fl, w
+		}
+		found = true
+	}
+	if !found {
+		return triUnknown, "unknown", need
 	}
 	return best, filter, why
 }

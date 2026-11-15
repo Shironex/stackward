@@ -88,13 +88,14 @@
 ### WARN moderate: [NET-004](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-004.md) Exposure: every listening socket and who can reach it
 
 - **Subject:** `port:tcp/6379`
-- **Result:** tcp/6379 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)
+- **Result:** tcp/6379 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules (see DKR-001)
 - **Fix:** Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall
 
 <details><summary>Evidence</summary>
 
 - `binds`: `["0.0.0.0"]`
 - `class`: `wildcard`
+- `open_from_anywhere`: `yes`
 - `processes`: `["docker-proxy"]`
 - `processes_visible`: `true`
 
