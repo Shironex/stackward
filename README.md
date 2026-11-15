@@ -164,6 +164,9 @@ stackward tui [--report FILE | --facts FILE]
 stackward probe HOST [--hostname NAME] [--ports LIST] [--profile P] [--json] [--out FILE] [--i-own-this]
 stackward plan [--out FILE] [--json | --emit-script]
                                       upcoming 0.2, not released: the changes that would fix the findings, changing nothing
+stackward apply [--step ID]... [--all-safe] [--yes] PLAN.json
+                                      upcoming 0.2, not released: apply the chosen steps with backups and a journal (root)
+stackward undo --run RUN_ID           upcoming 0.2, not released: reverse an apply run from its journal (root)
 stackward version
 ```
 

@@ -7,10 +7,14 @@ others miss.
 |---|---|---|
 | Unit tests | `internal/**/*_test.go` | collectors parse what the host prints, checks judge fake facts right (pass, warn or fail, unknown) |
 | Golden fixtures | `test/fixtures/<scenario>/` | a saved facts file gives exactly the expected report, valid against `schema/report.v1.json` |
-| Live host scenarios | `test/scenarios/` | the real binary, as root, under the Landlock sandbox, on a real Ubuntu host with real containers, firewall and sshd, reports what it should, and writes nothing |
+| Live host scenarios | `test/scenarios/` | the real binary, as root, under the Landlock sandbox, on a real Ubuntu host with real containers, firewall and sshd, reports what it should, and writes nothing; `apply` and `undo` change exactly what the plan says |
 
 The first two run with `go test ./...`. See [architecture.md](architecture.md)
-for how to add a fixture.
+for how to add a fixture. `go test ./...` never changes the machine it runs
+on: the apply and undo tests write only under `t.TempDir()` through the
+`apply.Host` seam and start no program (a fake runner records the
+commands), even when the tests run as root. Apply on a real host is tested
+only by the `apply` scenario, on a disposable runner VM.
 
 ## Live host scenarios
 
@@ -31,6 +35,7 @@ specific checks and subjects.
 | `ssh` | an sshd drop-in with `PasswordAuthentication yes`, then a hardened one | SSH-001 fails, then passes; the drop-in is removed afterwards |
 | `read-only` | the `bad-docker` containers, UFW active and a process listening on a custom port | nothing changes on the host during an audit with and without the sandbox, strace sees no write attempt outside `--out` (the socket ownership snapshot taken before the sandbox included), and under the sandbox the snapshot names the owner of the custom port |
 | `non-root` | the `bad-docker` containers | as a user, no collector crashes and the report says it ran without root; as a user with no groups, no check marked `needs_root` passes blind: a pass without root must not be a fail or warn in a root audit of the same host, nor say "not inspected" |
+| `apply` | kernel values off baseline, a persistent journal without a cap, a `daemon.json` without log rotation | the only scenario where stackward changes the host: `plan`, then `apply` without root is refused; `apply --all-safe --step docker-log-rotation` writes exactly the planned files, keeps the mode of `daemon.json`, writes `daemon.json.orig` and the run backup, a journal with status ok (0600), changes the running values and leaves Docker up with json-file logs; nothing else under `/etc` changes; a second apply says nothing to do, writes no run, changes no file and does not restart Docker; a new audit passes DKR-031 and KRN-004; `undo --run` restores `/etc` (except `daemon.json.orig`) and the running value |
 
 CI runs every scenario on `ubuntu-24.04` and `ubuntu-22.04` runners
 (`.github/workflows/scenarios.yml`) for pull requests that touch `internal/`,
