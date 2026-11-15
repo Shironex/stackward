@@ -1,0 +1,253 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 1000,
+    "euid": 1000,
+    "root": false
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "ssh",
+      "status": "ok"
+    }
+  ],
+  "ssh": {
+    "installed": true,
+    "source": "files",
+    "sshd_t_error": "not root",
+    "effective": {
+      "port": [
+        "22"
+      ],
+      "listenaddress": [
+        "[::]:22",
+        "0.0.0.0:22"
+      ],
+      "passwordauthentication": [
+        "no"
+      ],
+      "kbdinteractiveauthentication": [
+        "no"
+      ],
+      "permitrootlogin": [
+        "no"
+      ],
+      "permitemptypasswords": [
+        "no"
+      ],
+      "maxauthtries": [
+        "3"
+      ],
+      "allowusers": [
+        "alice",
+        "deploy"
+      ],
+      "x11forwarding": [
+        "no"
+      ],
+      "allowagentforwarding": [
+        "no"
+      ],
+      "authenticationmethods": [
+        "any"
+      ],
+      "usepam": [
+        "yes"
+      ],
+      "authorizedkeysfile": [
+        ".ssh/authorized_keys .ssh/authorized_keys2"
+      ]
+    },
+    "complete": true,
+    "defaulted": [
+      "addressfamily",
+      "allowtcpforwarding",
+      "authenticationmethods",
+      "authorizedkeysfile",
+      "logingracetime",
+      "permitemptypasswords",
+      "port",
+      "pubkeyauthentication",
+      "strictmodes",
+      "usepam"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "/etc/ssh/sshd_config",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "readable": true
+        }
+      ],
+      "directives": [
+        {
+          "keyword": "passwordauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 2
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 3
+        },
+        {
+          "keyword": "maxauthtries",
+          "value": "3",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 4
+        },
+        {
+          "keyword": "allowusers",
+          "value": "alice deploy",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 5
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 6
+        },
+        {
+          "keyword": "allowagentforwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 7
+        },
+        {
+          "keyword": "passwordauthentication",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 31,
+          "match": 1
+        },
+        {
+          "keyword": "forcecommand",
+          "value": "internal-sftp",
+          "file": "/etc/ssh/sshd_config",
+          "line": 32,
+          "match": 1
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "prohibit-password",
+          "file": "/etc/ssh/sshd_config",
+          "line": 34,
+          "match": 2
+        }
+      ],
+      "matches": [
+        {
+          "criteria": "User deploy",
+          "file": "/etc/ssh/sshd_config",
+          "line": 30
+        },
+        {
+          "criteria": "Address 192.0.2.0/24",
+          "file": "/etc/ssh/sshd_config",
+          "line": 33
+        }
+      ]
+    },
+    "socket": {
+      "unit": "ssh.socket",
+      "load_state": "loaded",
+      "active_state": "inactive",
+      "unit_file_state": "disabled",
+      "listen": [
+        "[::]:22"
+      ]
+    },
+    "listening": [
+      "0.0.0.0:22",
+      "[::]:22"
+    ],
+    "listening_inspected": true,
+    "pam_inspected": true,
+    "host_keys": [
+      {
+        "path": "/etc/ssh/ssh_host_ed25519_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_ed25519_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-ed25519",
+        "bits": 256
+      }
+    ],
+    "users": [
+      {
+        "name": "alice",
+        "uid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/home/alice",
+          "mode": 2147484136,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/home/alice/.ssh",
+          "mode": 2147484096,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/home/alice/.ssh/authorized_keys",
+            "meta": {
+              "path": "/home/alice/.ssh/authorized_keys",
+              "mode": 384,
+              "uid": 1000,
+              "gid": 1000,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

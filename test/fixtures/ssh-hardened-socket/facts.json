@@ -1,0 +1,279 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "ssh",
+      "status": "ok"
+    }
+  ],
+  "ssh": {
+    "installed": true,
+    "source": "sshd -T",
+    "effective": {
+      "port": [
+        "22"
+      ],
+      "listenaddress": [
+        "[::]:22",
+        "0.0.0.0:22"
+      ],
+      "passwordauthentication": [
+        "no"
+      ],
+      "kbdinteractiveauthentication": [
+        "no"
+      ],
+      "permitrootlogin": [
+        "no"
+      ],
+      "permitemptypasswords": [
+        "no"
+      ],
+      "maxauthtries": [
+        "3"
+      ],
+      "allowusers": [
+        "alice"
+      ],
+      "x11forwarding": [
+        "no"
+      ],
+      "allowagentforwarding": [
+        "no"
+      ],
+      "authenticationmethods": [
+        "any"
+      ],
+      "usepam": [
+        "yes"
+      ],
+      "authorizedkeysfile": [
+        ".ssh/authorized_keys .ssh/authorized_keys2"
+      ],
+      "hostkey": [
+        "/etc/ssh/ssh_host_rsa_key",
+        "/etc/ssh/ssh_host_ed25519_key"
+      ],
+      "kexalgorithms": [
+        "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org"
+      ],
+      "ciphers": [
+        "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+      ],
+      "macs": [
+        "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+      ]
+    },
+    "complete": true,
+    "config": {
+      "files": [
+        {
+          "path": "/etc/ssh/sshd_config",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "readable": true
+        }
+      ],
+      "directives": [
+        {
+          "keyword": "passwordauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 2
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 3
+        },
+        {
+          "keyword": "maxauthtries",
+          "value": "3",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 4
+        },
+        {
+          "keyword": "allowusers",
+          "value": "alice",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 5
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 6
+        },
+        {
+          "keyword": "allowagentforwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 7
+        },
+        {
+          "keyword": "kexalgorithms",
+          "value": "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 8
+        },
+        {
+          "keyword": "ciphers",
+          "value": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 9
+        },
+        {
+          "keyword": "macs",
+          "value": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 10
+        },
+        {
+          "keyword": "passwordauthentication",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config",
+          "line": 14
+        },
+        {
+          "keyword": "usepam",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 15
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 16
+        }
+      ]
+    },
+    "socket": {
+      "unit": "ssh.socket",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "listening",
+      "unit_file_state": "enabled",
+      "listen": [
+        "[::]:22"
+      ]
+    },
+    "listening": [
+      "*:22"
+    ],
+    "listening_inspected": true,
+    "pam_inspected": true,
+    "host_keys": [
+      {
+        "path": "/etc/ssh/ssh_host_rsa_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_rsa_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-rsa",
+        "bits": 3072
+      },
+      {
+        "path": "/etc/ssh/ssh_host_ed25519_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_ed25519_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-ed25519",
+        "bits": 256
+      }
+    ],
+    "users": [
+      {
+        "name": "alice",
+        "uid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/home/alice",
+          "mode": 2147484136,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/home/alice/.ssh",
+          "mode": 2147484096,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/home/alice/.ssh/authorized_keys",
+            "meta": {
+              "path": "/home/alice/.ssh/authorized_keys",
+              "mode": 384,
+              "uid": 1000,
+              "gid": 1000,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
