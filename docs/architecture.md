@@ -30,7 +30,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/checks` | `Check`, `Result`, levels, registry, `Evaluate`, one file per group |
 | `internal/catalog` | embedded `data/<group>.json`, loader, group order |
 | `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (from listeners, firewall, tunnel, tailnet and PaaS panel facts) |
-| `internal/report` | `report.v1` types, `Build`, text and JSON renderers, exit codes |
+| `internal/report` | `report.v1` types, `Build`, text, Markdown and JSON renderers, exit codes |
 | `internal/plan` | `stackward plan`: the step model, the generator registry, `Build` (vetoes, redaction), unified diffs, the plan.v1 JSON, the text summary and the shell script; per step `Authorize` and `Check` for apply |
 | `internal/apply` | `stackward apply` and `undo`: the `Host` seam (every write and command), selection, preconditions, backups, atomic writes, the run journal, undo. The only code that writes to a system; `applytest` holds the fakes its tests share |
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
