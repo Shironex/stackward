@@ -115,6 +115,11 @@ func proveChange(id string, c change, in GuardInput) (Proof, error) {
 	if err != nil {
 		return refuse(err)
 	}
+	if c.access.ApplierStays {
+		if admins, err = applierOnly(admins, in.Applier); err != nil {
+			return refuse(err)
+		}
+	}
 	if !c.access.ClosesPublicSSH {
 		if err := portsOpen(f, c, v); err != nil {
 			return refuse(err)
@@ -177,6 +182,35 @@ func candidates(f *facts.Facts, c change) ([]account, error) {
 		return nil, errors.New("no second way in exists: no account but root can log in; create a non-root sudo user with an authorized key first")
 	}
 	return nil, fmt.Errorf("no second way in exists: it needs a non-root sudo user with an authorized key (%s)", strings.Join(lacks, "; "))
+}
+
+// applierOnly keeps only the account applying the step: a step with
+// ApplierStays needs that account, proven, to be the way that stays.
+func applierOnly(admins []account, applier string) ([]account, error) {
+	if applier == "" {
+		return nil, errors.New("the account applying it is unknown (no login uid); log in over SSH with a key as the account that stays and apply from that session")
+	}
+	for _, a := range admins {
+		if a.Name == applier {
+			return []account{a}, nil
+		}
+	}
+	names := make([]string, len(admins))
+	for i, a := range admins {
+		names[i] = a.Name
+	}
+	return nil, fmt.Errorf("%s, the account applying it, is not a proven second way in; log in over SSH with a key as %s and apply from that session", applier, orList(names))
+}
+
+// orList joins names with "or".
+func orList(names []string) string {
+	switch len(names) {
+	case 0:
+		return "a non-root sudo user"
+	case 1:
+		return names[0]
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " or " + names[len(names)-1]
 }
 
 // lacking says what keeps a from being a second way in, or "".

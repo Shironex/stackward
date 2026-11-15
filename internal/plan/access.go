@@ -26,6 +26,10 @@ type Access struct {
 	// RemovesKeys lists the accounts whose authorized keys the step
 	// removes, all of them.
 	RemovesKeys []string
+	// ApplierStays is true when the account applying the step must itself
+	// be the proven second way in: create an account, log in as it, and
+	// only then lock the old one. An unknown applier is refused.
+	ApplierStays bool
 }
 
 // narrowingSSHD are the sshd keywords that decide who can log in, how and
