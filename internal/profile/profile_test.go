@@ -40,8 +40,14 @@ func TestReporters(t *testing.T) {
 	if p, k := tunnelOf(fakeTunnel{true, true}); !p || !k {
 		t.Error("tunnel reporter ignored")
 	}
-	if _, k := Tailnet(&facts.Facts{Tailscale: &facts.Tailscale{}}); k {
-		t.Error("placeholder Tailscale facts must be unknown")
+	if _, k := Tailnet(&facts.Facts{Tailscale: &facts.Tailscale{Installed: true}}); k {
+		t.Error("Tailscale installed with an unread state must be unknown")
+	}
+	if r, k := Tailnet(&facts.Facts{Tailscale: &facts.Tailscale{}}); r || !k {
+		t.Error("Tailscale not installed must be a known no")
+	}
+	if p, k := TunnelState(&facts.Facts{Cloudflared: &facts.Cloudflared{Connectors: []facts.CloudflaredConnector{{}}}}); !p || !k {
+		t.Error("a running connector must be a known yes")
 	}
 	if _, k := TunnelState(nil); k {
 		t.Error("nil facts must be unknown")
@@ -116,5 +122,40 @@ func TestInfer(t *testing.T) {
 func TestMixedIsNotAFlagValue(t *testing.T) {
 	if _, _, err := Parse(string(Mixed)); err == nil {
 		t.Error("mixed is inferred only")
+	}
+}
+
+// TestInferWithAccessFacts runs Infer over the real Tailscale and
+// Cloudflared facts types (no seams), so profile inference is proven to
+// read them.
+func TestInferWithAccessFacts(t *testing.T) {
+	tsAddr := []facts.InterfaceAddr{{Interface: "tailscale0", Address: "100.101.102.103", Prefix: 32}}
+	running := &facts.Tailscale{Installed: true, StatusRead: true, BackendState: "Running"}
+	loggedOut := &facts.Tailscale{Installed: true, StatusRead: true, BackendState: "NeedsLogin"}
+	unread := &facts.Tailscale{Installed: true}
+	connector := &facts.Cloudflared{Installed: true, ProcessesRead: true, ProcessesVisible: true,
+		Connectors: []facts.CloudflaredConnector{{Container: true, ArgsRead: true, Mode: "named"}}}
+	noTunnel := &facts.Cloudflared{ProcessesRead: true, ProcessesVisible: true}
+	cloudflaredSock := []facts.Listener{sock("tcp", "127.0.0.1", 20241, "cloudflared")}
+	cases := []struct {
+		name string
+		f    *facts.Facts
+		want Name
+	}{
+		{"tailnet address, no tailscale facts", &facts.Facts{Listeners: &facts.Listeners{Addresses: tsAddr}}, TailnetOnly},
+		{"tailnet address, node running", &facts.Facts{Listeners: &facts.Listeners{Addresses: tsAddr}, Tailscale: running}, TailnetOnly},
+		{"tailnet address, node logged out", &facts.Facts{Listeners: &facts.Listeners{Addresses: tsAddr}, Tailscale: loggedOut}, Unknown},
+		{"tailnet address, state unread", &facts.Facts{Listeners: &facts.Listeners{Addresses: tsAddr}, Tailscale: unread}, TailnetOnly},
+		{"no listener hint, node running", &facts.Facts{Listeners: &facts.Listeners{}, Tailscale: running}, TailnetOnly},
+		{"containerised connector, no socket", &facts.Facts{Listeners: &facts.Listeners{}, Cloudflared: connector}, Tunnel},
+		{"cloudflared socket, collector saw none", &facts.Facts{Listeners: &facts.Listeners{Sockets: cloudflaredSock}, Cloudflared: noTunnel}, Unknown},
+		{"connector beside public web", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "docker-proxy")}}, Cloudflared: connector}, Mixed},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Infer(c.f); got != c.want {
+				t.Errorf("Infer = %s, want %s", got, c.want)
+			}
+		})
 	}
 }
