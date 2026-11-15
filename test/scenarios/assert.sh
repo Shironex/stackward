@@ -5,6 +5,7 @@
 #   assert.sh collector REPORT NAME STATUSES
 #   assert.sh sandbox   REPORT STATE
 #   assert.sh none      REPORT LEVELS ID...
+#   assert.sh nofalsepass REPORT ROOT_REPORT ID...
 #   assert.sh field     REPORT JQ_FILTER EXPECTED
 #
 # SUBJECT is an extended regular expression matched against the whole
@@ -14,6 +15,11 @@
 # or "!" plus a list to forbid levels (!unknown, !pass|unknown).
 #
 # none fails when any result of the listed ids has a level in LEVELS.
+# nofalsepass compares a report made without root (REPORT) with one made
+# as root on the same host (ROOT_REPORT). A result of the listed ids that
+# passes without root is a false pass when the root report judges the same
+# id and subject fail or warn, or when its message says "not inspected".
+# Passing from the files a plain user can read is fine; passing blind is not.
 # field compares the raw output of a jq filter over the report (jq -r)
 # with EXPECTED, for example `.coverage.root` and false.
 #
@@ -24,7 +30,7 @@
 set -euo pipefail
 
 usage() {
-	sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' >&2
+	sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' >&2
 	exit 2
 }
 
@@ -146,6 +152,30 @@ none)
 		record none "$what" "none" "none" yes ""
 	else
 		record none "$what" "none" "$hits" no "results that must not be $levels: $hits"
+	fi
+	;;
+nofalsepass)
+	[ $# -ge 3 ] || usage
+	report="$1" rootreport="$2"
+	shift 2
+	need_report "$report"
+	need_report "$rootreport"
+	ids="$(printf '%s\n' "$@" | jq -R . | jq -s .)"
+	# Counts and false passes in one pass over both reports.
+	summary="$(jq -n -r --argjson ids "$ids" --slurpfile root "$rootreport" --slurpfile user "$report" '
+		($root[0].results | map({key: "\(.id)\t\(.subject)", value: .level}) | from_entries) as $rl
+		| [$user[0].results[] | select(.id as $i | $ids | index($i)) | select(.level == "pass")] as $passes
+		| [$passes[] | select(
+			(.message | startswith("not inspected"))
+			or ((($rl["\(.id)\t\(.subject)"]) // "") | IN("fail", "warn")))
+		   | "\(.id) \(.subject) (root: \($rl["\(.id)\t\(.subject)"] // "absent"))"] as $bad
+		| "\($passes | length)\t\($bad | join(", "))"')"
+	IFS=$'\t' read -r npass bad <<<"$summary"
+	what="no false pass among $# checks that need root"
+	if [ -z "$bad" ]; then
+		record nofalsepass "$what" "none" "none ($npass passes without root, none contradicted by root)" yes ""
+	else
+		record nofalsepass "$what" "none" "$bad" no "passes without root that root judges fail or warn, or that were not inspected: $bad"
 	fi
 	;;
 field)
