@@ -28,6 +28,10 @@ Version 0.1 only reads. stackward:
 `unknown` results mean "could not inspect" and are never counted as a pass.
 Run without root for partial coverage; `sudo` gives full coverage.
 
+What it reads, what it never does and what it does not cover:
+[docs/threat-model.md](docs/threat-model.md). The plan for changing things
+safely in a later version: [docs/safety.md](docs/safety.md).
+
 ## Build from source
 
 Requires Go 1.26 or later.
@@ -59,10 +63,27 @@ findings, `2` the tool itself failed.
 
 The JSON report follows [schema/report.v1.json](schema/report.v1.json).
 
+### Reading a report
+
+Every result is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a
+pass), `skip` (does not apply) or `info`. There is no score: read the counts
+and the coverage block, which says how many checks were unknown, whether root
+was available and whether the sandbox was applied. Fix the highest severity
+`fail` results first.
+
+Each check has a stable id. `stackward explain SYS-002` prints why it matters,
+how to verify it by hand, how to fix it and what the fix can break. The same
+text is in the [check pages](docs/checks/index.md).
+
+Share a report or a `--dump-facts` file in a bug report only after reading
+it. Secret shaped values are masked and the hostname is hashed by default,
+but you are the last reviewer.
+
 ## Contributing and security
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/architecture.md](docs/architecture.md). Report vulnerabilities privately
+[docs/architecture.md](docs/architecture.md); the
+[threat model](docs/threat-model.md) explains the safety rules. Report vulnerabilities privately
 as described in [SECURITY.md](SECURITY.md).
 
 Licensed under the [Apache License 2.0](LICENSE).
