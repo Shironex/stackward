@@ -1183,6 +1183,7 @@
       "message": "Docker API listens only on the Unix socket",
       "evidence": {
         "listeners": [],
+        "published_by": [],
         "tcp_hosts": [],
         "tlsverify": false
       },

@@ -764,6 +764,7 @@
         "listeners": [
           "2375/any"
         ],
+        "published_by": [],
         "tcp_hosts": [
           "tcp://0.0.0.0:2375"
         ],
