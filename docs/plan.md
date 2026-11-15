@@ -114,7 +114,11 @@ meaning, needs `plan.v2`.
 - `steps` are ordered by risk class (safe first), then id.
 - `skipped` kinds: `passing` (the checks pass or do not apply), `unknown`
   (facts or results missing), `manual` (a step would not fix it; a person
-  has to look), `refused` (a policy vetoed the step).
+  has to look), `refused` (a policy vetoed the step: the
+  [never touched list](safety.md#never-touched), or the
+  [lockout guard](safety.md#lockout-guard) when an access-critical step
+  would close or narrow a way in without a proven second way in; the
+  reason names the missing piece).
 
 Each step:
 

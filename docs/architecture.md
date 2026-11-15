@@ -295,14 +295,32 @@ All host writes and commands go through `apply.Host` (`NewHost(root, runner)`):
 The real host is `NewHost("/", nil)`; tests use `t.TempDir()` and the fake
 runner in `internal/apply/applytest` (with `applytest.System` faking
 systemd, sshd and ss for the transaction), and the CLI takes an `applyEnv`
-(host, euid, hostname, stdin, terminal, clock, session, binary path, sleep)
+(host, euid, hostname, stdin, terminal, clock, session, binary path, sleep,
+live facts for the lockout guard)
 so its tests never reach the machine. Only `hostApplyEnv` touches the real host.
 
-- **Never touched list (issue #27).** `plan.Options.Vetoes` takes
-  `func(Step) string` policies; a non empty reason moves the step to
-  `skipped` with kind `refused`, at plan time. Policies judge the step's
-  `touches` and `edits`, so a step cannot reach a forbidden target without
-  declaring it.
+- **Never touched list** (`internal/plan/nevertouched.go`). `Build`
+  always asks `NeverTouchedVeto`, then every `plan.Options.Vetoes` policy
+  (`func(Step) string`); a non empty reason moves the step to `skipped`
+  with kind `refused`, at plan time. The list judges `plan.Touched(s)`:
+  the declared `touches`, every edited file and every command with its
+  arguments, so a step cannot reach a forbidden target without it showing.
+  `plan.Authorize` checks the list again, so apply and undo refuse a plan
+  edited afterwards. docs/safety.md lists the entries; a test keeps them in
+  step.
+- **Lockout guard** (`internal/plan/access.go`, `guard.go`,
+  `guard_sshd.go`). An access-critical generator says what it does to
+  access with `SSHD` (the effective sshd settings it leaves) and `Access`
+  (closes public SSH, the networks it still allows, accounts it disables,
+  keys it removes). `plan.ProveAccess(step, GuardInput{Facts, Source,
+  Applier})` proves a second way in or names the missing piece; the CLI
+  passes `plan.LockoutVeto` to `Build`, and before a transaction
+  `apply.GuardAccess` proves it again from facts the `ssh`, `users`,
+  `tailscale`, `listeners` and `firewall` collectors read from the live
+  host (`applyEnv.liveFacts`). When a step closes public SSH, the proof's
+  `ConfirmFrom` networks go into the transaction state, and
+  `apply.ConfirmTxn` requires the confirming session's address in one of
+  them.
 - **Access-critical steps** run inside the transaction (`internal/apply/txn.go`,
   `internal/cli/txn.go`). `apply.Select` takes them only when named and
   alone; `apply.Preflight` reads (systemd-run, `sshd -t`, `sshd -T`, `ss`);
