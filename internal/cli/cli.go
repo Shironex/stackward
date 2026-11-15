@@ -78,6 +78,7 @@ func runVersion(w io.Writer) int {
 type auditFlags struct {
 	format       string
 	jsonOut      bool
+	mdOut        bool
 	out          string
 	failOn       string
 	dumpFacts    bool
@@ -93,8 +94,9 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	var af auditFlags
 	fs := flag.NewFlagSet("audit", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fs.StringVar(&af.format, "format", "text", "output format: text or json")
+	fs.StringVar(&af.format, "format", "text", "output format: text, json or md")
 	fs.BoolVar(&af.jsonOut, "json", false, "shorthand for --format json")
+	fs.BoolVar(&af.mdOut, "md", false, "shorthand for --format md (Markdown for issues and handover notes)")
 	fs.StringVar(&af.out, "out", "", "write the report to this file (the only file stackward writes)")
 	fs.StringVar(&af.failOn, "fail-on", "fail", "exit 1 when a result is at or above: fail, warn or never")
 	fs.BoolVar(&af.dumpFacts, "dump-facts", false, "print the collected facts as redacted JSON instead of a report (for bug reports)")
@@ -103,7 +105,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	fs.DurationVar(&af.timeout, "timeout", facts.DefaultTimeout, "time limit for each collector")
 	fs.BoolVar(&af.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&af.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
-	fs.BoolVar(&af.all, "all", false, "text output: list passing and skipped results too")
+	fs.BoolVar(&af.all, "all", false, "text and md output: list passing and skipped results too")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -122,8 +124,11 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	if af.jsonOut {
 		af.format = "json"
 	}
-	if af.format != "text" && af.format != "json" {
-		fmt.Fprintf(stderr, "stackward audit: --format must be text or json, not %q\n", af.format)
+	if af.mdOut {
+		af.format = "md"
+	}
+	if af.format != "text" && af.format != "json" && af.format != "md" {
+		fmt.Fprintf(stderr, "stackward audit: --format must be text, json or md, not %q\n", af.format)
 		return report.ExitError
 	}
 	failOn := report.FailOn(af.failOn)
@@ -183,9 +188,12 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return report.ExitError
 	}
-	if af.format == "json" {
+	switch af.format {
+	case "json":
 		err = report.WriteJSON(w, rep)
-	} else {
+	case "md":
+		err = report.WriteMarkdown(w, rep, report.MarkdownOptions{Passing: af.all})
+	default:
 		err = report.WriteText(w, rep, report.TextOptions{Color: outFile == nil && colorOK(stdout), Passing: af.all})
 	}
 	if err != nil {

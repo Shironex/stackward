@@ -179,3 +179,16 @@ func TestWrap(t *testing.T) {
 		t.Errorf("%q", got)
 	}
 }
+
+func TestAuditMarkdown(t *testing.T) {
+	for _, flag := range [][]string{{"--md"}, {"--format", "md"}} {
+		args := append([]string{"audit", "--no-sandbox", "--facts", fixture("debian-12-reboot-overdue")}, flag...)
+		code, out, errs := run(args...)
+		if code != report.ExitFindings || errs != "" {
+			t.Fatalf("%v: code %d, stderr %q", flag, code, errs)
+		}
+		if !strings.HasPrefix(out, "# stackward ") || !strings.Contains(out, "## Summary") {
+			t.Errorf("%v: not Markdown output:\n%s", flag, out)
+		}
+	}
+}
