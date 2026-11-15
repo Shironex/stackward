@@ -45,7 +45,8 @@ In version 0.1 stackward:
 - **writes nothing** to the system it audits. The only file it creates is the
   report you ask for with `--out`;
 - **makes no network calls during `audit`.** No telemetry, no update check,
-  no lookups, no uploads;
+  no lookups, no uploads. Only `probe`, which you run from another machine,
+  touches the network (see below);
 - **never sends a non-GET request to Docker.** It cannot start, stop, create
   or remove anything;
 - **never runs a command that changes state;**
@@ -71,6 +72,31 @@ the sandbox is not active the tool is still read only by construction, but
 you get less protection against mistakes, and the report tells you.
 
 The sandbox needs the released build, which is made with `CGO_ENABLED=0`.
+
+## What `probe` does on the network
+
+`stackward probe <host>` is the outside view, run from a laptop or another
+server. It is the only command that opens network connections, and it keeps
+them to one host:
+
+- it refuses CIDR blocks, ranges, lists and URLs: one host name or one IP
+  address only;
+- it resolves the name over IPv4 and IPv6 (at most four addresses per
+  family) and makes plain TCP connects to a short fixed port list, plus at
+  most 16 ports you add with `--ports`;
+- it reads the first line an SSH server sends (at most 256 bytes) and sends
+  one `GET /` to the raw IP on 80 and 443, without following redirects.
+  That raw IP HTTPS request skips certificate verification, because an IP
+  has no certificate name to match; the report says so;
+- with `--hostname` it requests `https://<hostname>/` with normal
+  verification and follows redirects on that same hostname only;
+- it ignores proxy settings from the environment, so the answers come from
+  the target itself;
+- it prints that probing a host you do not own may be illegal, and needs a
+  `y` on an interactive terminal or `--i-own-this` otherwise.
+
+On Linux the same Landlock sandbox applies, with TCP left allowed: probe
+still cannot write anything but `--out`.
 
 ## What is out of scope
 
@@ -119,6 +145,7 @@ treats "could not look" and "looked and found nothing" as different answers.
 
 ## If you find a hole
 
-If you find a way to make stackward write to a system, leak a secret or
-contact a network, that is a security bug. Report it privately as described
+If you find a way to make stackward write to a system, leak a secret,
+contact a network during `audit` or contact anything beyond the target
+during `probe`, that is a security bug. Report it privately as described
 in [SECURITY.md](../SECURITY.md).

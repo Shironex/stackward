@@ -34,6 +34,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
+| `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |
 | `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
 | `internal/version` | link time version (`-X .../internal/version.Version=v0.1.0`) |
 | `schema/report.v1.json` | the JSON contract |
@@ -153,6 +154,20 @@ does, `2` when the tool itself failed. Unknown never trips the threshold.
 Name scenarios after what they show (`docker-public-redis`,
 `tailscale-needs-login`), and prefer one new fixture per behaviour over
 editing someone else's.
+
+## Probe and the PRB checks
+
+`stackward probe` runs on another machine, so it has no host `Facts`. It
+fills `probe.Facts` (resolved addresses per family, every TCP connect, SSH
+banners, raw IP HTTP answers, the `--hostname` redirect chain) and judges
+them with the PRB checks from `probe.Checks()`. Those are deliberately not in
+`checks.Register`: an audit can never see probe facts, so listing PRB in every
+audit report would only add unknown rows and change every golden fixture.
+They still return `checks.Result` and go through `checks.EvaluateChecks` and
+`report.Build`, so probe reports use the same levels, renderers and
+`report.v1` schema; the optional `probe` object in the report says what was
+probed. Probe golden scenarios live in `internal/probe/testdata/<scenario>/`
+(`go test ./internal/probe -update`).
 
 ## Report contract
 
