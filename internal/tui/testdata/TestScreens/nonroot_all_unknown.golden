@@ -1,24 +1,24 @@
- stackward test · host sha256:82c1a34869ebe223 · Ubuntu 24.04.1 LTS             
+ stackward test · host sha256:82c1a34869ebe223             report expected.json 
  profile unknown (inferred) · sandbox unavailable · root no (use sudo)          
  104 checks, 104 results  0 fail  0 warn  99 unknown  0 info  4 pass  1 skip    
 ────────────────────────────────────────────────────────────────────────────────
 FINDINGS  99 of 104                    │ DETAIL                       1-17 of 34
 System SYS                      4 of 5 │ SYS-002  System                        
-› UNKNOWN SYS-002  No reboot pending   │ No reboot pending                      
-  UNKNOWN SYS-003  Running kernel is … │ UNKNOWN · moderate severity            
-  UNKNOWN SYS-004  Clock is synchroni… │                                        
-  UNKNOWN SYS-005  Disks have free sp… │ not inspected: os collector recorded   
+› UNKNOWN SYS-002  not inspected: os … │ rule No reboot pending                 
+  UNKNOWN SYS-003  not inspected: os … │ UNKNOWN · moderate severity            
+  UNKNOWN SYS-004  not inspected: the… │                                        
+  UNKNOWN SYS-005  not inspected: the… │ not inspected: os collector recorded   
 SSH                                 16 │ nothing                                
-  UNKNOWN SSH-001  Password authentic… │                                        
-  UNKNOWN SSH-002  Keyboard-interacti… │ EVIDENCE                               
-  UNKNOWN SSH-003  Root cannot log in… │   collector         os                 
-  UNKNOWN SSH-004  Empty passwords ar… │   collector_status  ok                 
-  UNKNOWN SSH-005  MaxAuthTries is low │                                        
-  UNKNOWN SSH-006  Logins are limited… │ WHY IT MATTERS                         
-  UNKNOWN SSH-007  X11 and agent forw… │   When /var/run/reboot-required exists,
-  UNKNOWN SSH-008  No early drop-in s… │   an update installed a new kernel or  
-  UNKNOWN SSH-009  Effective SSH conf… │   core library that only takes effect  
-  UNKNOWN SSH-010  sshd listens where… │   after a reboot. Until then the host  
-  UNKNOWN SSH-011  sshd reachable fro… │   runs the old, vulnerable code even   
+  UNKNOWN SSH-001  not inspected: the… │                                        
+  UNKNOWN SSH-002  not inspected: the… │ EVIDENCE                               
+  UNKNOWN SSH-003  not inspected: the… │   collector         os                 
+  UNKNOWN SSH-004  not inspected: the… │   collector_status  ok                 
+  UNKNOWN SSH-005  not inspected: the… │                                        
+  UNKNOWN SSH-006  not inspected: the… │ WHY IT MATTERS                         
+  UNKNOWN SSH-007  not inspected: the… │   When /var/run/reboot-required exists,
+  UNKNOWN SSH-008  not inspected: the… │   an update installed a new kernel or  
+  UNKNOWN SSH-009  not inspected: the… │   core library that only takes effect  
+  UNKNOWN SSH-010  not inspected: the… │   after a reboot. Until then the host  
+  UNKNOWN SSH-011  not inspected: the… │   runs the old, vulnerable code even   
 ────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    
