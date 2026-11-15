@@ -28,6 +28,18 @@ go test -race ./...
 go test ./test/ -update    # after an intended report change; review the diff
 ```
 
+## Check pages
+
+`docs/checks/` is generated from the check catalog. After adding or editing a
+catalog entry, regenerate it and commit the result:
+
+```sh
+go run ./cmd/docgen
+```
+
+`go test ./...` fails with the same command in its message when the committed
+pages are stale. Never edit the pages by hand.
+
 Commits follow `type(scope): lowercase summary`, for example
 `feat(checks): add ssh password auth check`. Scopes: cli, facts, checks,
 catalog, report, probe, tui, sandbox, redact, schema, docs, ci, build, deps,
