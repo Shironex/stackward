@@ -1,0 +1,22 @@
+# Written by stackward for transaction 20260301T120000Z-7a7a7a.
+# If the host boots while the transaction is still open (a reboot before
+# stackward confirm), this unit rolls it back before sshd starts, then
+# removes itself. stackward removes it on confirm and on every rollback.
+# See docs/safety.md.
+[Unit]
+Description=stackward: roll back transaction 20260301T120000Z-7a7a7a at boot unless it was confirmed
+Documentation=https://github.com/Shironex/stackward/blob/main/docs/safety.md
+DefaultDependencies=no
+After=local-fs.target systemd-journald.socket
+Before=ssh.service sshd.service ssh.socket sshd.socket shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=/var/lib/stackward/transaction.json
+ConditionPathExists=/var/lib/stackward/transactions/20260301T120000Z-7a7a7a/stackward
+
+[Service]
+Type=oneshot
+ExecStart=/var/lib/stackward/transactions/20260301T120000Z-7a7a7a/stackward undo --transaction 20260301T120000Z-7a7a7a --yes --by-boot
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=sysinit.target

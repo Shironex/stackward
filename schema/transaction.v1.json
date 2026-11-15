@@ -78,6 +78,11 @@
       "type": "string",
       "pattern": "^stackward-rollback-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$"
     },
+    "boot_unit": {
+      "description": "The persistent unit /etc/systemd/system/<boot_unit>, enabled for sysinit.target, that rolls the transaction back at boot while it is still open (a reboot drops the transient timer). Removed on confirm and on every rollback. Absent in states written before it existed.",
+      "type": "string",
+      "pattern": "^stackward-boot-rollback-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}\\.service$"
+    },
     "rollback": {
       "description": "The command the timer runs: the root only copy of stackward under /var/lib/stackward/transactions/<id>/ with undo --transaction <id> --yes --by-timer.",
       "type": "array",
@@ -107,9 +112,10 @@
       "type": "string"
     },
     "cause": {
-      "description": "Why it rolled back: timer, validation, apply-failed or manual.",
+      "description": "Why it rolled back: timer, boot (the host booted while it was open), validation, apply-failed or manual.",
       "enum": [
         "timer",
+        "boot",
         "validation",
         "apply-failed",
         "manual"
@@ -119,8 +125,16 @@
       "description": "Why the rollback or the arming failed.",
       "type": "string"
     },
+    "rollback_host": {
+      "description": "The hostname hash the rollback timer or the boot unit ran under, or unset when the host had no hostname. The automatic rollbacks do not check it: at early boot the hostname may be unset or the image default, and a renamed host must still roll back.",
+      "type": "string"
+    },
+    "host_note": {
+      "description": "Set when rollback_host differs from the hostname hash the transaction was applied on: what the automatic rollback saw.",
+      "type": "string"
+    },
     "acked_at": {
-      "description": "When the rollback was acknowledged (stackward confirm --ack-rollback). A rollback the person watched (validation, apply-failed, manual) is acknowledged when it happens.",
+      "description": "When the rollback was acknowledged (stackward confirm --ack-rollback); a rollback by the timer or at boot needs it. A rollback the person watched (validation, apply-failed, manual) is acknowledged when it happens.",
       "type": "string"
     }
   },

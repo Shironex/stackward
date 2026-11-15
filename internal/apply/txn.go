@@ -27,15 +27,18 @@ import (
 //	                                         +-- fail --+--> roll back at once
 //
 // open -> confirmed      stackward confirm from a new SSH session (or --console)
-// open -> rolled-back    the timer fired at the deadline; blocks access steps
-//                        until stackward confirm --ack-rollback
+// open -> rolled-back    the timer fired at the deadline, or the host booted
+//                        while it was open; blocks access steps until
+//                        stackward confirm --ack-rollback
 // open -> rollback-failed  the rollback itself failed; blocks the same way
 //
 // The timer is a systemd transient timer and service (systemd-run), so it
 // runs whatever happens to the SSH session or to this process. It starts a
 // root-owned copy of this binary, kept under the transaction's directory,
-// with `undo --transaction ID --by-timer`. The state lives in TxnStatePath
-// and every change to it is made under the run lock.
+// with `undo --transaction ID --by-timer`. A reboot drops a transient
+// timer, so a persistent boot unit (bootunit.go) runs the same copy at boot
+// with `--by-boot`. The state lives in TxnStatePath and every change to it
+// is made under the run lock.
 
 // TxnSchema names the JSON shape of the transaction state, described by
 // schema/transaction.v1.json. Change both together.
@@ -63,6 +66,7 @@ const (
 	CauseValidation  = "validation"   // the checks after the steps failed
 	CauseApplyFailed = "apply-failed" // a step failed
 	CauseManual      = "manual"       // stackward undo --transaction
+	CauseBoot        = "boot"         // the host booted while it was open
 )
 
 // How a transaction was confirmed.
@@ -102,6 +106,8 @@ type Txn struct {
 	Deadline      string `json:"deadline"`
 	ConfirmWithin string `json:"confirm_within"`
 	TimerUnit     string `json:"timer_unit"`
+	// BootUnit is the persistent unit that rolls back at boot.
+	BootUnit string `json:"boot_unit,omitempty"`
 	// Rollback is the command the timer runs.
 	Rollback []string `json:"rollback"`
 	// Session is the session that applied.
@@ -114,6 +120,11 @@ type Txn struct {
 	// Error is why the rollback or the arming failed.
 	Error   string `json:"error,omitempty"`
 	AckedAt string `json:"acked_at,omitempty"`
+	// RollbackHost is the hostname hash (or "unset") the rollback timer or
+	// the boot unit ran under; HostNote says how it differs from the one
+	// that applied. Neither checks it.
+	RollbackHost string `json:"rollback_host,omitempty"`
+	HostNote     string `json:"host_note,omitempty"`
 }
 
 // TxnDir is the directory of transaction id: the binary the timer runs.
@@ -186,7 +197,7 @@ func (t *Txn) Blocks(now time.Time) string {
 	switch t.Status {
 	case TxnOpen:
 		if t.DeadlinePassed(now) {
-			return fmt.Sprintf("transaction %s is still open although its deadline passed at %s, so its rollback did not run (the timer is gone, for example after a reboot, or it is waiting for the lock); roll it back with: sudo stackward undo --transaction %s", t.ID, t.Deadline, t.ID)
+			return fmt.Sprintf("transaction %s is still open although its deadline passed at %s, so its rollback did not run (the timer is waiting for the lock or gave up, or the boot rollback could not run); roll it back with: sudo stackward undo --transaction %s", t.ID, t.Deadline, t.ID)
 		}
 		return fmt.Sprintf("transaction %s is open until %s and only one transaction can be open; confirm it from a new SSH session (sudo stackward confirm %s) or let it roll back", t.ID, t.Deadline, t.ID)
 	case TxnRolledBack, TxnRollbackFailed:
@@ -452,9 +463,9 @@ func RunTransaction(ctx context.Context, prepared []Prepared, o TxnOptions) (*Jo
 		Schema: TxnSchema, Tool: report.Tool{Name: "stackward", Version: o.Version},
 		ID: o.RunID, Status: TxnOpen, Steps: []string{},
 		OpenedAt: stamp(now), Deadline: stamp(now.Add(o.ConfirmWithin)), ConfirmWithin: o.ConfirmWithin.String(),
-		TimerUnit: TimerUnit(o.RunID),
-		Rollback:  []string{TxnBinary(o.RunID), "undo", "--transaction", o.RunID, "--yes", "--by-timer"},
-		Session:   o.Session,
+		TimerUnit: TimerUnit(o.RunID), BootUnit: BootUnit(o.RunID),
+		Rollback: []string{TxnBinary(o.RunID), "undo", "--transaction", o.RunID, "--yes", "--by-timer"},
+		Session:  o.Session,
 	}
 	var steps []plan.Step
 	for _, p := range prepared {
@@ -466,22 +477,17 @@ func RunTransaction(ctx context.Context, prepared []Prepared, o TxnOptions) (*Jo
 		return nil, nil, fmt.Errorf("writing the transaction state: %w", err)
 	}
 	if err := ArmTimer(ctx, h, t, o.ConfirmWithin); err != nil {
-		t.Status, t.Error = TxnAborted, err.Error()
-		_ = Disarm(ctx, h, t.TimerUnit)
-		_ = SaveTxn(h, t)
-		removeBinary(h, t.ID)
-		return nil, t, err
+		return nil, t, abortTxn(ctx, h, t, err)
+	}
+	if err := InstallBootUnit(ctx, h, t.ID); err != nil {
+		return nil, t, abortTxn(ctx, h, t, err)
 	}
 	o.Transaction = &JournalTxn{Status: TxnOpen, Deadline: t.Deadline, TimerUnit: t.TimerUnit, Checks: []JournalCommand{}}
 	undo := UndoOptions{Host: h, Now: o.Now, CommandTimeout: o.CommandTimeout, Progress: o.Progress}
 	j, err := Execute(ctx, prepared, o.Options)
 	if j == nil {
 		// Nothing was written: no journal, no change.
-		t.Status, t.Error = TxnAborted, err.Error()
-		_ = Disarm(ctx, h, t.TimerUnit)
-		_ = SaveTxn(h, t)
-		removeBinary(h, t.ID)
-		return nil, t, err
+		return nil, t, abortTxn(ctx, h, t, err)
 	}
 	if err != nil {
 		return j, t, rollBackNow(ctx, h, j, t, CauseApplyFailed, err, undo)
@@ -495,6 +501,17 @@ func RunTransaction(ctx context.Context, prepared []Prepared, o TxnOptions) (*Jo
 		return j, t, rollBackNow(ctx, h, j, t, CauseValidation, fmt.Errorf("validation failed: %w", verr), undo)
 	}
 	return j, t, nil
+}
+
+// abortTxn ends a transaction that changed nothing: the timer, the boot
+// unit and the binary copy go, and the state says aborted. It returns err.
+func abortTxn(ctx context.Context, h Host, t *Txn, err error) error {
+	t.Status, t.Error = TxnAborted, err.Error()
+	_ = Disarm(ctx, h, t.TimerUnit)
+	_ = RemoveBootUnit(ctx, h, t.ID)
+	_ = SaveTxn(h, t)
+	removeBinary(h, t.ID)
+	return err
 }
 
 // rollBackNow rolls back while the person is still there, then disarms the
@@ -521,10 +538,11 @@ func rollBackNow(ctx context.Context, h Host, j *Journal, t *Txn, cause string, 
 }
 
 // RollBack undoes the transaction's run from its journal and records the
-// outcome in the state and the journal. A rollback by the timer must be
-// acknowledged before access steps run again; one the person watched
-// (validation, a failed step, a manual undo) is acknowledged by it. It
-// does not touch the timer.
+// outcome in the state and the journal. A rollback by the timer or at boot
+// must be acknowledged before access steps run again; one the person
+// watched (validation, a failed step, a manual undo) is acknowledged by it.
+// Once the state is no longer open it removes the boot unit (a failure to
+// is a warning through o.Progress). It does not touch the timer.
 func RollBack(ctx context.Context, h Host, j *Journal, t *Txn, cause string, o UndoOptions) error {
 	if o.Now == nil {
 		o.Now = time.Now
@@ -539,7 +557,7 @@ func RollBack(ctx context.Context, h Host, j *Journal, t *Txn, cause string, o U
 		t.Status, t.Error = TxnRollbackFailed, err.Error()
 	} else {
 		t.Status = TxnRolledBack
-		if cause != CauseTimer {
+		if cause != CauseTimer && cause != CauseBoot {
 			t.AckedAt = now
 		}
 	}
@@ -548,14 +566,15 @@ func RollBack(ctx context.Context, h Host, j *Journal, t *Txn, cause string, o U
 	if serr := SaveTxn(h, t); serr != nil {
 		return errors.Join(err, jerr, fmt.Errorf("writing the transaction state: %w", serr))
 	}
+	removeBootUnitOrWarn(ctx, h, t.ID, o.Progress)
 	return errors.Join(err, jerr)
 }
 
 // ConfirmTxn keeps the change of open transaction t: unless console is
 // set, now must be a new SSH session (CompareSessions); the deadline must
-// not have passed; the timer must stop. Then the state says confirmed
-// (UpdateJournalTxn copies it into the journal). It returns why the
-// session was accepted.
+// not have passed; the boot unit must go and the timer must stop. Then the
+// state says confirmed (UpdateJournalTxn copies it into the journal). It
+// returns why the session was accepted.
 func ConfirmTxn(ctx context.Context, h Host, t *Txn, console bool, sess Session, now time.Time) (string, error) {
 	if t.Status != TxnOpen {
 		return "", fmt.Errorf("transaction %s is %s, not open", t.ID, t.Status)
@@ -571,7 +590,12 @@ func ConfirmTxn(ctx context.Context, h Host, t *Txn, console bool, sess Session,
 		}
 		via, why = ViaSSH, reason
 	}
+	if err := RemoveBootUnit(ctx, h, t.ID); err != nil {
+		return "", fmt.Errorf("the boot rollback unit could not be removed, so the transaction stays open and rolls back at %s: %w", t.Deadline, err)
+	}
 	if err := Disarm(ctx, h, t.TimerUnit); err != nil {
+		// Still open: put the boot rollback back as well.
+		_ = InstallBootUnit(ctx, h, t.ID)
 		return "", fmt.Errorf("the rollback timer could not be stopped, so the transaction stays open and rolls back at %s: %w", t.Deadline, err)
 	}
 	t.Status, t.ConfirmedAt, t.ConfirmedVia = TxnConfirmed, stamp(now), via
