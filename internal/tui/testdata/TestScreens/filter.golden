@@ -1,8 +1,8 @@
  stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
  profile public-web (inferred) · sandbox unavailable · root yes                 
- 91 results  3 fail  5 warn  56 unknown  7 info  16 pass  4 skip                
+ 96 results  3 fail  5 warn  60 unknown  7 info  17 pass  4 skip                
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  9 of 91                /expo │ DETAIL                       1-17 of 48
+FINDINGS  10 of 96               /expo │ DETAIL                       1-17 of 48
 Firewall and exposure NET      9 of 14 │ NET-004  Firewall and exposure         
 › WARN    NET-004 tcp/443 · Exposure:… │ Exposure: every listening socket and   
   WARN    NET-004 tcp/80 · Exposure: … │ who can reach it                       
@@ -13,8 +13,8 @@ Firewall and exposure NET      9 of 14 │ NET-004  Firewall and exposure
   INFO    NET-004 tcp/6001 · Exposure… │ on wildcard: UFW input rules do not    
   INFO    NET-004 tcp/6002 · Exposure… │ apply to it (see DKR-001)              
   INFO    NET-006 DOCKER-USER chain s… │                                        
-                                       │ EVIDENCE                               
-                                       │   binds              0.0.0.0, ::       
+Tailscale TS                    1 of 5 │ EVIDENCE                               
+  UNKNOWN TS-003  Tailscale Funnel an… │   binds              0.0.0.0, ::       
                                        │   class              wildcard          
                                        │   processes          docker-proxy      
                                        │   processes_visible  true              

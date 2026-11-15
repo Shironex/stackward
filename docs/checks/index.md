@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-86 checks in the catalog.
+91 checks in the catalog.
 
 ## System (SYS)
 
@@ -80,6 +80,16 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [DKR-032](DKR-032.md) | low | Infrastructure containers run pinned images |
 | [DKR-033](DKR-033.md) | moderate | Docker manages the firewall |
 | [DKR-034](DKR-034.md) | moderate | Docker Engine is supported upstream |
+
+## Tailscale (TS)
+
+| Id | Severity | Check |
+|---|---|---|
+| [TS-001](TS-001.md) | high | Tailscale is logged in and Running when installed |
+| [TS-002](TS-002.md) | moderate | Node key expiry is disabled on server nodes |
+| [TS-003](TS-003.md) | high | Tailscale Funnel and Serve expose only what is intended |
+| [TS-004](TS-004.md) | moderate | Firewall rules that mention tailscale0 have a running tailnet behind them |
+| [TS-005](TS-005.md) | info | Tailnet Lock state |
 
 ## Updates (UPD)
 

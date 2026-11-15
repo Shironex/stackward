@@ -1,0 +1,53 @@
+{
+  "group": "TS",
+  "checks": [
+    {
+      "id": "TS-001",
+      "title": "Tailscale is logged in and Running when installed",
+      "severity": "high",
+      "rationale": "A node that dropped to NeedsLogin or Stopped (or whose tailscaled is not running) has no tailscale0 traffic: every firewall rule scoped to tailscale0 or 100.64.0.0/10 silently matches nothing, while everyone still believes SSH and the panel are private. Closing public SSH on such a host locks you out.",
+      "verify": "tailscale status; systemctl status tailscaled",
+      "fix": "tailscale up (log the node in again), then prove SSH over the tailnet from a new session before relying on any tailnet only rule",
+      "breaks": "Nothing; logging in restores the tailnet paths the firewall already expects.",
+      "docs": "https://tailscale.com/kb/1080/cli"
+    },
+    {
+      "id": "TS-002",
+      "title": "Node key expiry is disabled on server nodes",
+      "severity": "moderate",
+      "rationale": "Tailscale node keys expire (180 days by default). When a server's key expires the node logs out on its own, usually unattended, and every tailnet scoped rule turns dead (see TS-001). Servers should have key expiry disabled in the admin console.",
+      "verify": "tailscale status --json | grep KeyExpiry",
+      "fix": "Disable key expiry for this machine in the Tailscale admin console (Machines, the node, Disable key expiry)",
+      "breaks": "Nothing on the host; a stolen node key then stays valid until you remove the node, so protect the host itself.",
+      "docs": "https://tailscale.com/kb/1028/key-expiry"
+    },
+    {
+      "id": "TS-003",
+      "title": "Tailscale Funnel and Serve expose only what is intended",
+      "severity": "high",
+      "rationale": "Funnel publishes a local service to the whole internet through Tailscale's relays, bypassing the host firewall and any tunnel WAF. Serve publishes it to the tailnet. Both are easy to leave behind after a test, and neither shows up in ss or the firewall rules.",
+      "verify": "tailscale funnel status; tailscale serve status",
+      "fix": "tailscale funnel reset (and tailscale serve reset) if the exposure is not intended",
+      "breaks": "Whatever was reached through the funnel or serve URL stops answering.",
+      "docs": "https://tailscale.com/kb/1223/funnel"
+    },
+    {
+      "id": "TS-004",
+      "title": "Firewall rules that mention tailscale0 have a running tailnet behind them",
+      "severity": "moderate",
+      "rationale": "UFW rules on tailscale0 only work while Tailscale is installed, logged in and Running. Without it they are dead rules: they look like a private path in reviews and give none.",
+      "verify": "sudo ufw status verbose | grep tailscale0; tailscale status",
+      "fix": "Install and log in Tailscale, or remove the tailscale0 rules and keep a path you actually have",
+      "breaks": "Removing the rules is harmless when Tailscale is gone; check you still have another way in first."
+    },
+    {
+      "id": "TS-005",
+      "title": "Tailnet Lock state",
+      "severity": "info",
+      "rationale": "Tailnet Lock makes nodes verify new node keys with signing keys you hold, so a compromised coordination server cannot add nodes to your tailnet. It is optional and adds key management; this check only reports whether it is on.",
+      "verify": "tailscale lock status",
+      "fix": "Consider Tailnet Lock for tailnets that reach servers (tailscale lock init)",
+      "docs": "https://tailscale.com/kb/1226/tailnet-lock"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 13 checked, 71 unknown, 0 skipped (80 checks), root: yes
+- **Coverage:** 13 checked, 76 unknown, 0 skipped (85 checks), root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 3 |
 | warn | 7 |
-| unknown | 71 |
+| unknown | 76 |
 | info | 1 |
 | pass | 2 |
 | skip | 0 |
@@ -163,7 +163,7 @@
 
 ## Not inspected
 
-<details><summary>71 checks not inspected</summary>
+<details><summary>76 checks not inspected</summary>
 
 **SYS: System**
 
@@ -226,6 +226,16 @@
 | [DKR-032](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-032.md) | Infrastructure containers run pinned images | `host` | not inspected: the docker collector did not run |
 | [DKR-033](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-033.md) | Docker manages the firewall | `host` | not inspected: the docker collector did not run |
 | [DKR-034](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-034.md) | Docker Engine is supported upstream | `host` | not inspected: the docker collector did not run |
+
+**TS: Tailscale**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [TS-001](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-001.md) | Tailscale is logged in and Running when installed | `host` | not inspected: the tailscale collector did not run |
+| [TS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-002.md) | Node key expiry is disabled on server nodes | `host` | not inspected: the tailscale collector did not run |
+| [TS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-003.md) | Tailscale Funnel and Serve expose only what is intended | `host` | not inspected: the tailscale collector did not run |
+| [TS-004](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-004.md) | Firewall rules that mention tailscale0 have a running tailnet behind them | `host` | not inspected: the firewall collector did not run |
+| [TS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-005.md) | Tailnet Lock state | `host` | not inspected: the tailscale collector did not run |
 
 **UPD: Updates**
 
