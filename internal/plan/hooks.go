@@ -65,8 +65,8 @@ func Check(r Reader, s Step) (applied bool, why string, err error) {
 	if !ok || g.Check == nil {
 		return false, "", fmt.Errorf("step %s has no check", s.ID)
 	}
-	if len(s.Edits) == 0 {
-		return false, "", fmt.Errorf("step %s edits no file; authorize it first", s.ID)
+	if len(s.Edits) == 0 && len(s.Commands) == 0 {
+		return false, "", fmt.Errorf("step %s changes nothing; authorize it first", s.ID)
 	}
 	return g.Check(r, s)
 }
