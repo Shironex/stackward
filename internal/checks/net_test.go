@@ -13,7 +13,7 @@ func netSock(proto, addr string, port int, procs ...string) facts.Listener {
 }
 
 func netUFW(def string, rules ...facts.UFWRule) *facts.Firewall {
-	return &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "status", Status: "active", DefaultIncoming: def, IPv6: "yes", RulesKnown: true, Rules: rules}}
+	return &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "live", Status: "active", DefaultIncoming: def, IPv6: "yes", RulesKnown: true, Rules: rules}}
 }
 
 var (
@@ -265,5 +265,40 @@ func TestNET009(t *testing.T) {
 	r := netOne(t, "NET-009", &facts.Facts{Firewall: netUFW("deny")}, profile.Tunnel)
 	if r.Level != Unknown || !strings.Contains(r.Message, "stackward probe") || !strings.Contains(r.Message, "cannot be seen from inside") {
 		t.Errorf("NET-009 = %s %q", r.Level, r.Message)
+	}
+}
+
+// TestExposureUFWOverIptablesNFT is the real run: UFW on iptables-nft puts
+// a drop policy input chain into the nft ruleset. Ports must be judged from
+// UFW's rules, not reported as "nftables drops by default, but its port
+// rules are not analysed".
+func TestExposureUFWOverIptablesNFT(t *testing.T) {
+	for _, src := range []string{"live", "status"} {
+		fw := netUFW("deny", netSSHTailnet, netWebAnywhere)
+		fw.UFW.Source = src
+		fw.NFT = &facts.NFTables{Installed: true, Listed: true, UFWChains: true,
+			Chains: []facts.NFTChain{{Family: "ip", Table: "filter", Name: "INPUT", Hook: "input", Policy: "drop"}}}
+		f := &facts.Facts{Firewall: fw, Listeners: &facts.Listeners{Source: "ss", ProcessesVisible: true, Sockets: []facts.Listener{
+			netSock("tcp", "0.0.0.0", 22, "sshd"), netSock("tcp", "0.0.0.0", 443, "caddy"),
+		}}}
+		rs := netRun(t, "NET-004", Input{Facts: f})
+		if len(rs) != 2 {
+			t.Fatalf("%s: %+v", src, rs)
+		}
+		for _, r := range rs {
+			if r.Level == Unknown || strings.Contains(r.Message, "not analysed") {
+				t.Errorf("%s: %s: %s %s", src, r.Subject, r.Level, r.Message)
+			}
+		}
+		if r := netOne(t, "NET-001", f, profile.Unknown); r.Level != Pass || r.Evidence["mechanism"] != "ufw" {
+			t.Errorf("%s: NET-001 %s %s", src, r.Level, r.Message)
+		}
+	}
+	// Files only (not root): still unknown, never a pass.
+	fw := netUFW("deny", netSSHTailnet)
+	fw.UFW.Source = "files"
+	f := &facts.Facts{Firewall: fw, Listeners: &facts.Listeners{Source: "ss", Sockets: []facts.Listener{netSock("tcp", "0.0.0.0", 22)}}}
+	if r := netRun(t, "NET-004", Input{Facts: f})[0]; r.Level != Unknown {
+		t.Errorf("files only: %s %s", r.Level, r.Message)
 	}
 }

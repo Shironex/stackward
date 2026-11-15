@@ -188,7 +188,7 @@ func blockedByFirewall(fw *facts.Firewall, l facts.Listener) bool {
 		return false
 	}
 	u := fw.UFW
-	if u.Source != "status" || u.Status != "active" || !u.RulesKnown {
+	if !u.Live() || u.Status != "active" || !u.RulesKnown {
 		return false
 	}
 	if u.DefaultIncoming != "deny" && u.DefaultIncoming != "reject" {

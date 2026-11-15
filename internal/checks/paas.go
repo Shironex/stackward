@@ -116,7 +116,7 @@ func paasFilterFor(fw *facts.Firewall, proto string, port int, viaDocker bool) p
 		return paasFilterUnknown
 	}
 	u := fw.UFW
-	if u == nil || u.Source != "status" || u.Status != "active" || !u.RulesKnown {
+	if u == nil || !u.Live() || u.Status != "active" || !u.RulesKnown {
 		return paasFilterUnknown
 	}
 	if u.DefaultIncoming != "deny" && u.DefaultIncoming != "reject" {
