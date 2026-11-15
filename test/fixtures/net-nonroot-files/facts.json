@@ -1,0 +1,36 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": { "hostname": "box2.example.com", "uid": 1000, "euid": 1000, "root": false },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "files",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": false
+    },
+    "nft": { "installed": true, "listed": false },
+    "iptables": { "installed": true, "backend": "nf_tables", "listed": false, "input_rules": 0 },
+    "ufw_docker": {}
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": false,
+    "sockets": [
+      { "proto": "tcp", "address": "0.0.0.0", "port": 22 },
+      { "proto": "tcp", "address": "::", "port": 22 },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 3000 }
+    ],
+    "addresses": [
+      { "interface": "eth0", "address": "192.0.2.40", "prefix": 24, "scope": "global" }
+    ],
+    "addresses_source": "ip"
+  },
+  "collectors": [
+    { "name": "firewall", "status": "ok" },
+    { "name": "listeners", "status": "ok" }
+  ]
+}

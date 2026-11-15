@@ -1,0 +1,61 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": { "hostname": "web1.example.com", "uid": 0, "euid": 0, "root": true },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "inactive",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "no",
+      "rules_known": false
+    },
+    "nft": {
+      "installed": true,
+      "listed": true,
+      "tables": [ { "family": "ip", "name": "filter" }, { "family": "ip", "name": "nat" } ],
+      "chains": [
+        { "family": "ip", "table": "filter", "name": "INPUT", "hook": "input", "policy": "accept", "rules": 0 },
+        { "family": "ip", "table": "filter", "name": "FORWARD", "hook": "forward", "policy": "drop", "rules": 6 }
+      ]
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": { "FORWARD": "DROP", "INPUT": "ACCEPT", "OUTPUT": "ACCEPT" },
+      "chains": [ "DOCKER", "DOCKER-USER", "FORWARD", "INPUT", "OUTPUT" ],
+      "input_rules": 0,
+      "docker_user_rules": [ "-A DOCKER-USER -j RETURN" ]
+    },
+    "ufw_docker": { "in_files": "absent", "loaded": "no" },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      { "proto": "tcp", "address": "0.0.0.0", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "::", "port": 22, "processes": [ "sshd" ] },
+      { "proto": "tcp", "address": "0.0.0.0", "port": 443, "processes": [ "nginx" ] },
+      { "proto": "tcp", "address": "::", "port": 443, "processes": [ "nginx" ] },
+      { "proto": "tcp", "address": "0.0.0.0", "port": 6379, "processes": [ "docker-proxy" ] },
+      { "proto": "tcp", "address": "127.0.0.1", "port": 5432, "processes": [ "postgres" ] },
+      { "proto": "udp", "address": "203.0.113.20", "interface": "eth0", "port": 68, "processes": [ "systemd-network" ] }
+    ],
+    "addresses": [
+      { "interface": "lo", "address": "127.0.0.1", "prefix": 8, "scope": "host" },
+      { "interface": "eth0", "address": "203.0.113.20", "prefix": 24, "scope": "global" },
+      { "interface": "eth0", "address": "2001:db8:200::20", "prefix": 64, "scope": "global" },
+      { "interface": "eth0", "address": "fe80::20", "prefix": 64, "scope": "link" }
+    ],
+    "addresses_source": "ip"
+  },
+  "collectors": [
+    { "name": "firewall", "status": "ok" },
+    { "name": "listeners", "status": "ok" }
+  ]
+}
