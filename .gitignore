@@ -1,0 +1,16 @@
+# Build output
+/stackward
+/dist/
+*.test
+*.out
+coverage.*
+
+# Local reports and fact dumps (may describe a real host)
+/report*.json
+/facts*.json
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
