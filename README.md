@@ -86,4 +86,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and
 [threat model](docs/threat-model.md) explains the safety rules. Report vulnerabilities privately
 as described in [SECURITY.md](SECURITY.md).
 
+Report a wrong verdict or propose a check with the
+[issue forms](https://github.com/Shironex/stackward/issues/new/choose).
+Participation is covered by the [code of conduct](CODE_OF_CONDUCT.md).
+
 Licensed under the [Apache License 2.0](LICENSE).
