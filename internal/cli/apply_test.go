@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Shironex/stackward/internal/apply"
 	"github.com/Shironex/stackward/internal/apply/applytest"
+	"github.com/Shironex/stackward/internal/facts"
 	"github.com/Shironex/stackward/internal/plan"
 	"github.com/Shironex/stackward/internal/report"
 )
@@ -53,6 +55,9 @@ func newApplyTest(t *testing.T) *applyTest {
 			session:  func() apply.Session { return apply.Session{} },
 			exe:      func() (string, error) { return applytest.Exe, nil },
 			sleep:    func(time.Duration) {},
+			// The lockout guard's live facts: a host with a second way
+			// in. Tests that need another host replace it.
+			liveFacts: func(context.Context) *facts.Facts { return applytest.GuardFacts(&facts.Facts{}) },
 		},
 	}
 }

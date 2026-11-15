@@ -67,6 +67,11 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 	if why, err := apply.StaleBootUnits(env.host, t); err != nil || why != "" {
 		return fail("%s; nothing was changed", errOr(err, why))
 	}
+	sess := env.session()
+	confirmFrom, err := proveLive(ctx, env, a.sel.Steps, sess, stdout)
+	if err != nil {
+		return fail("%v; nothing was changed", err)
+	}
 	base, err := apply.Preflight(ctx, env.host)
 	if err != nil {
 		return fail("%v; nothing was changed", err)
@@ -78,6 +83,9 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 	fmt.Fprintf(stdout, "   after the steps: sshd -t, the effective sshd -T values, and sshd still listening on %s\n", strings.Join(base.Ports, ", "))
 	fmt.Fprintf(stdout, "   a failed check rolls back at once\n")
 	fmt.Fprintf(stdout, "   confirm with stackward confirm from a NEW SSH session (this one is refused)\n")
+	if len(confirmFrom) > 0 {
+		fmt.Fprintf(stdout, "   that session must come over the way that stays: from %s\n", strings.Join(confirmFrom, ", "))
+	}
 	if ok, err := confirm(env, a.yes, stdout, fmt.Sprintf("\nApply %d access-critical step(s) in a transaction that rolls back in %s unless confirmed? [y/N] ", n, a.within)); !ok {
 		if err != nil {
 			return fail("%v; nothing was changed", err)
@@ -85,7 +93,6 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 		fmt.Fprintln(stdout, "stackward apply: not confirmed; nothing was changed")
 		return report.ExitError
 	}
-	sess := env.session()
 	fmt.Fprintf(stdout, "session:   %s\n", describeSession(sess))
 	exe, err := env.exe()
 	if err != nil {
@@ -100,7 +107,7 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 			HostRef:  report.Host{HostnameHash: report.HashHostname(a.hostname)},
 			Progress: func(format string, args ...any) { fmt.Fprintf(stdout, "  "+format+"\n", args...) },
 		},
-		ConfirmWithin: a.within, Session: sess, Exe: exe, Baseline: base,
+		ConfirmWithin: a.within, Session: sess, Exe: exe, Baseline: base, ConfirmFrom: confirmFrom,
 	})
 	if j == nil {
 		return fail("%v; nothing was changed", runErr)
@@ -126,6 +133,31 @@ From the provider console instead:   sudo stackward confirm --console %[1]s
 To roll back now:                    sudo stackward undo --transaction %[1]s
 `, txn.ID, txn.Deadline, a.within)
 	return report.ExitOK
+}
+
+// proveLive runs the lockout guard for steps that close or narrow a way
+// in, over facts read from this host now (the plan's may be stale) and
+// the applying session, and prints the proof. It returns the networks the
+// confirming session must come from.
+func proveLive(ctx context.Context, env applyEnv, steps []plan.Step, sess apply.Session, stdout io.Writer) ([]string, error) {
+	if !apply.NeedsProof(steps) {
+		return nil, nil
+	}
+	fmt.Fprintf(stdout, "\nlockout guard: proving a second way in from this host's live state (read only)...\n")
+	proofs, err := apply.GuardAccess(steps, env.liveFacts(ctx), sess)
+	if err != nil {
+		return nil, err
+	}
+	for i, p := range proofs {
+		if !p.Needed {
+			continue
+		}
+		fmt.Fprintf(stdout, "   %s %s\n", steps[i].ID, strings.Join(p.Narrows, ", "))
+		for _, w := range p.Ways {
+			fmt.Fprintf(stdout, "   second way in: %s\n", w)
+		}
+	}
+	return apply.ConfirmFrom(proofs), nil
 }
 
 // errOr is err's text, or why when err is nil.

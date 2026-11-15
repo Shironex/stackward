@@ -12,11 +12,13 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Shironex/stackward/internal/apply"
+	"github.com/Shironex/stackward/internal/facts"
 	"github.com/Shironex/stackward/internal/plan"
 	"github.com/Shironex/stackward/internal/report"
 	"github.com/Shironex/stackward/internal/version"
@@ -48,6 +50,9 @@ type applyEnv struct {
 	session func() apply.Session
 	exe     func() (string, error)
 	sleep   func(time.Duration)
+	// liveFacts reads the facts the lockout guard proves from (sshd,
+	// accounts, Tailscale, listeners, firewall) from the host, read only.
+	liveFacts func(ctx context.Context) *facts.Facts
 }
 
 func hostApplyEnv() applyEnv {
@@ -61,11 +66,27 @@ func hostApplyEnv() applyEnv {
 			fi, err := os.Stdin.Stat()
 			return err == nil && fi.Mode()&os.ModeCharDevice != 0
 		},
-		now:     time.Now,
-		session: func() apply.Session { return apply.ReadSession("/proc", os.Getpid(), os.Getenv) },
-		exe:     os.Executable,
-		sleep:   time.Sleep,
+		now:       time.Now,
+		session:   func() apply.Session { return apply.ReadSession("/proc", os.Getpid(), os.Getenv) },
+		exe:       os.Executable,
+		sleep:     time.Sleep,
+		liveFacts: guardFacts,
 	}
+}
+
+// guardCollectors are the collectors the lockout guard reads.
+var guardCollectors = []string{"ssh", "users", "tailscale", "listeners", "firewall"}
+
+// guardFacts runs the guard's collectors on this host. Apply writes, so
+// it runs without the Landlock sandbox, but the collectors only read.
+func guardFacts(ctx context.Context) *facts.Facts {
+	var cs []facts.Collector
+	for _, c := range facts.Collectors() {
+		if slices.Contains(guardCollectors, c.Name()) {
+			cs = append(cs, c)
+		}
+	}
+	return facts.Run(ctx, hostSystem(true), cs, facts.RunOptions{Timeout: facts.DefaultTimeout})
 }
 
 // stepFlags collects repeated --step values.

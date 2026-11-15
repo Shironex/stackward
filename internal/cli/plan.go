@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Shironex/stackward/internal/apply"
 	"github.com/Shironex/stackward/internal/audit"
 	"github.com/Shironex/stackward/internal/facts"
 	"github.com/Shironex/stackward/internal/plan"
@@ -100,8 +101,12 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var sys facts.System
+	var sess apply.Session
 	if loadedRep == nil && loaded == nil {
 		sys = hostSystem(pf.noSandbox)
+		// The lockout guard needs the planning session's source. Reading
+		// it walks /proc up to sshd, which the sandbox forbids.
+		sess = planSession()
 	}
 
 	sb := sandbox.Apply(sandbox.Options{Disabled: pf.noSandbox})
@@ -129,6 +134,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 
 	p := plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep)}, rep, plan.Options{
 		Version: version.String(), Sandbox: sb, SourceKind: planSource(pf),
+		Vetoes: []plan.Veto{plan.LockoutVeto(apply.GuardInput(f, sess))},
 	})
 
 	if outFile != nil {
@@ -149,6 +155,10 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	}
 	return report.ExitOK
 }
+
+// planSession reads the session plan runs in (a variable, so tests never
+// read the real /proc).
+var planSession = func() apply.Session { return apply.ReadSession("/proc", os.Getpid(), os.Getenv) }
 
 func planSource(pf planFlags) string {
 	switch {
