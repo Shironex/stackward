@@ -64,7 +64,7 @@
     is root on the host if compromised; a read only mount does not stop
     connecting to a socket; managed by Coolify as its proxy: expected, a
     platform default the panel does not let you change
-    [2mDKR-010 · critical[0m
+    [2mDKR-010 · critical, expected[0m
     [2mrule: [0m[2mNo container mounts the Docker socket[0m
     [2mfix:  [0mRemove the socket mount. If the container needs to read Docker state,
           put a socket proxy in front (for example tecnativa/docker-socket-proxy
