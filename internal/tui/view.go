@@ -227,8 +227,8 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 	it := m.items[r.item]
 	badge := fmt.Sprintf("%-7s", strings.ToUpper(string(it.Level)))
 	id := fmt.Sprintf("%-*s", idw, it.ID)
-	subj := shortSubject(it.Subject)
-	if namesSubject(it.Message, subj) {
+	subj := report.ShortSubject(it.Subject)
+	if report.NamesSubject(it.Message, subj) {
 		subj = "" // the sentence already starts with it
 	}
 	if subj != "" {
@@ -246,7 +246,7 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 		if subj != "" {
 			txt += subj + " · "
 		}
-		txt += rowText(it)
+		txt += report.Headline(it)
 		return st.selected.Render(fit(txt, w))
 	}
 	marker := "  "
@@ -261,41 +261,7 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 	if sel {
 		titleStyle = st.bold
 	}
-	return line + titleStyle.Render(rowText(it))
-}
-
-// rowText is what a list row says about a result: the result message, which
-// states what was found ("A container mounts the Docker socket"). The check
-// title states the good state and would read as the opposite of a fail, so
-// it is only the fallback for a result without a message; the detail pane
-// shows it as the rule.
-func rowText(it report.Item) string {
-	if it.Message != "" {
-		return it.Message
-	}
-	return it.Title
-}
-
-// namesSubject reports whether the message opens with the subject, so a row
-// can drop its subject column and give the sentence the room.
-func namesSubject(msg, subj string) bool {
-	if subj == "" {
-		return false
-	}
-	first, _, _ := strings.Cut(msg, " ")
-	return strings.TrimRight(first, ",:;") == subj
-}
-
-// shortSubject drops the kind prefix of a subject ("container:app/web"
-// gives "app/web") and hides the default "host".
-func shortSubject(s string) string {
-	if s == "" || s == "host" {
-		return ""
-	}
-	if _, rest, ok := strings.Cut(s, ":"); ok && rest != "" {
-		return rest
-	}
-	return s
+	return line + titleStyle.Render(report.Headline(it))
 }
 
 // emptyList explains an empty list and how to get results back.
