@@ -84,9 +84,28 @@
     ]
   },
   "fail2ban": { "installed": false },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "api": "ok",
+    "containers": [
+      {
+        "id": "cccccccccc01",
+        "name": "edge-proxy-1",
+        "image": "caddy:2.8.4",
+        "running": true,
+        "user": "caddy",
+        "ports": [
+          { "container_port": 80, "proto": "tcp", "host_ip": "0.0.0.0", "host_port": 80 },
+          { "container_port": 443, "proto": "tcp", "host_ip": "0.0.0.0", "host_port": 443 }
+        ]
+      }
+    ]
+  },
   "collectors": [
     { "name": "cloudflared", "status": "ok" },
     { "name": "crowdsec", "status": "ok" },
+    { "name": "docker", "status": "ok" },
     { "name": "fail2ban", "status": "ok" },
     { "name": "firewall", "status": "ok" },
     { "name": "listeners", "status": "ok" },

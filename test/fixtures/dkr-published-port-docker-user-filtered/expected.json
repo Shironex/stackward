@@ -58,8 +58,8 @@
     "fail": 0,
     "warn": 1,
     "unknown": 55,
-    "info": 4,
-    "pass": 39,
+    "info": 3,
+    "pass": 40,
     "skip": 16
   },
   "results": [
@@ -644,16 +644,17 @@
       "id": "NET-004",
       "group": "NET",
       "title": "Exposure: every listening socket and who can reach it",
-      "level": "info",
+      "level": "pass",
       "severity": "moderate",
       "subject": "port:tcp/5432",
-      "message": "tcp/5432 is a published container port on wildcard; DOCKER-USER has filtering rules (see DKR-001)",
+      "message": "tcp/5432 is a published container port on wildcard, but DOCKER-USER drops it (-A DOCKER-USER -i eth0 -m conntrack --ctstate NEW -j DROP) (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0",
           "::"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "no",
         "processes": [
           "docker-proxy"
         ],
