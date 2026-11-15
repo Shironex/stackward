@@ -262,3 +262,34 @@ func tamperCommand(t *testing.T, a *applyTest) {
 		t.Fatal(err)
 	}
 }
+
+func TestApplyAndUndoRefuseWhileAnotherRunHoldsTheLock(t *testing.T) {
+	a := newApplyTest(t)
+	const holder = "20260301T115959Z-aaaaaa"
+	release, err := apply.AcquireRunLock(a.env.host, holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, _, errs := a.apply("--all-safe", "--yes", a.plan)
+	if code != report.ExitError || !strings.Contains(errs, holder) || !strings.Contains(errs, "nothing was changed") {
+		t.Errorf("apply: exit %d: %s", code, errs)
+	}
+	code, _, errs = a.undo("--run", "20260301T120000Z-c11c11", "--yes")
+	if code != report.ExitError || !strings.Contains(errs, holder) {
+		t.Errorf("undo: exit %d: %s", code, errs)
+	}
+	assertUntouched(t, a)
+
+	// Released, the same run goes through, and it frees the lock again.
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, errs := a.apply("--all-safe", "--yes", a.plan); code != report.ExitOK {
+		t.Fatalf("exit %d: %s\n%s", code, out, errs)
+	}
+	again, err := apply.AcquireRunLock(a.env.host, "20260301T120100Z-bbbbbb")
+	if err != nil {
+		t.Fatalf("apply left the lock held: %v", err)
+	}
+	_ = again()
+}

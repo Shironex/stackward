@@ -119,6 +119,17 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if err := needRootOnLinux(env, "apply"); err != nil {
 		return fail("%v; nothing was changed", err)
 	}
+	runID := env.runID
+	if runID == "" {
+		runID = apply.NewRunID(env.now())
+	}
+	release, err := apply.AcquireRunLock(env.host, runID)
+	if err != nil {
+		return fail("%v; nothing was changed", err)
+	}
+	defer func() { _ = release() }()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	p, sum, err := loadPlan(planFile)
 	if err != nil {
 		return fail("%v", err)
@@ -161,10 +172,8 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 		return report.ExitError
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	j, runErr := apply.Execute(ctx, prepared, apply.Options{
-		Host: env.host, Version: version.String(), Now: env.now, RunID: env.runID,
+		Host: env.host, Version: version.String(), Now: env.now, RunID: runID,
 		Plan: apply.PlanRef{
 			File: planFile, SHA256: sum, Schema: p.Schema, ToolVersion: p.Tool.Version, GeneratedAt: p.GeneratedAt,
 		},
@@ -217,6 +226,11 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if err := needRootOnLinux(env, "undo"); err != nil {
 		return fail("%v; nothing was changed", err)
 	}
+	release, err := apply.AcquireRunLock(env.host, "undo of "+runID)
+	if err != nil {
+		return fail("%v; nothing was changed", err)
+	}
+	defer func() { _ = release() }()
 	j, err := apply.LoadJournal(env.host, runID)
 	if err != nil {
 		return fail("%v", err)

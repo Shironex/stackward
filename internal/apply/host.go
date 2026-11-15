@@ -38,6 +38,15 @@ type Host interface {
 	MkdirAll(p string, mode fs.FileMode) error
 	// Remove deletes the file p.
 	Remove(p string) error
+	// ReadDir lists the names in directory p, sorted; a missing directory
+	// is an empty list.
+	ReadDir(p string) ([]string, error)
+	// Lock takes the exclusive lock file p without waiting and writes
+	// holder into it. When another process holds it, the error is a
+	// *HeldError naming that holder. The lock is released by the returned
+	// function or when the process ends, so a file left by a dead process
+	// is not a lock. See lock.go.
+	Lock(p, holder string) (release func() error, err error)
 	// Run starts args[0] from the fixed PATH, without a shell.
 	Run(ctx context.Context, args []string) CmdResult
 }
@@ -255,6 +264,25 @@ func (h *dirHost) Remove(p string) error {
 		return err
 	}
 	return syncDir(filepath.Dir(rp))
+}
+
+func (h *dirHost) ReadDir(p string) ([]string, error) {
+	rp, err := h.real(p)
+	if err != nil {
+		return nil, err
+	}
+	ents, err := os.ReadDir(rp)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(ents))
+	for i, e := range ents {
+		names[i] = e.Name()
+	}
+	return names, nil
 }
 
 func (h *dirHost) Run(ctx context.Context, args []string) CmdResult {
