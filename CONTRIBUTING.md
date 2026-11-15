@@ -1,0 +1,41 @@
+# Contributing
+
+Thanks for helping. stackward is small on purpose; please read
+[docs/architecture.md](docs/architecture.md) before adding a collector or a
+check.
+
+## Ground rules
+
+- **Read only.** Collectors use `facts.System`, which has no write method.
+  Never write files, never send anything but GET to Docker, never run a
+  command that changes state, never read secret file contents.
+- **Unknown is never pass.** If a check cannot see what it needs, it returns
+  `unknown` with a reason.
+- **No real infrastructure in the repo.** Fixtures and docs use
+  `example.com`, the documentation ranges 192.0.2.0/24, 198.51.100.0/24,
+  203.0.113.0/24 and 2001:db8::/32, and 100.64.0.0/10 for tailnet examples.
+- **Minimal dependencies.** Users run this as root. Justify every new module
+  in the pull request.
+- **Check ids are forever.** A retired id is never reused.
+
+## Workflow
+
+```sh
+gofmt -l .                 # must print nothing
+go vet ./...
+golangci-lint run          # v2, config in .golangci.yml
+go test -race ./...
+go test ./test/ -update    # after an intended report change; review the diff
+```
+
+Commits follow `type(scope): lowercase summary`, for example
+`feat(checks): add ssh password auth check`. Scopes: cli, facts, checks,
+catalog, report, probe, tui, sandbox, redact, schema, docs, ci, build, deps,
+repo, test.
+
+## Turning a bug report into a fixture
+
+Ask the reporter for `stackward audit --dump-facts` (redacted, hostname
+hashed). Replace anything that still looks like real infrastructure with
+documentation values, save it as `test/fixtures/<scenario>/facts.json`, run
+`go test ./test/ -update` and review `expected.json`.
