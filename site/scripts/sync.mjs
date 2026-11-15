@@ -26,6 +26,7 @@ const CONTENT = join(SITE_DIR, 'src', 'content', 'docs');
 export const DOC_PAGES = [
   { source: 'install.md', page: 'install.md', route: 'install', sidebar: 'Install and verify' },
   { source: 'threat-model.md', page: 'project/threat-model.md', route: 'project/threat-model', sidebar: 'Threat model' },
+  { source: 'roadmap.md', page: 'project/roadmap.md', route: 'project/roadmap', sidebar: 'Roadmap' },
   { source: 'safety.md', page: 'project/safety.md', route: 'project/safety', sidebar: 'Safety design' },
   { source: 'architecture.md', page: 'contributing/architecture.md', route: 'contributing/architecture', sidebar: 'Architecture' },
 ];

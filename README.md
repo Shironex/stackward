@@ -282,12 +282,14 @@ could be inspected. It does not mean the server is secure.
 ## Roadmap
 
 - **v0.1:** the read only audit: the checks above, and signed releases.
-- **v0.2:** `stackward plan` and `stackward apply`. A plan file lists each
-  change with a diff, a risk class and how to undo it, and changes nothing.
-  Apply keeps backups and a journal; SSH, firewall and user changes run with
-  a rollback timer that only a new SSH session can confirm, and public SSH
-  is never closed without a proven second way in. The design is in
-  [docs/safety.md](docs/safety.md).
+- **v0.2:** `stackward plan` and `stackward apply`, with backups and a
+  rollback timer for SSH, firewall and user changes.
+- **v0.3 and later:** waivers, drift against a baseline, several hosts over
+  SSH, read only API modules and more platforms.
+
+The full plan, with a link to an issue for every item and the list of things
+stackward will not do, is in [docs/roadmap.md](docs/roadmap.md). The safety
+design is in [docs/safety.md](docs/safety.md).
 
 ## Contributing
 
