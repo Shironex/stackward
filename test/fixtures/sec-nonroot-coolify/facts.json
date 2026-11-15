@@ -1,0 +1,150 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "panel2.example.com",
+    "uid": 1000,
+    "euid": 1000,
+    "root": false
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-49-generic",
+    "installed": [
+      "6.8.0-45-generic",
+      "6.8.0-49-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "paas": {
+    "platforms": [
+      {
+        "name": "coolify",
+        "role": "unknown",
+        "data_root": "/data/coolify",
+        "evidence": [
+          "path:/data/coolify"
+        ],
+        "denied": [
+          "/data/coolify/source/docker-compose.yml",
+          "/data/coolify/proxy/dynamic",
+          "/data/coolify/proxy/caddy/dynamic",
+          "/data/coolify/backups"
+        ],
+        "backups": {
+          "dir": "/data/coolify/backups",
+          "readable": false,
+          "files": 0
+        }
+      }
+    ]
+  },
+  "secrets": {
+    "paas_env_files": {
+      "roots": [
+        "/data/coolify/applications",
+        "/data/coolify/services"
+      ],
+      "files": [],
+      "denied": [
+        "/data/coolify/applications",
+        "/data/coolify/services"
+      ]
+    },
+    "paas_main_env": {
+      "roots": [
+        "/data/coolify/source/.env"
+      ],
+      "files": [],
+      "denied": [
+        "/data/coolify/source/.env"
+      ]
+    },
+    "paas_ssh_keys": {
+      "roots": [
+        "/data/coolify/ssh/keys"
+      ],
+      "files": [],
+      "denied": [
+        "/data/coolify/ssh/keys"
+      ]
+    },
+    "proxy_dynamic": {
+      "roots": [],
+      "files": []
+    },
+    "private_keys": {
+      "roots": [
+        "/home/alice"
+      ],
+      "files": [
+        {
+          "path": "/home/alice/.ssh/id_ed25519",
+          "kind": "ssh",
+          "mode": "0644",
+          "uid": 1000,
+          "gid": 1000
+        },
+        {
+          "path": "/home/alice/tls/example.com.pem",
+          "kind": "pem",
+          "mode": "0644",
+          "uid": 1000,
+          "gid": 1000
+        }
+      ]
+    },
+    "docker_configs": {
+      "roots": [
+        "/home/alice"
+      ],
+      "files": [
+        {
+          "path": "/home/alice/.docker/config.json",
+          "kind": "docker",
+          "mode": "0644",
+          "uid": 1000,
+          "gid": 1000
+        }
+      ]
+    },
+    "world_writable": {
+      "roots": [
+        "/data/coolify"
+      ],
+      "files": [],
+      "denied": [
+        "/data/coolify"
+      ]
+    },
+    "backup_configs": {
+      "roots": [],
+      "files": []
+    },
+    "backup_tools": []
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "paas",
+      "status": "ok"
+    },
+    {
+      "name": "secrets",
+      "status": "ok"
+    }
+  ]
+}

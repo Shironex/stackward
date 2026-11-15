@@ -1,0 +1,73 @@
+{
+  "group": "SEC",
+  "checks": [
+    {
+      "id": "SEC-001",
+      "title": "Platform app .env files are readable by their owner only",
+      "severity": "high",
+      "rationale": "App and service .env files hold database passwords, API keys and tokens. Platforms rewrite them on every deploy, often as 0644, so any local user or compromised process can read every app's secrets. stackward reads only their mode, never their contents.",
+      "verify": "find /data/coolify/applications /data/coolify/services /etc/dokploy/applications /etc/dokploy/compose -name '.env*' -perm /044 -ls",
+      "fix": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy.",
+      "breaks": "A container that reads the file as a different user than its owner loses access; check the app still starts.",
+      "needs_root": true
+    },
+    {
+      "id": "SEC-002",
+      "title": "Platform main .env is not world readable",
+      "severity": "high",
+      "rationale": "The panel's own .env holds its app key, database and Redis passwords; with the app key an attacker can decrypt every stored server key and secret. It must not be world readable. It is mounted into the panel container, so plain 600 with the wrong owner can stop the panel from starting: keep the owner and group the platform set up.",
+      "verify": "stat -c '%a %U:%G' /data/coolify/source/.env",
+      "fix": "chmod o-rwx /data/coolify/source/.env and keep the owner and group the installer set (the documented install uses 9999:root and chmod 700).",
+      "breaks": "Changing the owner or making it 600 for another user can stop the panel from reading its config.",
+      "needs_root": true,
+      "docs": "https://coolify.io/docs/start-with-self-hosted"
+    },
+    {
+      "id": "SEC-003",
+      "title": "Platform SSH key folder is closed to other users",
+      "severity": "critical",
+      "rationale": "The platform keeps the private SSH keys of every server it manages in one folder, usually for root logins. Anyone who can read it owns every managed server.",
+      "verify": "stat -c '%a %U:%G' /data/coolify/ssh/keys; ls -l /data/coolify/ssh/keys",
+      "fix": "chmod 700 the folder and chmod 600 every key in it.",
+      "needs_root": true
+    },
+    {
+      "id": "SEC-004",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "severity": "moderate",
+      "rationale": "Traefik's file provider loads every .yml, .yaml and .toml file in its dynamic folder. A copy such as app.backup.yml is loaded as live config: old routers come back, duplicate names conflict, and a router removed on purpose is served again. Editor leftovers also show what was there before.",
+      "verify": "ls -la /data/coolify/proxy/dynamic /etc/dokploy/traefik/dynamic",
+      "fix": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder).",
+      "needs_root": true
+    },
+    {
+      "id": "SEC-005",
+      "title": "Private keys are readable by their owner only",
+      "severity": "high",
+      "rationale": "SSH private keys (~/.ssh/id_* without .pub), *.key and *.pem files under /root and /home give whoever reads them the identity they hold. OpenSSH refuses keys readable by others, but other programs do not, and a readable key is as good as a stolen one. A .pem may also be a public certificate; stackward cannot tell because it never reads contents.",
+      "verify": "find /root /home -maxdepth 4 \\( -name 'id_*' ! -name '*.pub' -o -name '*.key' -o -name '*.pem' \\) -perm /077 -ls",
+      "fix": "chmod 600 the key files (and 700 their folder).",
+      "needs_root": true
+    },
+    {
+      "id": "SEC-006",
+      "title": "Docker client config is readable by its owner only",
+      "severity": "moderate",
+      "rationale": "docker login stores registry credentials base64 encoded (not encrypted) in ~/.docker/config.json unless a credential helper is set. A group or world readable file hands out push and pull access to your registries.",
+      "verify": "stat -c '%a %U' /root/.docker/config.json /home/*/.docker/config.json",
+      "fix": "chmod 600 the file, and configure a credential helper so passwords are not stored in it.",
+      "needs_root": true,
+      "docs": "https://docs.docker.com/reference/cli/docker/login/#credential-stores"
+    },
+    {
+      "id": "SEC-007",
+      "title": "No world writable folders under the platform data root",
+      "severity": "high",
+      "rationale": "The platform data root holds compose files, proxy config and app sources that run as root or inside containers. A world writable folder there lets any local user plant config or code that the platform then deploys.",
+      "verify": "find /data/coolify /etc/dokploy -maxdepth 5 -type d -perm -0002 -ls",
+      "fix": "chmod o-w the folders.",
+      "breaks": "An app that writes there as an unrelated user needs a dedicated owner instead.",
+      "needs_root": true
+    }
+  ]
+}

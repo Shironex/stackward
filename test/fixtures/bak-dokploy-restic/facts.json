@@ -1,0 +1,171 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "swarm1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-49-generic",
+    "installed": [
+      "6.8.0-45-generic",
+      "6.8.0-49-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "paas": {
+    "platforms": [
+      {
+        "name": "dokploy",
+        "role": "unknown",
+        "data_root": "/etc/dokploy",
+        "evidence": [
+          "path:/etc/dokploy",
+          "path:/etc/dokploy/traefik/traefik.yml"
+        ],
+        "proxy_dynamic_dirs": [
+          "/etc/dokploy/traefik/dynamic"
+        ]
+      }
+    ]
+  },
+  "secrets": {
+    "paas_env_files": {
+      "roots": [
+        "/etc/dokploy/applications",
+        "/etc/dokploy/compose"
+      ],
+      "files": [
+        {
+          "path": "/etc/dokploy/compose/shop-x1y2/code/.env",
+          "kind": "env",
+          "mode": "0644",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        }
+      ]
+    },
+    "paas_main_env": {
+      "roots": [],
+      "files": []
+    },
+    "paas_ssh_keys": {
+      "roots": [
+        "/etc/dokploy/ssh"
+      ],
+      "files": [
+        {
+          "path": "/etc/dokploy/ssh",
+          "kind": "dir",
+          "mode": "0755",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        },
+        {
+          "path": "/etc/dokploy/ssh/remote_rsa",
+          "kind": "key",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        }
+      ]
+    },
+    "proxy_dynamic": {
+      "roots": [
+        "/etc/dokploy/traefik/dynamic"
+      ],
+      "files": [
+        {
+          "path": "/etc/dokploy/traefik/dynamic/dokploy.yml",
+          "kind": "config",
+          "mode": "0644",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        },
+        {
+          "path": "/etc/dokploy/traefik/dynamic/middlewares.yml",
+          "kind": "config",
+          "mode": "0644",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        }
+      ]
+    },
+    "private_keys": {
+      "roots": [
+        "/root"
+      ],
+      "files": []
+    },
+    "docker_configs": {
+      "roots": [
+        "/root"
+      ],
+      "files": []
+    },
+    "world_writable": {
+      "roots": [
+        "/etc/dokploy"
+      ],
+      "files": [
+        {
+          "path": "/etc/dokploy/compose/shop-x1y2/code/uploads",
+          "kind": "dir",
+          "mode": "0777",
+          "uid": 0,
+          "gid": 0,
+          "platform": "dokploy"
+        }
+      ]
+    },
+    "backup_configs": {
+      "roots": [
+        "/etc/restic"
+      ],
+      "files": [
+        {
+          "path": "/etc/restic",
+          "kind": "restic",
+          "mode": "0700",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "backup_tools": [
+      "restic"
+    ]
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "paas",
+      "status": "ok"
+    },
+    {
+      "name": "secrets",
+      "status": "ok"
+    }
+  ]
+}

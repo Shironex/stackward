@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-42 checks in the catalog.
+51 checks in the catalog.
 
 ## System (SYS)
 
@@ -73,6 +73,18 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [LOG-004](LOG-004.md) | info | A metrics agent is present |
 | [LOG-005](LOG-005.md) | moderate | The journal survives a reboot |
 
+## Secrets on disk (SEC)
+
+| Id | Severity | Check |
+|---|---|---|
+| [SEC-001](SEC-001.md) | high | Platform app .env files are readable by their owner only |
+| [SEC-002](SEC-002.md) | high | Platform main .env is not world readable |
+| [SEC-003](SEC-003.md) | critical | Platform SSH key folder is closed to other users |
+| [SEC-004](SEC-004.md) | moderate | No stray backup files in the proxy dynamic config folder |
+| [SEC-005](SEC-005.md) | high | Private keys are readable by their owner only |
+| [SEC-006](SEC-006.md) | moderate | Docker client config is readable by its owner only |
+| [SEC-007](SEC-007.md) | high | No world writable folders under the platform data root |
+
 ## Coolify and Dokploy (PAAS)
 
 | Id | Severity | Check |
@@ -82,3 +94,10 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [PAAS-003](PAAS-003.md) | high | Platform panel ports are not open to the world |
 | [PAAS-004](PAAS-004.md) | critical | No platform database is published publicly |
 | [PAAS-008](PAAS-008.md) | high | Docker Swarm ports are restricted to cluster peers |
+
+## Backups (BAK)
+
+| Id | Severity | Check |
+|---|---|---|
+| [BAK-001](BAK-001.md) | info | Platform database backups on the host |
+| [BAK-002](BAK-002.md) | info | Backup tools present |
