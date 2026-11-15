@@ -1,0 +1,156 @@
+{
+  "group": "DKR",
+  "checks": [
+    {
+      "id": "DKR-002",
+      "title": "Docker API is not on TCP without TLS",
+      "severity": "critical",
+      "rationale": "The Docker API is root on the host. A daemon listening on TCP (conventionally 2375) without tlsverify lets anyone who reaches the port start a privileged container that mounts the host filesystem. Scanners look for 2375 all day. Even a loopback listener gives every local user and every host network container root. stackward reads the hosts in daemon.json and the effective ExecStart of docker.service, and the listening sockets on 2375 and 2376 in /proc/net/tcp. This check can fail without access to the Docker socket.",
+      "verify": "grep -n hosts /etc/docker/daemon.json; systemctl cat docker | grep ExecStart; ss -tlnp | grep -E ':(2375|2376) '",
+      "fix": "Remove -H tcp:// from the unit and \"hosts\" from daemon.json. For remote access use DOCKER_HOST=ssh://user@host, or a socket proxy that allows only the GET endpoints needed. If TCP is truly needed, use 2376 with tlsverify and client certificates.",
+      "breaks": "Tools that reach the daemon over TCP (a remote CI runner, a monitoring agent) stop working until they move to SSH or a socket proxy.",
+      "docs": "https://docs.docker.com/engine/security/protect-access/"
+    },
+    {
+      "id": "DKR-003",
+      "title": "Docker socket is not world writable",
+      "severity": "critical",
+      "rationale": "Whoever can write to /var/run/docker.sock controls the daemon, which is root on the host. A world writable socket makes every local user, and every service account an attacker lands in, root. stackward reads the socket's metadata only. This check can fail without access to the Docker socket.",
+      "verify": "ls -l /var/run/docker.sock",
+      "fix": "Restore the default: chown root:docker /var/run/docker.sock && chmod 660 /var/run/docker.sock, then find what changed it (often a chmod 666 in a setup script or a unit override) and remove that.",
+      "breaks": "Users and services that relied on the open socket need to be in the docker group (which is also root equivalent) or use a socket proxy."
+    },
+    {
+      "id": "DKR-010",
+      "title": "No container mounts the Docker socket",
+      "severity": "critical",
+      "rationale": "A container with the Docker socket, or a folder that holds it (/var/run, /run, /var, /), can start a privileged container and own the host. A read only bind does not help: the socket accepts writes through it. Reverse proxies, PaaS agents and socket proxies need the socket and warn instead of failing, with the reason shown; they are still root on the host if compromised.",
+      "verify": "docker ps -q | xargs docker inspect --format '{{.Name}} {{range .Mounts}}{{.Source}} {{end}}' | grep -E 'docker.sock| /var/run | /run | /var | / '",
+      "fix": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+      "breaks": "Features that use the Docker API from inside the container (service discovery, auto updates, log shipping) stop until they use a socket proxy.",
+      "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-011",
+      "title": "Socket proxies do not allow writes",
+      "severity": "high",
+      "rationale": "A socket proxy is only a boundary if it refuses writes. With POST enabled, a client can create and start containers, which is root on the host; EXEC runs commands in any container. stackward reads only the permission flag names and boolean values from a socket proxy's environment, nothing else.",
+      "verify": "docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' <socket-proxy> | grep -E '^(POST|EXEC)='",
+      "fix": "Set POST=0 and EXEC=0, and enable only the read sections the client needs (for example CONTAINERS=1, NETWORKS=1). If a client truly needs writes, give it its own proxy with the narrowest flags and keep it off shared networks.",
+      "breaks": "Clients that start, stop or update containers through the proxy (auto updaters, PaaS agents) stop doing so.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-012",
+      "title": "No container mounts a sensitive host path",
+      "severity": "high",
+      "rationale": "A bind mount of /, /etc, /root, /home, /proc or /sys hands the container the host's users, keys, credentials or kernel interfaces. Writable, a compromised container can add a user or an SSH key and own the host; read only, it can still read every secret there.",
+      "verify": "docker inspect --format '{{.Name}} {{range .Mounts}}{{.Source}}:{{.Destination}}:{{.RW}} {{end}}' $(docker ps -aq)",
+      "fix": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume.",
+      "breaks": "Containers that read or manage host files through the mount (backup agents, monitoring) lose that access.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-020",
+      "title": "Containers do not run as root",
+      "severity": "high",
+      "rationale": "Root in a container is root on the host whenever something else goes wrong: a kernel bug, a mounted socket, a writable host path, an added capability. Docker reads Config.User like this: empty, root and any all zero uid are root, and only the user part of user:group decides. Root fails when the container is also privileged or reachable from outside (a port published on every interface, or a reverse proxy route).",
+      "verify": "docker inspect --format '{{.Name}} user={{.Config.User}}' $(docker ps -aq)",
+      "fix": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root.",
+      "breaks": "Images that write to root owned paths or bind ports below 1024 inside the container fail until ownership and ports are adjusted.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-021",
+      "title": "No privileged containers",
+      "severity": "critical",
+      "rationale": "A privileged container gets every capability, every device and no seccomp or AppArmor confinement. Escaping to the host is a documented one liner.",
+      "verify": "docker inspect --format '{{.Name}} privileged={{.HostConfig.Privileged}}' $(docker ps -aq)",
+      "fix": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices).",
+      "breaks": "Containers that manage hardware, networking or nested containers need the specific capabilities or devices added back.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-022",
+      "title": "No dangerous added capabilities",
+      "severity": "high",
+      "rationale": "SYS_ADMIN, SYS_PTRACE, SYS_MODULE and ALL each give a container a path to the host kernel or other processes. NET_ADMIN and NET_RAW let it change the network stack or forge packets, which matters on a shared network.",
+      "verify": "docker inspect --format '{{.Name}} {{.HostConfig.CapAdd}}' $(docker ps -aq)",
+      "fix": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for.",
+      "breaks": "Features that used the capability (VPN clients, packet capture, FUSE mounts) stop working.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-023",
+      "title": "No host network, PID or IPC namespace",
+      "severity": "high",
+      "rationale": "With the host PID namespace a container sees and can signal every host process; as root it can read their memory and environment. With the host network it binds directly on the host, bypasses Docker's network isolation and reaches every loopback service; as root it can also change the host's network. The host IPC namespace shares memory segments with host processes.",
+      "verify": "docker inspect --format '{{.Name}} net={{.HostConfig.NetworkMode}} pid={{.HostConfig.PidMode}} ipc={{.HostConfig.IpcMode}}' $(docker ps -aq)",
+      "fix": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host.",
+      "breaks": "Tools that monitor host processes or need host networking (some VPNs, node exporters) need another setup.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-024",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "severity": "moderate",
+      "rationale": "seccomp=unconfined and apparmor=unconfined remove the default filters that block most kernel escape techniques. no-new-privileges stops setuid binaries inside a container from gaining privileges, which closes a common escalation step for a container reachable from outside.",
+      "verify": "docker inspect --format '{{.Name}} {{.HostConfig.SecurityOpt}}' $(docker ps -aq)",
+      "fix": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers.",
+      "breaks": "Images that rely on setuid binaries (sudo, ping in old images) at run time fail with no-new-privileges.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-030",
+      "title": "Projects do not share networks",
+      "severity": "high",
+      "rationale": "Containers on one user network reach each other by name on every port. When projects share a network, a compromise of one app reaches the others, and fails when a peer is a database (postgres, mysql, mariadb, mongo, redis, valkey, clickhouse) that usually trusts its network. Projects come from the Coolify project label, the compose project or the swarm stack; plain containers are their own project. The reverse proxy joins every project network by design and is left out; the default bridge is not judged.",
+      "verify": "docker network ls; docker network inspect <network> --format '{{range .Containers}}{{.Name}} {{end}}'",
+      "fix": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one.",
+      "breaks": "Apps that reached another project's service by container name need an explicit, narrow connection (a shared network for just those two, or a published port).",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-031",
+      "title": "Container logs rotate",
+      "severity": "moderate",
+      "rationale": "The default json-file log driver keeps every line forever. A chatty or crash looping container fills the disk, and a full disk takes every service down in a way that looks like an application bug.",
+      "verify": "cat /etc/docker/daemon.json; docker info --format '{{.LoggingDriver}}'",
+      "fix": "Set {\"log-driver\":\"json-file\",\"log-opts\":{\"max-size\":\"10m\",\"max-file\":\"3\"}} in /etc/docker/daemon.json (or use the local driver) and restart Docker. Existing containers keep their old settings until they are recreated.",
+      "breaks": "Restarting Docker restarts containers without live-restore; old log lines beyond the limit are discarded.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-032",
+      "title": "Infrastructure containers run pinned images",
+      "severity": "low",
+      "rationale": "The reverse proxy, the tunnel connector and CrowdSec sit in front of everything. On :latest or no tag, a pull or a recreate silently changes their version, which can break routing or protection at a random moment and makes it impossible to tell which version is running.",
+      "verify": "docker ps --format '{{.Names}} {{.Image}}'",
+      "fix": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out.",
+      "breaks": "Nothing until the next upgrade, which becomes a deliberate step.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-033",
+      "title": "Docker manages the firewall",
+      "severity": "moderate",
+      "rationale": "With iptables: false Docker no longer writes the NAT and filter rules for its networks. Depending on the host's own rules, published ports then either silently stop working or end up wide open, and container traffic may not be masqueraded.",
+      "verify": "grep -n iptables /etc/docker/daemon.json; systemctl cat docker | grep -- --iptables",
+      "fix": "Know why it was set. Usually remove \"iptables\": false and filter published ports in the DOCKER-USER chain or with ufw-docker instead.",
+      "breaks": "Hand written firewall rules that replaced Docker's may conflict with the rules Docker adds back.",
+      "needs_root": true
+    },
+    {
+      "id": "DKR-034",
+      "title": "Docker Engine is supported upstream",
+      "severity": "moderate",
+      "rationale": "A Docker Engine release line past its end of support gets no security fixes, including fixes for container escapes. stackward ships a table of end of support dates (from endoflife.date, docker-engine) and compares it with the audit date; a line newer than the table counts as supported.",
+      "verify": "docker version --format '{{.Server.Version}}'",
+      "fix": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
+      "breaks": "An engine upgrade restarts the daemon and, without live-restore, every container.",
+      "docs": "https://endoflife.date/docker-engine",
+      "needs_root": true
+    }
+  ]
+}

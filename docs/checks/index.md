@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-65 checks in the catalog.
+80 checks in the catalog.
 
 ## System (SYS)
 
@@ -60,6 +60,26 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [NET-007](NET-007.md) | high | ufw-docker is loaded and lets tailnet traffic reach published ports |
 | [NET-008](NET-008.md) | high | ufw-docker is not paired with Docker's nftables backend |
 | [NET-009](NET-009.md) | info | Provider firewall (outside view) |
+
+## Docker (DKR)
+
+| Id | Severity | Check |
+|---|---|---|
+| [DKR-002](DKR-002.md) | critical | Docker API is not on TCP without TLS |
+| [DKR-003](DKR-003.md) | critical | Docker socket is not world writable |
+| [DKR-010](DKR-010.md) | critical | No container mounts the Docker socket |
+| [DKR-011](DKR-011.md) | high | Socket proxies do not allow writes |
+| [DKR-012](DKR-012.md) | high | No container mounts a sensitive host path |
+| [DKR-020](DKR-020.md) | high | Containers do not run as root |
+| [DKR-021](DKR-021.md) | critical | No privileged containers |
+| [DKR-022](DKR-022.md) | high | No dangerous added capabilities |
+| [DKR-023](DKR-023.md) | high | No host network, PID or IPC namespace |
+| [DKR-024](DKR-024.md) | moderate | Containers keep seccomp and AppArmor, and public ones set no-new-privileges |
+| [DKR-030](DKR-030.md) | high | Projects do not share networks |
+| [DKR-031](DKR-031.md) | moderate | Container logs rotate |
+| [DKR-032](DKR-032.md) | low | Infrastructure containers run pinned images |
+| [DKR-033](DKR-033.md) | moderate | Docker manages the firewall |
+| [DKR-034](DKR-034.md) | moderate | Docker Engine is supported upstream |
 
 ## Updates (UPD)
 
