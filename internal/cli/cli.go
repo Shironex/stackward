@@ -165,13 +165,18 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	var sys facts.System
+	if loaded == nil {
+		sys = hostSystem(af.noSandbox)
+	}
+
 	sb := sandbox.Apply(sandbox.Options{Disabled: af.noSandbox})
 
 	f := loaded
 	if f == nil {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		f = facts.Run(ctx, facts.NewHostSystem(), facts.Collectors(), facts.RunOptions{Timeout: af.timeout})
+		f = facts.Run(ctx, sys, facts.Collectors(), facts.RunOptions{Timeout: af.timeout})
 	}
 
 	if af.dumpFacts {
@@ -202,6 +207,19 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		return report.ExitError
 	}
 	return rep.ExitCode(failOn)
+}
+
+// hostSystem returns the System the collectors read the live host
+// through. Call it right before sandbox.Apply: when the sandbox will be
+// applied it first takes the read only socket ownership snapshot, because
+// afterwards Landlock hides every other process's /proc/<pid>/fd and so
+// which process holds which socket (see facts.SocketOwners).
+func hostSystem(noSandbox bool) facts.System {
+	sys := facts.System(facts.NewHostSystem())
+	if noSandbox {
+		return sys // ss -p names the owners itself
+	}
+	return facts.WithSocketOwners(sys, facts.SnapshotSocketOwners("/proc", facts.DefaultSnapshotLimits))
 }
 
 func loadFacts(path string) (*facts.Facts, error) {
