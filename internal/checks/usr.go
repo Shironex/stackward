@@ -316,5 +316,5 @@ func checkRootPassword(in Input) []Result {
 	case "NP":
 		return One(Info, "root has no password set (see USR-002); recovery is the provider console or rescue mode", ev)
 	}
-	return One(Info, "root has a password: it works on the console and for su; keep it in a password manager", ev)
+	return One(Info, "root has a password set; it works on the console and for su, keep it in a password manager", ev)
 }
