@@ -6,8 +6,12 @@
 #   crash, the tool must not fail, and the report must say it ran without
 #   root. The docker group reaches the Docker socket, so the DKR checks are
 #   still judged (and correctly so: the group is root equivalent).
-# - As a fresh system user with no groups: every check the catalog marks
-#   needs_root must never pass.
+# - As a fresh system user with no groups: no check the catalog marks
+#   needs_root may pass blind. needs_root means "may be unknown without
+#   root", not "never passes": on some images every sshd file is world
+#   readable, so a pass from the files is legitimate. The rule compares
+#   with a root audit of the same host: a pass without root is a false pass
+#   only when root judges it fail or warn, or it says "not inspected".
 
 # shellcheck source=test/scenarios/bad-docker.sh
 . "$SCENARIOS_DIR/bad-docker.sh"
@@ -48,17 +52,12 @@ scenario_verify() {
 	expect check "$REPORT" DKR-021 container:sw-priv fail
 
 	user_audit non-root-plain sudo -u "$NONROOT_USER" "$NONROOT_BIN_DIR/stackward"
-	# USR-003 needs root to judge a default cloud account that exists, but
-	# "no such account exists" comes from /etc/passwd, which every user
-	# reads, so its pass is real.
-	local strict=() id
-	for id in "${ids[@]}"; do
-		[ "$id" = USR-003 ] || strict+=("$id")
-	done
-	expect none "$REPORT" pass "${strict[@]}"
+	local plain="$REPORT"
+	audit non-root-as-root
+	expect nofalsepass "$plain" "$REPORT" "${ids[@]}"
+	REPORT="$plain"
 	expect check "$REPORT" DKR-021 '.*' unknown
 	expect check "$REPORT" NET-001 host unknown
-	expect check "$REPORT" SSH-001 host 'unknown|skip'
 }
 
 scenario_cleanup() {

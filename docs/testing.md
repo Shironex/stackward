@@ -29,7 +29,7 @@ specific checks and subjects.
 | `ufw` | UFW deny by default, SSH allowed only from 192.0.2.0/24, a published container port | the firewall collector is ok under the sandbox, NET-001 passes, NET-002 to NET-008 are judged (not unknown), DKR-001 fails on the published port |
 | `ssh` | an sshd drop-in with `PasswordAuthentication yes`, then a hardened one | SSH-001 fails, then passes; the drop-in is removed afterwards |
 | `read-only` | the `bad-docker` containers, UFW active and a process listening on a custom port | nothing changes on the host during an audit with and without the sandbox, strace sees no write attempt outside `--out` (the socket ownership snapshot taken before the sandbox included), and under the sandbox the snapshot names the owner of the custom port |
-| `non-root` | the `bad-docker` containers | as a user, no collector crashes and the report says it ran without root; as a user with no groups, no check marked `needs_root` passes |
+| `non-root` | the `bad-docker` containers | as a user, no collector crashes and the report says it ran without root; as a user with no groups, no check marked `needs_root` passes blind: a pass without root must not be a fail or warn in a root audit of the same host, nor say "not inspected" |
 
 CI runs every scenario on `ubuntu-24.04` and `ubuntu-22.04` runners
 (`.github/workflows/scenarios.yml`) for pull requests that touch `internal/`,
@@ -37,6 +37,20 @@ CI runs every scenario on `ubuntu-24.04` and `ubuntu-22.04` runners
 listed in the job summary and as an annotation, with the expected and the
 actual level and the check's message, and the reports, traces and diffs are
 uploaded as an artifact.
+
+### The non-root rule
+
+`needs_root` in the catalog means a check "may report unknown without
+root", not "can never pass". Some runner images make every sshd file
+readable by any user, so SSH-001 can pass from the files, and USR-003 passes
+when no default cloud account exists, which `/etc/passwd` shows to everyone.
+The scenario therefore tests the real promise, that no check passes without
+having inspected what it needs, by running a root audit of the same host
+beside the one for the user with no groups (`assert.sh nofalsepass`). A pass
+without root is a false pass when the root audit judges the same id and
+subject fail or warn, or when its message says "not inspected". The summary
+line counts the passes compared and names any false pass with its root
+level. There are no per check exemptions.
 
 ### The read-only check
 
