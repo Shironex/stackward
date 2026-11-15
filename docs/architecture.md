@@ -31,6 +31,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/catalog` | embedded `data/<group>.json`, loader, group order |
 | `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (stub) |
 | `internal/report` | `report.v1` types, `Build`, text and JSON renderers, exit codes |
+| `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
 | `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
