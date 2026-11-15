@@ -390,3 +390,17 @@ func TestBuildIsDeterministic(t *testing.T) {
 		t.Error("two builds over the same input differ")
 	}
 }
+
+// The default registry holds no test-only step: those are registered by
+// tests and the scenario binary only (package txntest), and no real step
+// is access-critical yet.
+func TestDefaultRegistryHasNoTestAccessSteps(t *testing.T) {
+	for _, g := range Generators() {
+		if g.Risk == AccessCritical {
+			t.Errorf("access-critical step %s in the default registry; add it to cmd/stackward's realAccessCritical once it is a real step", g.ID)
+		}
+		if strings.HasPrefix(g.ID, "txn-test") {
+			t.Errorf("test step %s in the default registry", g.ID)
+		}
+	}
+}
