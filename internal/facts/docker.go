@@ -39,8 +39,10 @@ type Docker struct {
 	Info    *DockerInfo    `json:"info,omitempty"`
 	// Daemon is what daemon.json and the systemd unit configure.
 	Daemon *DockerDaemon `json:"daemon,omitempty"`
-	// TCP lists sockets listening on the Docker ports 2375 and 2376, from
-	// /proc/net/tcp and tcp6. Nil with TCPRead false means not read.
+	// TCP and TCPRead are kept so facts files written by older builds
+	// still load. The collector no longer fills them: DKR-002 reads the
+	// Docker ports from the shared listener facts, and falls back to these
+	// only when a saved facts file has no listeners.
 	TCP     []DockerTCPListener `json:"tcp,omitempty"`
 	TCPRead bool                `json:"tcp_read"`
 
@@ -108,7 +110,8 @@ type DockerHost struct {
 	Source string `json:"source"`
 }
 
-// DockerTCPListener is a socket listening on a Docker port.
+// DockerTCPListener is a socket listening on a Docker port (older facts
+// files only; see Docker.TCP).
 type DockerTCPListener struct {
 	Port int `json:"port"`
 	// Bind is "loopback", "any" or "specific".
@@ -178,12 +181,10 @@ type DockerNetwork struct {
 // Paths the docker collector reads. Socket candidates are tried in order;
 // the rootless socket is /run/user/<uid>/docker.sock.
 var (
-	dockerSockets      = []string{"/var/run/docker.sock", "/run/docker.sock"}
-	dockerDaemonJSON   = "/etc/docker/daemon.json"
-	dockerUnitFiles    = []string{"/etc/systemd/system/docker.service", "/run/systemd/system/docker.service", "/usr/lib/systemd/system/docker.service", "/lib/systemd/system/docker.service"}
-	dockerDropInDirs   = []string{"/etc/systemd/system/docker.service.d", "/run/systemd/system/docker.service.d", "/usr/lib/systemd/system/docker.service.d"}
-	dockerProcNetFiles = []string{"/proc/net/tcp", "/proc/net/tcp6"}
-	dockerTCPPorts     = map[int]bool{2375: true, 2376: true}
+	dockerSockets    = []string{"/var/run/docker.sock", "/run/docker.sock"}
+	dockerDaemonJSON = "/etc/docker/daemon.json"
+	dockerUnitFiles  = []string{"/etc/systemd/system/docker.service", "/run/systemd/system/docker.service", "/usr/lib/systemd/system/docker.service", "/lib/systemd/system/docker.service"}
+	dockerDropInDirs = []string{"/etc/systemd/system/docker.service.d", "/run/systemd/system/docker.service.d", "/usr/lib/systemd/system/docker.service.d"}
 )
 
 // keptLabels are the container labels stackward keeps: the ones that group
@@ -226,8 +227,7 @@ func init() {
 func (dockerCollector) Name() string    { return "docker" }
 func (dockerCollector) NeedsRoot() bool { return false }
 
-// Collect reads socket metadata, daemon config files and /proc/net/tcp
-// through sys, then the Engine API (GET only) through the socket. Without
+// Collect reads socket metadata and daemon config files through sys, then the Engine API (GET only) through the socket. Without
 // access to the socket, API is "denied" and checks report unknown.
 func (c dockerCollector) Collect(ctx context.Context, sys System, out *Facts) error {
 	d := &Docker{}
@@ -249,7 +249,6 @@ func (c dockerCollector) Collect(ctx context.Context, sys System, out *Facts) er
 	}
 
 	d.Daemon = readDaemonConfig(sys)
-	d.TCP, d.TCPRead = readDockerTCP(sys)
 
 	_, lookErr := sys.LookPath("dockerd")
 	_, etcErr := sys.ReadDir("/etc/docker")
@@ -754,60 +753,4 @@ func unitLines(b []byte) []string {
 		out = append(out, cur.String())
 	}
 	return out
-}
-
-// readDockerTCP lists LISTEN sockets on the Docker ports. ok is false when
-// neither file could be read.
-func readDockerTCP(sys System) (ls []DockerTCPListener, ok bool) {
-	seen := map[DockerTCPListener]bool{}
-	for _, f := range dockerProcNetFiles {
-		b, err := sys.ReadFile(f)
-		if err != nil {
-			continue
-		}
-		ok = true
-		sc := bufio.NewScanner(bytes.NewReader(b))
-		for sc.Scan() {
-			fields := strings.Fields(sc.Text())
-			if len(fields) < 4 || fields[3] != "0A" { // 0A is LISTEN
-				continue
-			}
-			addr, portHex, found := strings.Cut(fields[1], ":")
-			if !found {
-				continue
-			}
-			port, err := strconv.ParseUint(portHex, 16, 16)
-			if err != nil || !dockerTCPPorts[int(port)] {
-				continue
-			}
-			l := DockerTCPListener{Port: int(port), Bind: procNetBind(addr)}
-			if !seen[l] {
-				seen[l] = true
-				ls = append(ls, l)
-			}
-		}
-	}
-	sort.Slice(ls, func(i, j int) bool {
-		if ls[i].Port != ls[j].Port {
-			return ls[i].Port < ls[j].Port
-		}
-		return ls[i].Bind < ls[j].Bind
-	})
-	return ls, ok
-}
-
-// procNetBind classifies a hex address from /proc/net/tcp*: the kernel
-// prints each 32 bit word in host (little endian) order.
-func procNetBind(hex string) string {
-	switch {
-	case strings.Trim(hex, "0") == "":
-		return "any"
-	case len(hex) == 8 && strings.HasSuffix(hex, "7F"):
-		return "loopback"
-	case len(hex) == 32 && hex == "00000000000000000000000001000000":
-		return "loopback"
-	case len(hex) == 32 && strings.HasPrefix(hex, "0000000000000000FFFF0000") && strings.HasSuffix(hex, "7F"):
-		return "loopback"
-	}
-	return "specific"
 }
