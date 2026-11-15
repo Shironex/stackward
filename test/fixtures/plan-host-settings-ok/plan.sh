@@ -1,0 +1,17 @@
+#!/bin/sh
+# stackward plan as a shell script (stackward.plan.v1, stackward test).
+# Host: sha256:ce3272f20761ac2e  Ubuntu 24.04.1 LTS. Source: facts file, report by stackward test, facts from 2026-03-01T12:00:00Z.
+#
+# stackward never runs this script. Read every step, then run it as root
+# on the host it was planned for. Each step first checks that the files
+# it changes still hold what the audit saw, and stops otherwise. Opt in
+# steps are commented out at the bottom: remove the "# " to run one.
+set -eu
+
+# Not planned:
+# journald-cap (passing): LOG-001 already passes or does not apply
+# sysctl-hardening (passing): KRN-002, KRN-003 and KRN-004 already pass or
+# do not apply
+# docker-log-rotation (passing): DKR-031 already passes or does not apply
+
+echo "stackward: the plan has no steps; nothing to do"

@@ -1,0 +1,77 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "app3.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "journal": {
+    "storage": "auto",
+    "persistent_dir": false,
+    "persistent": false,
+    "disk_usage_checked": true,
+    "disk_usage_bytes": 3221225472,
+    "proxy_logs": [],
+    "agents": []
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "27.5.1",
+      "api_version": "1.47",
+      "os": "linux",
+      "arch": "amd64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": false,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp_read": false,
+    "networks": []
+  },
+  "collectors": [
+    {
+      "name": "docker",
+      "status": "ok"
+    },
+    {
+      "name": "journal",
+      "status": "ok"
+    },
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "sysctl",
+      "status": "failed",
+      "error": "no value readable under /proc/sys"
+    }
+  ]
+}

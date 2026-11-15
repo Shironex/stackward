@@ -1,0 +1,36 @@
+stackward plan: nothing on this host was changed
+host:      sha256:cc24e0cbf4b08870  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     1 planned (0 safe, 1 networking, 0 access-critical), 1 opt in, 2 not planned
+restarts:  docker
+
+1. docker-log-rotation  [networking]  fixes DKR-031
+   Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json
+   opt in: applied only when selected by id
+   create   /etc/docker/daemon.json (0644)
+            checked first with: dockerd --validate --config-file <new file>
+            --- /dev/null
+            +++ b/etc/docker/daemon.json
+            @@ -0,0 +1,7 @@
+            +{
+            +  "log-driver": "json-file",
+            +  "log-opts": {
+            +    "max-size": "10m",
+            +    "max-file": "3"
+            +  }
+            +}
+   run      systemctl restart docker
+            # load the new log settings
+   restarts docker
+   note     Restarting Docker stops and starts every container unless live-restore is on; containers without a restart policy stay stopped.
+   note     The limits apply to containers created after the restart; recreate running containers (for example docker compose up -d --force-recreate) to rotate their logs.
+   undo     Remove daemon.json, which did not exist before, and restart Docker.
+            rm -f /etc/docker/daemon.json
+            systemctl restart docker
+
+Not planned:
+  journald-cap         passing  LOG-001 already passes or does not apply
+  sysctl-hardening     unknown  KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

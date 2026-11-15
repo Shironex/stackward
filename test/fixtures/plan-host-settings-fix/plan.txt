@@ -1,0 +1,80 @@
+stackward plan: nothing on this host was changed
+host:      sha256:88fcffd365f6d89e  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     3 planned (2 safe, 1 networking, 0 access-critical), 1 opt in, 0 not planned
+restarts:  systemd-journald, docker
+
+1. journald-cap  [safe]  fixes LOG-001
+   Cap the persistent journal at 1G with a journald drop-in
+   create   /etc/systemd/journald.conf.d/90-stackward-journal-cap.conf (0644)
+            --- /dev/null
+            +++ b/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf
+            @@ -0,0 +1,5 @@
+            +# Written by stackward: plan step journald-cap, fixes LOG-001.
+            +# Caps the persistent journal. Remove this file and restart
+            +# systemd-journald to undo.
+            +[Journal]
+            +SystemMaxUse=1G
+   run      systemctl restart systemd-journald
+            # load the new limit; journald vacuums older files down to it
+   restarts systemd-journald
+   note     Restarting systemd-journald drops no running service; journal files older than the 1G limit are deleted.
+   undo     Remove the drop-in and restart systemd-journald; the journal may then grow to the default limit again. Journal files already vacuumed are gone.
+            rm -f /etc/systemd/journald.conf.d/90-stackward-journal-cap.conf
+            systemctl restart systemd-journald
+
+2. sysctl-hardening  [safe]  fixes KRN-002, KRN-003, KRN-004
+   Set the kernel hardening values with a sysctl drop-in
+   create   /etc/sysctl.d/90-stackward-hardening.conf (0644)
+            --- /dev/null
+            +++ b/etc/sysctl.d/90-stackward-hardening.conf
+            @@ -0,0 +1,7 @@
+            +# Written by stackward: plan step sysctl-hardening, fixes KRN-002, KRN-003, KRN-004.
+            +# Hardening values only: net.ipv4.ip_forward and the other settings
+            +# Docker needs are never set here. Remove this file to undo at the
+            +# next boot.
+            +net.ipv4.conf.all.rp_filter = 2
+            +net.ipv4.conf.all.accept_redirects = 0
+            +kernel.kptr_restrict = 1
+   run      sysctl -p /etc/sysctl.d/90-stackward-hardening.conf
+            # apply this drop-in now, and only this file, not the whole sysctl.d tree
+   note     /etc/sysctl.conf sets kernel.kptr_restrict = 0 and is read after this drop-in, so the old value returns at boot; change it there by hand.
+   note     /etc/ufw/sysctl.conf sets net.ipv4.conf.all.log_martians=0 (want 1) and ufw applies it again on every enable and reload; this step leaves that file alone.
+   undo     Remove the drop-in so the old values return at the next boot, and set the old running values now.
+            rm -f /etc/sysctl.d/90-stackward-hardening.conf
+            sysctl -w net.ipv4.conf.all.rp_filter=1
+            sysctl -w net.ipv4.conf.all.accept_redirects=1
+            sysctl -w kernel.kptr_restrict=0
+
+3. docker-log-rotation  [networking]  fixes DKR-031
+   Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json
+   opt in: applied only when selected by id
+   replace  /etc/docker/daemon.json
+            checked first with: dockerd --validate --config-file <new file>
+            --- a/etc/docker/daemon.json
+            +++ b/etc/docker/daemon.json
+            @@ -4,9 +4,12 @@
+                 "https://mirror.example.com"
+               ],
+               "log-opts": {
+            -    "labels": "com.docker.compose.project"
+            +    "labels": "com.docker.compose.project",
+            +    "max-size": "10m",
+            +    "max-file": "3"
+               },
+               "features": {
+                 "buildkit": true
+            -  }
+            +  },
+            +  "log-driver": "json-file"
+             }
+   run      systemctl restart docker
+            # load the new log settings
+   restarts docker
+   note     Restarting Docker stops and starts every container unless live-restore is on; containers without a restart policy stay stopped.
+   note     The limits apply to containers created after the restart; recreate running containers (for example docker compose up -d --force-recreate) to rotate their logs.
+   undo     Put the previous daemon.json back (its content is the old side of this step's diff; apply also keeps a copy under /var/backups/stackward/<run-id>/) and restart Docker.
+            systemctl restart docker
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.
