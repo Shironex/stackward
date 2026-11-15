@@ -8,6 +8,20 @@ import (
 	"github.com/Shironex/stackward/internal/profile"
 )
 
+// netPublish is Docker facts with one container publishing tcp port on all
+// interfaces.
+func netPublish(port int) *facts.Docker {
+	return &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
+		Name: "app", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: port, ContainerPort: port, Proto: "tcp"}},
+	}}}
+}
+
+// netDockerUserDefault marks the DOCKER-USER chain as present without filtering rules.
+func netDockerUserDefault(fw *facts.Firewall) *facts.Firewall {
+	fw.DockerUser = "default"
+	return fw
+}
+
 func netSock(proto, addr string, port int, procs ...string) facts.Listener {
 	return facts.Listener{Proto: proto, Address: addr, Port: port, Processes: procs}
 }
@@ -159,7 +173,7 @@ func TestNET004(t *testing.T) {
 		"port:tcp/22": Info, "port:tcp/5432": Info, "port:tcp/6379": Warn,
 		"port:tcp/9100": Pass, "port:tcp/8000": Info, "port:udp/68": Info,
 	}
-	rs := netRun(t, "NET-004", Input{Facts: &facts.Facts{Listeners: l, Firewall: netUFW("deny", netSSHAnywhere)}})
+	rs := netRun(t, "NET-004", Input{Facts: &facts.Facts{Listeners: l, Docker: netPublish(6379), Firewall: netDockerUserDefault(netUFW("deny", netSSHAnywhere))}})
 	if len(rs) != len(want) {
 		t.Fatalf("got %d results: %+v", len(rs), rs)
 	}
@@ -186,10 +200,25 @@ func TestNET004(t *testing.T) {
 	// DOCKER-USER filtering turns the published port into info.
 	fw := netUFW("deny")
 	fw.DockerUser = "filtered"
+	rs = netRun(t, "NET-004", Input{Facts: &facts.Facts{Listeners: l, Docker: netPublish(6379), Firewall: fw}})
+	for _, r := range rs {
+		if r.Subject == "port:tcp/6379" && r.Level != Unknown {
+			t.Errorf("DOCKER-USER rules that cannot be read stay unknown: %s %s", r.Level, r.Message)
+		}
+	}
+	// Without the Docker API the container port is unknown: with nothing
+	// filtering forwarded traffic the port is open anyway, with DOCKER-USER
+	// rules it stays unknown.
+	rs = netRun(t, "NET-004", Input{Facts: &facts.Facts{Listeners: l, Firewall: netDockerUserDefault(netUFW("deny"))}})
+	for _, r := range rs {
+		if r.Subject == "port:tcp/6379" && r.Level != Warn {
+			t.Errorf("published port without Docker API, nothing filters: %s %s", r.Level, r.Message)
+		}
+	}
 	rs = netRun(t, "NET-004", Input{Facts: &facts.Facts{Listeners: l, Firewall: fw}})
 	for _, r := range rs {
-		if r.Subject == "port:tcp/6379" && r.Level != Info {
-			t.Errorf("filtered DOCKER-USER: %s %s", r.Level, r.Message)
+		if r.Subject == "port:tcp/6379" && r.Level != Unknown {
+			t.Errorf("published port without Docker API, DOCKER-USER filtered: %s %s", r.Level, r.Message)
 		}
 	}
 	netCases(t, "NET-004", []netCase{
@@ -208,7 +237,7 @@ func TestExposureContainerPortWithoutProcessNames(t *testing.T) {
 	docker := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
 		Name: "sw-web", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 8080, Proto: "tcp"}},
 	}}}
-	f := &facts.Facts{Listeners: l, Firewall: netUFW("deny", netSSHAnywhere), Docker: docker}
+	f := &facts.Facts{Listeners: l, Firewall: netDockerUserDefault(netUFW("deny", netSSHAnywhere)), Docker: docker}
 	if r := netOne(t, "NET-004", f, ""); r.Level != Warn || !strings.Contains(r.Message, "published container port") {
 		t.Errorf("container port without process names: %s (%s), want warn", r.Level, r.Message)
 	}
@@ -228,7 +257,7 @@ func TestExposureDockerdHoldsPublishedPort(t *testing.T) {
 	docker := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
 		Name: "sw-web", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 8080, Proto: "tcp"}},
 	}}}
-	f := &facts.Facts{Listeners: l, Firewall: netUFW("deny", netSSHAnywhere), Docker: docker}
+	f := &facts.Facts{Listeners: l, Firewall: netDockerUserDefault(netUFW("deny", netSSHAnywhere)), Docker: docker}
 	if r := netOne(t, "NET-004", f, ""); r.Level != Warn || !strings.Contains(r.Message, "published container port") {
 		t.Errorf("dockerd holds a published port: %s (%s), want warn", r.Level, r.Message)
 	}

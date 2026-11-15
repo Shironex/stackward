@@ -871,12 +871,13 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/8000",
-      "message": "tcp/8000 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/8000 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "dockerd"
         ],

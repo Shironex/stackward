@@ -63,12 +63,14 @@ func TestCF003(t *testing.T) {
 		{"tunnel unknown", &facts.Facts{Cloudflared: cfHidden, Listeners: published}, "", Unknown},
 		{"listeners missing", &facts.Facts{Cloudflared: cfTunnel(2)}, "", Unknown},
 		{"loopback publish", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: loopback, Firewall: netUFW("deny")}, "", Pass},
-		{"wildcard publish under ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Firewall: netUFW("deny")}, "", Fail},
-		{"wildcard publish, DOCKER-USER filtered", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Firewall: filtered}, "", Unknown},
+		{"wildcard publish under ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Docker: proxy443, Firewall: netDockerUserDefault(netUFW("deny"))}, "", Fail},
+		{"wildcard publish, DOCKER-USER filtered", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Docker: proxy443, Firewall: filtered}, "", Unknown},
+		{"wildcard publish, no Docker API, nothing filters", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Firewall: netDockerUserDefault(netUFW("deny"))}, "", Fail},
+		{"wildcard publish, no Docker API, DOCKER-USER filtered", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: published, Firewall: filtered}, "", Unknown},
 		{"host proxy blocked by ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx, Firewall: netUFW("deny")}, "", Pass},
 		{"host proxy allowed by ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx, Firewall: netUFW("deny", netWebAnywhere)}, "", Fail},
 		{"host proxy, firewall unknown", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx}, "", Unknown},
-		{"dockerd holds a published 443 under ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: byDockerd, Firewall: netUFW("deny"), Docker: proxy443}, "", Fail},
+		{"dockerd holds a published 443 under ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: byDockerd, Firewall: netDockerUserDefault(netUFW("deny")), Docker: proxy443}, "", Fail},
 	})
 }
 
