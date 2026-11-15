@@ -1,37 +1,91 @@
 ---
 /**
  * Real stackward output in a terminal panel. The text is captured from the
- * CLI (see src/samples/), never typed by hand; level words are coloured, and
- * stay readable without colour.
+ * CLI (see src/samples/), never typed by hand. It is parsed into rows so long
+ * lines wrap under the message column; the panel never scrolls sideways.
+ * Level words are coloured and stay readable without colour.
  */
+import { compact, parseReport } from '../lib/report.mjs';
+
 interface Props {
   /** The command shown on the prompt line. */
   command: string;
-  /** Raw output text. */
+  /** Raw report text. */
   output: string;
   /** What the reader is looking at, for the caption and screen readers. */
   caption: string;
+  /** Show a short excerpt: three findings and a trimmed header. */
+  brief?: boolean;
+  /** A link shown after the caption. */
+  more?: { href: string; label: string };
 }
-const { command, output, caption } = Astro.props;
+const { command, output, caption, brief = false, more } = Astro.props;
 
-const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const html = escape(output.trimEnd())
-  .split('\n')
-  .map((line) =>
-    line
-      .replace(/^(\s{2})(PASS|WARN|FAIL|UNKNOWN|SKIP|INFO)(\s+)([A-Z]{2,4}-\d{3})/, (_m, a, lvl, b, id) => `${a}<span class="t-${lvl.toLowerCase()}">${lvl}</span>${b}<span class="t-id">${id}</span>`)
-      .replace(/^(\s+)(fix:)/, '$1<span class="t-dim">$2</span>')
-      .replace(/^([a-z]+:)(\s)/, '<span class="t-dim">$1</span>$2')
-      .replace(/^([A-Z]{2,4})(\s\s)(.+)$/, '<span class="t-group">$1$2$3</span>'),
-  )
-  .join('\n');
+const full = parseReport(output);
+const report = brief ? compact(full, { keys: ['host', 'profile', 'coverage'], levels: ['fail', 'warn', 'unknown'] }) : full;
+const levelWord = (level: string) => level.toUpperCase();
 ---
 
-<figure class="terminal not-content">
+<figure class:list={['terminal', 'not-content', { 'terminal-brief': brief }]}>
   <div class="terminal-bar" aria-hidden="true">
     <span class="terminal-dots"><i></i><i></i><i></i></span>
   </div>
-  <pre tabindex="0" role="region" aria-label={`Terminal output: ${command}`}><span class="t-prompt" aria-hidden="true">$ </span><span class="t-cmd">{command}</span>
-<Fragment set:html={html} /></pre>
-  <figcaption>{caption}</figcaption>
+  <div class="t-screen" role="group" aria-label={`Terminal output: ${command}`}>
+    <p class="t-line"><span class="t-prompt" aria-hidden="true">$ </span><span class="t-cmd">{command}</span></p>
+    {!brief && <p class="t-line t-dim">{report.title}</p>}
+    {
+      report.header.length > 0 && (
+        <div class="t-head">
+          {report.header.map((h) => (
+            <>
+              <span class="t-dim">{h.key ? `${h.key}:` : ''}</span>
+              <span>{h.value}</span>
+            </>
+          ))}
+        </div>
+      )
+    }
+    {
+      report.groups.map((g) => (
+        <section class="t-group-block">
+          {g.id && (
+            <h3 class="t-group">
+              {g.id} <span>{g.name}</span>
+              {g.note && <span class="t-dim"> ({g.note})</span>}
+            </h3>
+          )}
+          {g.findings.map((f) => (
+            <div class="t-row">
+              <span class={`t-level t-${f.level}`}>{levelWord(f.level)}</span>
+              <span class="t-id">{f.id}</span>
+              <div class="t-body">
+                <p class="t-title">
+                  {f.target && <span class="t-dim">{f.target} </span>}
+                  {f.title}
+                  {f.severity && <span class="t-dim"> [{f.severity}]</span>}
+                </p>
+                {f.message.map((m) => (
+                  <p class="t-msg">{m}</p>
+                ))}
+                {f.fix && (
+                  <p class="t-fix">
+                    <span class="t-dim">fix:</span> {f.fix}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </section>
+      ))
+    }
+    {
+      report.summary && (
+        <p class="t-line t-summary">
+          <span class="t-dim">summary:</span> {report.summary}
+        </p>
+      )
+    }
+    {report.footer.map((l) => <p class="t-line t-dim">{l}</p>)}
+  </div>
+  <figcaption>{caption}{more && <>{' '}<a href={more.href}>{more.label}</a></>}</figcaption>
 </figure>

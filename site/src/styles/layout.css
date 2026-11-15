@@ -402,7 +402,17 @@
     columns: 1;
   }
 
-  .terminal pre {
+  .t-screen {
     font-size: 0.75rem;
+    padding: 0.875rem 0.875rem 1rem;
+  }
+
+  .t-row {
+    grid-template-columns: 8ch minmax(0, 1fr);
+  }
+
+  .t-body {
+    grid-column: 1 / -1;
+    padding-inline-start: 2ch;
   }
 }

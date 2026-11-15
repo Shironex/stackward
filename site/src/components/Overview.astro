@@ -58,9 +58,11 @@ const levels = [
     </div>
     <div class="home-hero-term">
       <Terminal
+        brief
         command="sudo stackward audit"
         output={sample}
-        caption="Real output of a build of main, run over the saved facts of the showcase-coolify-tunnel test fixture. An excerpt: the groups shown are whole, the others are left out, and the version is shortened. That fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run."
+        caption="Real output, an excerpt: the showcase-coolify-tunnel test fixture, cut to a trimmed header, three of its findings and the summary."
+        more={{ href: `${url('usage')}#reading-a-report`, label: 'See a full report.' }}
       />
     </div>
   </section>
