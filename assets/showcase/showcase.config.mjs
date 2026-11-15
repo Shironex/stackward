@@ -13,8 +13,9 @@ import { fileURLToPath } from 'node:url';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
-// Brand palette (assets/brand/README.md). The report colors only the result
-// word: red fail, yellow warn, magenta unknown, cyan info, green pass.
+// Brand palette (assets/brand/README.md). The report colors the result marks,
+// section labels and counts: red fail, yellow warn, magenta unknown, cyan
+// info, green pass.
 const ink = '#102b2b';
 const paper = '#f3f6f1';
 const mint = '#72d6bc';
@@ -30,6 +31,12 @@ const ansi = [ink, fail, mint, warn, info, muted, info, paper];
 const fixture = here('../../test/fixtures/showcase-coolify-tunnel/');
 
 const typed = (command) => `${command}{Enter}`;
+
+// The audit still shows the start of the report: it runs in a terminal tall
+// enough for the whole report, and crop.mjs keeps the prompt, the header,
+// the summary box and the first two fails.
+export const auditRows = 130;
+export const auditKeepRows = 42;
 
 // Clip steps that type a command one key per frame, then press Enter.
 const typeOut = (command) => [...command].map((c) => ({ keys: c })).concat({ sleep: 300 }, { keys: '{Enter}' });
@@ -66,9 +73,12 @@ export default defineConfig({
     {
       id: 'audit',
       title: 'stackward audit',
-      alt: 'A terminal showing the end of a stackward audit report for a Coolify host: info lines for logs and backups, failures for an open SSH key folder and a panel port open to the world, one unknown, and the summary line with 4 fail, 5 warn and 3 unknown.',
-      keys: typed('stackward audit --facts facts.json'),
-      waitFor: 'explain any check with',
+      alt: 'A terminal showing the start of a stackward audit report for a Coolify host: the header, a summary box with 4 fail, 5 warn, 3 unknown, 17 info, 143 pass and 9 skip, the four fails most severe first and the commands to dig in, then the first two fails with their rule and fix.',
+      nav: async (tty) => {
+        await tty.resize(140, auditRows);
+        await tty.press(typed('stackward audit --facts facts.json'));
+        await tty.waitForText('explain any check with');
+      },
     },
     {
       id: 'explain',
@@ -102,7 +112,7 @@ export default defineConfig({
     {
       id: 'audit-run',
       title: 'stackward audit',
-      alt: 'An animation: stackward audit runs over a saved facts file and prints its report ending in the summary, then stackward explain PAAS-003 prints why the open panel port matters and how to fix it.',
+      alt: 'An animation: stackward audit runs over a saved facts file and prints its report, from the summary box to the compact info list, then stackward explain PAAS-003 prints why the open panel port matters and how to fix it.',
       steps: [
         { sleep: 600 },
         ...typeOut('stackward audit --facts facts.json'),
