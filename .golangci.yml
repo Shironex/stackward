@@ -1,0 +1,39 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+  settings:
+    errcheck:
+      exclude-functions:
+        # Writes to stdout and stderr; a failing terminal is not actionable.
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+    gosec:
+      excludes:
+        # G204: commands are run through facts.System.Run with a fixed PATH
+        # and no shell; arguments come from collectors, not users.
+        - G204
+        # G304: reading files named by a variable is the job of an auditor
+        # (collector paths, --facts); System has no write method.
+        - G304
+  exclusions:
+    rules:
+      # Tests plant fake secrets and write temp files on purpose.
+      - path: _test\.go
+        linters:
+          - gosec
+formatters:
+  enable:
+    - gofmt

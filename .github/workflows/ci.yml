@@ -1,0 +1,98 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.x"
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt formatted:"; echo "$unformatted"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.x"
+      - name: go test -race
+        run: go test -race ./...
+      - name: sandbox test (cgo free, as released)
+        # The race detector needs cgo, and Landlock on all threads needs a
+        # cgo free build, so the real sandbox test runs separately.
+        env:
+          CGO_ENABLED: "0"
+        run: go test -count=1 -v -run TestApplyConfinesProcess ./internal/sandbox/
+      - name: cross build
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH=$arch go build -trimpath -o "dist/stackward-linux-$arch" ./cmd/stackward
+          done
+          file dist/*
+      - name: self audit on the runner
+        run: |
+          set -euo pipefail
+          bin=dist/stackward-linux-amd64
+          "$bin" version
+          set +e
+          "$bin" audit --all; code=$?
+          set -e
+          echo "audit as user exited $code"
+          [ "$code" -le 1 ]
+          set +e
+          sudo "$bin" audit --json > report.json; code=$?
+          set -e
+          echo "audit as root exited $code"
+          [ "$code" -le 1 ]
+          grep -A4 '"sandbox"' report.json
+          if grep -q '"state": "failed"' report.json; then
+            echo "sandbox failed to apply"; exit 1
+          fi
+
+  gitleaks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
