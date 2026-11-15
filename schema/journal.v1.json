@@ -128,6 +128,65 @@
       "items": {
         "$ref": "#/$defs/step"
       }
+    },
+    "transaction": {
+      "description": "Optional. Present when the run was an access-critical transaction (its run id is the transaction id). The state file /var/lib/stackward/transaction.json (schema/transaction.v1.json) is the authority; this copy stays with the run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "deadline",
+        "timer_unit",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "description": "open: applied and validated, waiting for stackward confirm. confirmed: the change stays. rolled-back: undone by the timer, a failed check, a failed step or stackward undo --transaction. rollback-failed: the undo failed part way. aborted: the timer could not be armed and nothing changed.",
+          "enum": [
+            "open",
+            "confirmed",
+            "rolled-back",
+            "rollback-failed",
+            "aborted"
+          ]
+        },
+        "deadline": {
+          "description": "When the rollback timer fires, RFC 3339 UTC.",
+          "type": "string"
+        },
+        "timer_unit": {
+          "description": "The transient systemd units (NAME.timer and NAME.service).",
+          "type": "string"
+        },
+        "confirmed_at": {
+          "type": "string"
+        },
+        "confirmed_via": {
+          "enum": [
+            "new-ssh-session",
+            "console"
+          ]
+        },
+        "rolled_back_at": {
+          "type": "string"
+        },
+        "cause": {
+          "description": "Why it rolled back: timer (no confirm before the deadline), validation (a check after the steps failed), apply-failed (a step failed), manual (stackward undo --transaction).",
+          "enum": [
+            "timer",
+            "validation",
+            "apply-failed",
+            "manual"
+          ]
+        },
+        "checks": {
+          "description": "The checks run after the steps: sshd -t, sshd -T and ss.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -264,11 +323,12 @@
       ],
       "properties": {
         "kind": {
-          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). command: a step command after the edits. undo: run by stackward undo.",
+          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). command: a step command after the edits. undo: run by stackward undo. check: a transaction check after the steps ran (sshd -t, sshd -T, ss).",
           "enum": [
             "validate",
             "command",
-            "undo"
+            "undo",
+            "check"
           ]
         },
         "args": {
