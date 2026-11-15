@@ -174,6 +174,48 @@ func TestListenersCollectorSS(t *testing.T) {
 	}
 }
 
+// TestListenersCollectorSandboxHidesProcesses: under the Landlock sandbox
+// ss runs as root but cannot read /proc/<pid>/fd of processes outside the
+// sandbox, so it prints every socket without an owner (seen on an Ubuntu
+// 24.04 runner). That must not claim process names were visible.
+func TestListenersCollectorSandboxHidesProcesses(t *testing.T) {
+	sys := newFakeSystem(nil)
+	sys.host.Root = true
+	sys.cmds["ss -Htulnp"] = CmdResult{Stdout: []byte(
+		"tcp   LISTEN 0      4096          0.0.0.0:22         0.0.0.0:*\n" +
+			"tcp   LISTEN 0      4096          0.0.0.0:8080       0.0.0.0:*\n")}
+	var out Facts
+	if err := (listenersCollector{}).Collect(context.Background(), sys, &out); err != nil {
+		t.Fatal(err)
+	}
+	if l := out.Listeners; l.ProcessesVisible || len(l.Sockets) != 2 {
+		t.Fatalf("root without any process name must not be visible: %+v", l)
+	}
+}
+
+func TestPublishedByContainer(t *testing.T) {
+	d := &Docker{API: "ok", Containers: []DockerContainer{{Name: "web", Ports: []DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 80}}}}}
+	cases := []struct {
+		name string
+		l    Listener
+		d    *Docker
+		want bool
+	}{
+		{"docker-proxy holds it", Listener{Proto: "tcp", Port: 9000, Processes: []string{"docker-proxy"}}, nil, true},
+		{"no owner, a container publishes it", Listener{Proto: "tcp", Port: 8080}, d, true},
+		{"no owner, other protocol", Listener{Proto: "udp", Port: 8080}, d, false},
+		{"no owner, other port", Listener{Proto: "tcp", Port: 8081}, d, false},
+		{"another process owns it", Listener{Proto: "tcp", Port: 8080, Processes: []string{"nginx"}}, d, false},
+		{"no owner, Docker API not read", Listener{Proto: "tcp", Port: 8080}, &Docker{API: "denied"}, false},
+		{"no owner, no Docker facts", Listener{Proto: "tcp", Port: 8080}, nil, false},
+	}
+	for _, c := range cases {
+		if got := c.l.PublishedByContainer(c.d); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
 func TestListenersCollectorProcFallback(t *testing.T) {
 	sys := newFakeSystem(map[string]string{
 		"/proc/net/tcp":      procTCP,

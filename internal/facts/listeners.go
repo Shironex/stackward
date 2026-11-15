@@ -22,8 +22,9 @@ type Listeners struct {
 	// parsing when ss is missing; no process names then).
 	Source string `json:"source"`
 	// ProcessesVisible is true when process names of every user could be
-	// seen (ss run as root). Without root only the caller's own processes
-	// are named, so an empty Processes list proves nothing.
+	// seen (ss run as root, and it named at least one owner). Without root
+	// only the caller's own processes are named, and under the Landlock
+	// sandbox none are, so an empty Processes list proves nothing.
 	ProcessesVisible bool       `json:"processes_visible"`
 	Sockets          []Listener `json:"sockets"`
 	// Addresses are the interface addresses. Nil means they could not be
@@ -114,6 +115,34 @@ func (l Listener) HasProcess(name string) bool {
 	return false
 }
 
+// PublishedByContainer reports whether a container publishes the
+// listener's port: docker-proxy holds it, or no process name is known for
+// the socket and a container the Docker API listed publishes the same
+// protocol and port. Process names are missing without root and under the
+// Landlock sandbox, which scopes ptrace access and so stops ss from reading
+// other processes' /proc/<pid>/fd; the Docker API still says which ports
+// containers publish.
+func (l Listener) PublishedByContainer(d *Docker) bool {
+	if l.HasProcess("docker-proxy") {
+		return true
+	}
+	if len(l.Processes) > 0 || d == nil || d.API != "ok" {
+		return false
+	}
+	for _, c := range d.Containers {
+		for _, p := range c.Ports {
+			proto := p.Proto
+			if proto == "" {
+				proto = "tcp"
+			}
+			if p.HostPort == l.Port && proto == l.Proto {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // HasGlobalIPv6 reports whether a global unicast IPv6 address (not ULA,
 // link local or Tailscale's range) is configured.
 // The second result is false when addresses were not read.
@@ -157,7 +186,7 @@ func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) e
 			errs = append(errs, perr)
 		}
 		l.Source, l.Sockets = "ss", socks
-		l.ProcessesVisible = sys.Identity().Root
+		l.ProcessesVisible = sys.Identity().Root && anyProcess(socks)
 	default:
 		if err == nil {
 			err = fmt.Errorf("ss exited %d: %s", res.ExitCode, firstLine(res.Stderr))
@@ -191,6 +220,19 @@ func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) e
 	sortListeners(l.Sockets)
 	out.Listeners = l
 	return errors.Join(errs...)
+}
+
+// anyProcess reports whether ss named the owner of at least one socket.
+// Run as root it names nearly every one; none at all means the names were
+// hidden (the Landlock sandbox stops ss from reading /proc/<pid>/fd of
+// processes outside it), so an empty Processes list proves nothing.
+func anyProcess(socks []Listener) bool {
+	for _, s := range socks {
+		if len(s.Processes) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func sortListeners(ls []Listener) {

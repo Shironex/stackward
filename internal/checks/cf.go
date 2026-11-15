@@ -128,7 +128,7 @@ func webExposure(f *facts.Facts) (tri, []string, string) {
 		for _, s := range g.socks {
 			if s.Class().Exposed() {
 				isExposed = true
-				if s.HasProcess("docker-proxy") {
+				if s.PublishedByContainer(f.Docker) {
 					docker = true
 				}
 			}

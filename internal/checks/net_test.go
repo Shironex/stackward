@@ -198,6 +198,27 @@ func TestNET004(t *testing.T) {
 	})
 }
 
+// TestExposureContainerPortWithoutProcessNames: under the Landlock sandbox
+// ss names no process, so docker-proxy cannot be seen. A wildcard socket on
+// a port a container publishes is still a published container port that
+// UFW's input rules do not filter, not a socket UFW blocks (a false pass
+// seen on an Ubuntu 24.04 runner).
+func TestExposureContainerPortWithoutProcessNames(t *testing.T) {
+	l := &facts.Listeners{Source: "ss", Sockets: []facts.Listener{netSock("tcp", "0.0.0.0", 8080)}}
+	docker := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
+		Name: "sw-web", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 8080, Proto: "tcp"}},
+	}}}
+	f := &facts.Facts{Listeners: l, Firewall: netUFW("deny", netSSHAnywhere), Docker: docker}
+	if r := netOne(t, "NET-004", f, ""); r.Level != Warn || !strings.Contains(r.Message, "published container port") {
+		t.Errorf("container port without process names: %s (%s), want warn", r.Level, r.Message)
+	}
+	// Without the Docker API the socket is judged by UFW as before.
+	f.Docker = &facts.Docker{Installed: true, API: "denied"}
+	if r := netOne(t, "NET-004", f, ""); r.Level != Pass {
+		t.Errorf("no Docker API: %s (%s), want pass", r.Level, r.Message)
+	}
+}
+
 func TestNET005(t *testing.T) {
 	withWeb := &facts.Facts{Firewall: netUFW("deny", netWebAnywhere, netSSHTailnet)}
 	clean := &facts.Facts{Firewall: netUFW("deny", netSSHTailnet)}
