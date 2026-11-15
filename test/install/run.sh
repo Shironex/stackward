@@ -136,6 +136,7 @@ inst uninstall --prefix "$P" --yes --dry-run
 check "uninstall dry run leaves the binary" test -x "$P/bin/stackward"
 inst uninstall --prefix "$P" --yes
 check "uninstall exits 0" exit_is 0
+check "uninstall summary hints at the shell path cache" out_has 'hash -r'
 check "uninstall leaves nothing, not even the prefix we created" gone "$P"
 inst uninstall --prefix "$P" --yes
 check "uninstall when absent exits 0" exit_is 0
@@ -219,6 +220,43 @@ P="$T/p7"
 NO_COLOR=1 inst install --prefix "$P" --yes
 check "NO_COLOR gives plain output" out_lacks "$ESC"
 rm -rf "$P"
+
+# tty_ask ANSWERS...: run `install.sh install` on a terminal and type each
+# answer after a short pause (script gives the run a pty, so confirm asks).
+tty_ask() {
+	_prefix=$1
+	shift
+	{
+		for _a in "$@"; do
+			sleep 1
+			printf '%s\n' "$_a"
+		done
+		sleep 1
+	} | if script --version 2>&1 | grep -q util-linux; then
+		script -qec "sh '$INSTALL' install --prefix '$_prefix'" /dev/null >"$T/out" 2>"$T/err"
+	else
+		script -q /dev/null sh "$INSTALL" install --prefix "$_prefix" >"$T/out" 2>"$T/err"
+	fi
+	if [ -e "$_prefix/bin/stackward" ]; then rc=0; else rc=1; fi
+}
+
+echo "== prompt answers"
+P="$T/p9"
+tty_ask "$P" t y
+check "an unknown answer is asked again, then yes installs" ver_is "$P/bin/stackward" 0.0.2
+check "the unknown answer is not taken as yes" out_has "Please answer y or n"
+inst uninstall --prefix "$P" --yes
+P="$T/p10"
+tty_ask "$P" t x "?"
+check "three unknown answers install nothing" gone "$P"
+check "three unknown answers say so" out_has "no answer understood; nothing was changed"
+P="$T/p11"
+tty_ask "$P" n
+check "n declines" gone "$P"
+check "n says cancelled" out_has "install cancelled"
+P="$T/p12"
+tty_ask "$P" ""
+check "Enter takes the default yes" ver_is "$P/bin/stackward" 0.0.2
 
 if command -v wget >/dev/null 2>&1; then
 	echo "== wget"
