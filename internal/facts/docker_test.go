@@ -115,8 +115,8 @@ func TestDockerCollectorRecorded(t *testing.T) {
 	if len(d.Daemon.Hosts) != 2 || d.Daemon.Hosts[1].Addr != "tcp://0.0.0.0:2375" {
 		t.Fatalf("hosts %+v", d.Daemon.Hosts)
 	}
-	if !d.TCPRead || len(d.TCP) != 1 || d.TCP[0] != (DockerTCPListener{Port: 2375, Bind: "any"}) {
-		t.Fatalf("tcp %+v", d.TCP)
+	if d.TCPRead || d.TCP != nil {
+		t.Fatalf("the docker collector must leave the Docker ports to the listeners collector: %+v", d.TCP)
 	}
 	if len(d.Containers) != 5 || len(d.Networks) != 4 {
 		t.Fatalf("containers %d networks %d", len(d.Containers), len(d.Networks))
@@ -255,18 +255,6 @@ func TestParseVolumeSpec(t *testing.T) {
 	for spec, want := range cases {
 		if got := ParseVolumeSpec(spec); got != want {
 			t.Errorf("%q: got %+v, want %+v", spec, got, want)
-		}
-	}
-}
-
-func TestProcNetBind(t *testing.T) {
-	for hex, want := range map[string]string{
-		"00000000": "any", "0100007F": "loopback", "0200A8C0": "specific",
-		"00000000000000000000000000000000": "any", "00000000000000000000000001000000": "loopback",
-		"0000000000000000FFFF00000100007F": "loopback",
-	} {
-		if got := procNetBind(hex); got != want {
-			t.Errorf("%s: got %s, want %s", hex, got, want)
 		}
 	}
 }
