@@ -1,0 +1,70 @@
+---
+/** Every check in the catalog, by group in report order. Built from the catalog at build time. */
+import { catalog, checkUrl } from '../lib/catalog.mjs';
+import { topicsForCheck } from '../lib/learn.mjs';
+import { url } from '../lib/site.mjs';
+
+const groups = catalog.groups.filter((g) => g.checks.length > 0);
+const empty = catalog.groups.filter((g) => g.checks.length === 0);
+const byId = new Map(catalog.checks.map((c) => [c.id, c]));
+---
+
+<div class="check-table not-content">
+  {
+    groups.map((group) => (
+      <section aria-labelledby={`group-${group.id}`}>
+        <h2 id={`group-${group.id}`}>
+          <span class="group-id">{group.id}</span> {group.name}
+        </h2>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Id</th>
+              <th scope="col">Check</th>
+              <th scope="col">Severity</th>
+              <th scope="col">Learn</th>
+            </tr>
+          </thead>
+          <tbody>
+            {group.checks.map((id) => {
+              const c = byId.get(id)!;
+              const topic = topicsForCheck(id)[0];
+              return (
+                <tr>
+                  <td>
+                    <a href={checkUrl(id)}>
+                      <code class="check-id">{id}</code>
+                    </a>
+                  </td>
+                  <td>{c.title}</td>
+                  <td>
+                    <span class={`sev sev-${c.severity}`}>{c.severity}</span>
+                  </td>
+                  <td>{topic ? <a href={url(`learn/${topic.slug}`)}>{topic.short}</a> : <span class="muted">none yet</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+    ))
+  }
+  {
+    empty.length > 0 && (
+      <section aria-labelledby="group-coming">
+        <h2 id="group-coming">Groups still being built</h2>
+        <p>
+          These groups are declared in the catalog and have no checks yet. Their checks appear here as each part of v0.1 lands.
+        </p>
+        <p class="group-planned">
+          {empty.map((g, i) => (
+            <>
+              <span class="group-id">{g.id}</span> {g.name}
+              {i < empty.length - 1 ? ', ' : '.'}
+            </>
+          ))}
+        </p>
+      </section>
+    )
+  }
+</div>
