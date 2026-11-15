@@ -28,6 +28,9 @@ under the Landlock sandbox (no file writes, no TCP on ABI 4+) a command that
 tries to write fails, its collector ends `partial`, and the checks that need
 it say `unknown`. CI runs the real binary as root with the sandbox on and
 fails when a collector reports a command that exited non zero under it.
+The [live host scenarios](testing.md#the-read-only-check) go further: they
+trace a whole audit and every command it starts with strace, with and
+without the sandbox, and fail on any write attempt outside `--out`.
 `TestCommandTableListsEveryCommand` fails when a collector runs a command
 this table does not list.
 
@@ -41,13 +44,13 @@ this table does not list.
 | `ip -j addr show` | listeners | no | netlink |
 | `sshd -T` | ssh | no | parses the config and host keys; checks `/run/sshd` exists, does not create it |
 | `systemctl show`, `systemctl is-active`, `systemctl is-enabled` | ssh, updates, tailscale, cloudflared | no | D-Bus queries to systemd |
-| `timedatectl show` | clock | no | D-Bus query |
+| `timedatectl show` | clock | no | D-Bus query. When systemd-timedated is not running, the query starts it on demand and it exits again when idle; systemd gives it private temporary directories meanwhile |
 | `df -P -k` | disk | no | statfs |
 | `journalctl --disk-usage` | journal | no | reads the journal directory sizes |
 | `passwd -S -a` | users | no | reads `/etc/shadow` (root); the status option takes no lock |
 | `lastlog` | users | no | reads `/var/log/lastlog` |
 | `dpkg-query -W` | updates | no | reads the dpkg database without its lock |
-| `apt-get -s -o Debug::NoLocking=true -o Dir::Cache::pkgcache= -o Dir::Log::Planner= upgrade` | updates | no | simulation without the dpkg lock; the empty pkgcache builds the status cache in memory instead of rewriting `/var/cache/apt/pkgcache.bin`, and the empty planner log keeps apt from replacing `/var/log/apt/eipp.log.xz`, which it otherwise does even when it only simulates. It reuses `srcpkgcache.bin`; when that is stale (the lists changed and nothing rebuilt it), apt reparses the lists and needs a temporary file per signed InRelease, which the sandbox refuses, so the collector ends partial and says so until the next `apt update` or `apt-cache gencaches` |
+| `apt-get -s -o Debug::NoLocking=true -o Dir::Cache::pkgcache= -o Dir::Log::Planner= upgrade` | updates | no | simulation without the dpkg lock; the empty pkgcache builds the status cache in memory instead of rewriting `/var/cache/apt/pkgcache.bin`, and the empty planner log keeps apt from replacing `/var/log/apt/eipp.log.xz`, which it otherwise does even when it only simulates. It reuses `srcpkgcache.bin`; when that is stale (the lists changed and nothing rebuilt it), apt reparses the lists and needs a temporary file per signed InRelease, which the sandbox refuses, so the collector ends partial and says so until the next `apt update` or `apt-cache gencaches`. apt 2.4 (Ubuntu 22.04) also splits each signed InRelease into a temporary file in `/tmp` that it removes at once, even with current caches; the sandbox refuses it and apt gives the same answer without it, and apt 2.7 (Ubuntu 24.04) no longer does it |
 | `apt-config dump` | updates | no | prints the configuration |
 | `tailscale status --json`, `tailscale serve status --json`, `tailscale lock status --json`, `tailscale debug prefs` | tailscale | no | local API over the tailscaled Unix socket |
 | `cscli version`, `cscli bouncers list -o json`, `cscli config show --key ...`, `cscli <kind> list -o json` | crowdsec | no | reads the config, the hub index and the local database. A SQLite database that cannot be opened for writing is opened read only. A PostgreSQL or MySQL database over TCP is refused by the sandbox on Landlock ABI 4+ (run with `--no-sandbox` there) |
