@@ -4,6 +4,11 @@ Thanks for helping. stackward is small on purpose; please read
 [docs/architecture.md](docs/architecture.md) before adding a collector or a
 check.
 
+Please use the issue forms: [bug report, false positive, check request or docs
+issue](https://github.com/Shironex/stackward/issues/new/choose). Security
+problems go through the private report described in [SECURITY.md](SECURITY.md).
+Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Ground rules
 
 - **Read only.** Collectors use `facts.System`, which has no write method.
@@ -51,3 +56,14 @@ Ask the reporter for `stackward audit --dump-facts` (redacted, hostname
 hashed). Replace anything that still looks like real infrastructure with
 documentation values, save it as `test/fixtures/<scenario>/facts.json`, run
 `go test ./test/ -update` and review `expected.json`.
+
+## Labels
+
+Issues and pull requests carry a type label (`bug`, `enhancement`,
+`documentation`, `security`, `chore`, `ci`, `dependencies`, `question`,
+`breaking change`), one or more `area:*` labels naming the code domain
+(`area:ssh`, `area:docker`, `area:catalog` and so on) and a `phase:v0.x`
+label for the release it is planned for. `check-request` and `false-positive`
+mark the two report kinds, `good first issue` and `help wanted` mark where
+help is welcome. Pull requests from this repository get `area:*` labels
+automatically from the changed paths; maintainers set the rest.
