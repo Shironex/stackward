@@ -104,34 +104,50 @@ UFW is loaded).
 Docker is read through its Unix socket with GET requests only; no `docker`
 command is run.
 
-## Version 0.2: plan and apply (planned)
+## Version 0.2: plan and apply
 
-Everything below is a design, not something you can run today. It is written
-down now so the safety rules are settled before any code changes a server.
+`stackward plan` exists now (in the upcoming 0.2, not yet released). Everything
+from "Apply rules" on is still a design, not something you can run today. It
+is written down now so the safety rules are settled before any code changes a
+server.
 
 Fixing a finding on a remote machine is riskier than finding it. A wrong SSH
 or firewall change can lock you out, and a hardening profile can break
-Docker networking. So version 0.2 will separate looking from changing.
+Docker networking. So version 0.2 separates looking from changing.
 
 ### Plan first, nothing changes
 
-`stackward plan` will write a plan file and change nothing. Each step lists:
+`stackward plan` writes a plan and changes nothing. It runs the same audit as
+`stackward audit`, under the same Landlock sandbox, and the only file it
+writes is the `--out` file it was given, opened before the sandbox. It starts
+no command of its own beyond the audit's (the table above). Each step lists:
 
-- the failing check it fixes;
-- the exact edits, as a diff of old and new content, and any commands;
-- a risk class: `safe`, `access-critical` (SSH, firewall, users) or
-  `networking` (can restart Docker);
+- the checks it fixes;
+- the exact edits, as old and new content with their SHA-256 and a diff, and
+  any commands;
+- a risk class: `safe`, `networking` (can restart Docker) or
+  `access-critical` (SSH, firewall, users), and whether it is opt in;
+- the services it restarts;
 - how to undo it.
 
-You read the plan, remove what you do not want, and only then apply it.
-`--emit-script` will print an equivalent shell script for people who prefer
-to read and run it themselves.
+Steps whose checks already pass are left out and listed as skipped, with the
+reason. The plan goes through the same redaction as the report and hashes
+the hostname. `--emit-script` prints the same plan as a shell script for
+people who prefer to read and run it themselves; stackward never runs it, and
+the script refuses to overwrite a file that changed since the audit. The
+format, the risk classes and the steps are described in [plan.md](plan.md).
 
-### Apply rules
+You read the plan, remove what you do not want, and only then apply it.
+This version ships only `safe` steps and one opt in `networking` step (Docker
+log rotation); no step touches SSH, the firewall or users yet.
+
+### Apply rules (planned)
 
 `stackward apply plan.json` will follow these rules:
 
 - **Idempotent.** A step whose check already passes is skipped.
+- **No blind overwrites.** A file whose content no longer matches the hash
+  in the plan is not touched; plan again.
 - **Backups.** The first time a file is changed, a `FILE.orig` copy is kept.
   Every overwrite is also copied to a per run backup directory, and a run
   journal records the old and new values, so you always have a change log.
