@@ -64,6 +64,9 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 	if why := t.Blocks(env.now()); why != "" {
 		return fail("%s; nothing was changed", why)
 	}
+	if why, err := apply.StaleBootUnits(env.host, t); err != nil || why != "" {
+		return fail("%s; nothing was changed", errOr(err, why))
+	}
 	base, err := apply.Preflight(ctx, env.host)
 	if err != nil {
 		return fail("%v; nothing was changed", err)
@@ -71,6 +74,7 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 	fmt.Fprintf(stdout, "\ntransaction: the steps run inside a rollback transaction\n")
 	fmt.Fprintf(stdout, "   a systemd timer (%s.timer) rolls them back after %s unless confirmed;\n", apply.TimerUnit(a.runID), a.within)
 	fmt.Fprintf(stdout, "   it runs on its own, so a dropped SSH session cannot stop it\n")
+	fmt.Fprintf(stdout, "   a boot unit (%s) rolls them back if the host reboots first, before sshd starts\n", apply.BootUnit(a.runID))
 	fmt.Fprintf(stdout, "   after the steps: sshd -t, the effective sshd -T values, and sshd still listening on %s\n", strings.Join(base.Ports, ", "))
 	fmt.Fprintf(stdout, "   a failed check rolls back at once\n")
 	fmt.Fprintf(stdout, "   confirm with stackward confirm from a NEW SSH session (this one is refused)\n")
@@ -124,6 +128,14 @@ To roll back now:                    sudo stackward undo --transaction %[1]s
 	return report.ExitOK
 }
 
+// errOr is err's text, or why when err is nil.
+func errOr(err error, why string) string {
+	if err != nil {
+		return err.Error()
+	}
+	return why
+}
+
 // describeSession says which session facts were found.
 func describeSession(s apply.Session) string {
 	var parts []string
@@ -150,10 +162,19 @@ func describeSession(s apply.Session) string {
 	return strings.Join(parts, ", ")
 }
 
-// undoTransaction rolls back an open transaction: by hand, or from the
-// rollback timer (byTimer), which waits for the lock, does nothing when
-// the transaction is no longer open and must not stop its own unit.
-func undoTransaction(env applyEnv, id string, yes, byTimer bool, stdout, stderr io.Writer) int {
+// Who runs undo --transaction: a person, the rollback timer or the boot
+// unit.
+const (
+	byPerson = ""
+	byTimer  = "timer"
+	byBoot   = "boot"
+)
+
+// undoTransaction rolls back an open transaction: by hand, from the
+// rollback timer or from the boot unit (by). The timer and the boot unit
+// wait for the lock, do nothing when the transaction is no longer open,
+// leave the rollback to be acknowledged and do not stop the timer's units.
+func undoTransaction(env applyEnv, id string, yes bool, by string, stdout, stderr io.Writer) int {
 	fail := func(format string, a ...any) int {
 		fmt.Fprintf(stderr, "stackward undo: "+format+"\n", a...)
 		return report.ExitError
@@ -164,70 +185,139 @@ func undoTransaction(env applyEnv, id string, yes, byTimer bool, stdout, stderr 
 	if err := needRootOnLinux(env, "undo"); err != nil {
 		return fail("%v; nothing was changed", err)
 	}
-	holder := "rollback of transaction " + id
-	var release func() error
-	var err error
-	if byTimer {
-		release, err = apply.AcquireRunLockWait(env.host, holder, apply.TimerLockWait, apply.TimerLockInterval, env.sleep)
-	} else {
-		release, err = apply.AcquireRunLock(env.host, holder)
-	}
+	release, err := lockForUndo(env, id, by)
 	if err != nil {
 		return fail("%v; nothing was changed", err)
 	}
 	defer func() { _ = release() }()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	t, err := apply.LoadTxn(env.host)
 	if err != nil {
 		return fail("%v; nothing was changed", err)
 	}
-	if t == nil || t.ID != id {
-		if byTimer {
-			fmt.Fprintf(stdout, "stackward undo: transaction %s is not the current transaction; nothing to roll back\n", id)
-			return report.ExitOK
-		}
-		return fail("transaction %s is not the current transaction; nothing was changed", id)
-	}
-	if t.Status != apply.TxnOpen {
-		fmt.Fprintf(stdout, "stackward undo: transaction %s is %s; nothing to roll back\n", id, t.Status)
-		return report.ExitOK
+	if t == nil || t.ID != id || t.Status != apply.TxnOpen {
+		return notOpen(ctx, env, t, id, by, stdout, stderr)
 	}
 	j, err := apply.LoadJournal(env.host, id)
 	if err != nil {
 		return fail("%v", err)
 	}
-	hostname, _ := env.hostname()
-	if hostname == "" || j.Host.HostnameHash != report.HashHostname(hostname) {
-		return fail("transaction %s was applied on host %s, not this one; nothing was changed", id, j.Host.HostnameHash)
+	if by == byPerson {
+		if why := hostMismatch(env, "transaction", id, j.Host.HostnameHash); why != "" {
+			return fail("%s", why)
+		}
+		if code, ok := askUndoTransaction(env, j, t, yes, stdout, stderr); !ok {
+			return code
+		}
+	} else {
+		noteHost(env, t, j.Host.HostnameHash, stdout)
 	}
+	return rollBackTransaction(ctx, env, j, t, by, stdout, stderr)
+}
+
+// hostMismatch says why a person's undo refuses a journal whose hostname
+// hash is not this host's, or "".
+func hostMismatch(env applyEnv, what, id, applied string) string {
+	hostname, _ := env.hostname()
+	if hostname != "" && applied == report.HashHostname(hostname) {
+		return ""
+	}
+	now := "this host has no hostname"
+	if hostname != "" {
+		now = "this host is " + report.HashHostname(hostname)
+	}
+	return fmt.Sprintf("%s %s was applied on host %s and %s, so undo will not restore its journal here. If this is the same machine under a new name, set the old hostname back (hostnamectl set-hostname) and run undo again; nothing was changed", what, id, applied, now)
+}
+
+// noteHost records, for the rollback timer and the boot unit, the hostname
+// hash the rollback runs under and any mismatch with the one that applied.
+// They do not check it: at early boot the hostname may be unset or the
+// image default, and a renamed host must still roll back. The state, the
+// journal and the binary copy are local files this machine wrote.
+func noteHost(env applyEnv, t *apply.Txn, applied string, stdout io.Writer) {
+	hostname, _ := env.hostname()
+	t.RollbackHost = "unset"
+	if hostname != "" {
+		t.RollbackHost = report.HashHostname(hostname)
+	}
+	if t.RollbackHost == applied {
+		return
+	}
+	t.HostNote = fmt.Sprintf("rolled back while the hostname was %s, applied on %s; the automatic rollback does not check the hostname", t.RollbackHost, applied)
+	fmt.Fprintf(stdout, "stackward undo: note: %s\n", t.HostNote)
+}
+
+// lockForUndo takes the run lock: the timer and the boot unit wait for it,
+// a person does not.
+func lockForUndo(env applyEnv, id, by string) (func() error, error) {
+	holder := "rollback of transaction " + id
+	if by != byPerson {
+		return apply.AcquireRunLockWait(env.host, holder, apply.TimerLockWait, apply.TimerLockInterval, env.sleep)
+	}
+	return apply.AcquireRunLock(env.host, holder)
+}
+
+// notOpen answers an undo of a transaction that is not the current open
+// one. The boot unit removes itself then: it has nothing left to do.
+func notOpen(ctx context.Context, env applyEnv, t *apply.Txn, id, by string, stdout, stderr io.Writer) int {
+	if by == byBoot {
+		if err := apply.RemoveBootUnit(ctx, env.host, id); err != nil {
+			fmt.Fprintf(stderr, "stackward undo: warning: %v\n", err)
+		}
+	}
+	if t == nil || t.ID != id {
+		if by != byPerson {
+			fmt.Fprintf(stdout, "stackward undo: transaction %s is not the current transaction; nothing to roll back\n", id)
+			return report.ExitOK
+		}
+		fmt.Fprintf(stderr, "stackward undo: transaction %s is not the current transaction; nothing was changed\n", id)
+		return report.ExitError
+	}
+	fmt.Fprintf(stdout, "stackward undo: transaction %s is %s; nothing to roll back\n", id, t.Status)
+	return report.ExitOK
+}
+
+// askUndoTransaction shows a person what the rollback does and asks. ok is
+// false when the caller must stop with code.
+func askUndoTransaction(env applyEnv, j *apply.Journal, t *apply.Txn, yes bool, stdout, stderr io.Writer) (int, bool) {
+	fmt.Fprintf(stdout, "stackward undo: transaction %s (open until %s)\n\nWill do, newest change first:\n", t.ID, t.Deadline)
+	for _, l := range apply.UndoScript(j) {
+		fmt.Fprintf(stdout, "   %s\n", l)
+	}
+	fmt.Fprintf(stdout, "and stop the timer %s.timer and remove the boot unit %s\n", t.TimerUnit, apply.BootUnit(t.ID))
+	ok, err := confirm(env, yes, stdout, "\nRoll back this transaction now? [y/N] ")
+	if ok {
+		return 0, true
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "stackward undo: %v; nothing was changed\n", err)
+		return report.ExitError, false
+	}
+	fmt.Fprintln(stdout, "stackward undo: not confirmed; nothing was changed")
+	return report.ExitError, false
+}
+
+// rollBackTransaction rolls the open transaction back and says what
+// happened.
+func rollBackTransaction(ctx context.Context, env applyEnv, j *apply.Journal, t *apply.Txn, by string, stdout, stderr io.Writer) int {
+	id := t.ID
 	cause := apply.CauseManual
-	if byTimer {
+	switch by {
+	case byTimer:
 		cause = apply.CauseTimer
 		fmt.Fprintf(stdout, "stackward undo: transaction %s was not confirmed before %s; rolling it back\n", id, t.Deadline)
-	} else {
-		fmt.Fprintf(stdout, "stackward undo: transaction %s (open until %s)\n\nWill do, newest change first:\n", id, t.Deadline)
-		for _, l := range apply.UndoScript(j) {
-			fmt.Fprintf(stdout, "   %s\n", l)
-		}
-		fmt.Fprintf(stdout, "and stop the timer %s.timer\n", t.TimerUnit)
-		if ok, err := confirm(env, yes, stdout, "\nRoll back this transaction now? [y/N] "); !ok {
-			if err != nil {
-				return fail("%v; nothing was changed", err)
-			}
-			fmt.Fprintln(stdout, "stackward undo: not confirmed; nothing was changed")
-			return report.ExitError
-		}
+	case byBoot:
+		cause = apply.CauseBoot
+		fmt.Fprintf(stdout, "stackward undo: the host booted while transaction %s was open (deadline %s); rolling it back before sshd starts\n", id, t.Deadline)
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	err = apply.RollBack(ctx, env.host, j, t, cause, apply.UndoOptions{
-		Host: env.host, Now: env.now,
-		Progress: func(format string, a ...any) { fmt.Fprintf(stdout, "  "+format+"\n", a...) },
-	})
+	progress := func(format string, a ...any) { fmt.Fprintf(stdout, "  "+format+"\n", a...) }
+	err := apply.RollBack(ctx, env.host, j, t, cause, apply.UndoOptions{Host: env.host, Now: env.now, Progress: progress})
 	if err != nil {
 		fmt.Fprintf(stderr, "stackward undo: the rollback of transaction %s failed: %v\nCheck the files in the journal %s by hand, then acknowledge with: sudo stackward confirm --ack-rollback %s\n", id, err, apply.JournalPath(id), id)
 		return exitStepFailed
 	}
-	if byTimer {
+	if by != byPerson {
 		fmt.Fprintf(stdout, "stackward undo: transaction %s rolled back; access-critical steps stay blocked until: sudo stackward confirm --ack-rollback %s\n", id, id)
 		return report.ExitOK
 	}
@@ -360,6 +450,9 @@ func writeTxnStatus(w io.Writer, t *apply.Txn, now time.Time) {
 	}
 	if t.Error != "" {
 		fmt.Fprintf(w, "error:       %s\n", t.Error)
+	}
+	if t.HostNote != "" {
+		fmt.Fprintf(w, "note:        %s\n", t.HostNote)
 	}
 	if why := t.Blocks(now); why != "" {
 		fmt.Fprintf(w, "\n%s\n", why)
