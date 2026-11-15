@@ -76,7 +76,9 @@ scenario_verify() {
 	steps="$(sudo jq -r '[.steps[].id] | join(",")' "$plan")"
 	note "$(yn grep -Eq '(^|,)sysctl-hardening,(.*,)?docker-log-rotation(,|$)' <<<"$steps")" \
 		"plan holds sysctl-hardening and docker-log-rotation" "both" "$steps"
-	paths="$(sudo jq -r '.steps[].edits[].path' "$plan")"
+	# The steps this scenario applies: access-critical ones (the sshd
+	# drop-in on a runner with password login) run only in a transaction.
+	paths="$(sudo jq -r '.steps[] | select(.risk != "access-critical") | .edits[].path' "$plan")"
 
 	etc_hashes >"$OUT/etc.before"
 

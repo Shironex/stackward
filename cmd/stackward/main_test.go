@@ -10,8 +10,10 @@ import (
 )
 
 // realAccessCritical lists the access-critical steps a released binary may
-// carry. None exists yet; #28 adds the first.
-var realAccessCritical = map[string]bool{}
+// carry: the account and sshd steps.
+var realAccessCritical = map[string]bool{
+	plan.AdminUserID: true, plan.PaaSUserID: true, plan.LockDefaultUserID: true, plan.SSHDHardeningID: true,
+}
 
 // The binary as released (no build tag) must not contain the test-only
 // access-critical steps, nor any access-critical step that is not a real

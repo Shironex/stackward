@@ -392,11 +392,12 @@ func TestBuildIsDeterministic(t *testing.T) {
 }
 
 // The default registry holds no test-only step: those are registered by
-// tests and the scenario binary only (package txntest), and no real step
-// is access-critical yet.
+// tests and the scenario binary only (package txntest), and the only
+// access-critical steps are the account and sshd steps.
 func TestDefaultRegistryHasNoTestAccessSteps(t *testing.T) {
+	real := map[string]bool{AdminUserID: true, PaaSUserID: true, LockDefaultUserID: true, SSHDHardeningID: true}
 	for _, g := range Generators() {
-		if g.Risk == AccessCritical {
+		if g.Risk == AccessCritical && !real[g.ID] {
 			t.Errorf("access-critical step %s in the default registry; add it to cmd/stackward's realAccessCritical once it is a real step", g.ID)
 		}
 		if strings.HasPrefix(g.ID, "txn-test") {
