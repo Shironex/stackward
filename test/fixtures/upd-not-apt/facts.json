@@ -1,0 +1,38 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "rocky",
+    "id_like": [
+      "rhel",
+      "centos",
+      "fedora"
+    ],
+    "version_id": "9.4",
+    "pretty_name": "Rocky Linux 9.4"
+  },
+  "updates": {
+    "apt": false,
+    "unattended_installed": false,
+    "automatic_reboot": false,
+    "pending_checked": false,
+    "pending_total": 0,
+    "pending_security": 0
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "updates",
+      "status": "ok"
+    }
+  ]
+}

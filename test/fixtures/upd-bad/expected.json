@@ -1,0 +1,525 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:82c1a34869ebe223",
+    "os": "Ubuntu 22.04.5 LTS",
+    "os_id": "ubuntu",
+    "os_version": "22.04",
+    "kernel": "6.8.0-49-generic"
+  },
+  "profile": {
+    "name": "unknown",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 28,
+    "results": 28,
+    "checked": 9,
+    "unknown": 19,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "os",
+        "status": "ok"
+      },
+      {
+        "name": "updates",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 2,
+    "warn": 4,
+    "unknown": 19,
+    "info": 0,
+    "pass": 3,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "pass",
+      "severity": "info",
+      "subject": "host",
+      "message": "ubuntu 22.04 is a tested release",
+      "evidence": {
+        "id": "ubuntu",
+        "pretty_name": "Ubuntu 22.04.5 LTS",
+        "tested": [
+          "ubuntu 22.04",
+          "ubuntu 24.04",
+          "ubuntu 26.04",
+          "debian 12",
+          "debian 13"
+        ],
+        "version_id": "22.04"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "fail",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "reboot pending for 19 days",
+      "evidence": {
+        "days": 19,
+        "packages": [
+          "linux-image-generic"
+        ],
+        "required": true,
+        "since": "2026-02-10T08:00:00Z"
+      },
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "running the newest installed kernel 6.8.0-49-generic",
+      "evidence": {
+        "installed": [
+          "6.8.0-49-generic"
+        ],
+        "newest": "6.8.0-49-generic",
+        "running": "6.8.0-49-generic"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    },
+    {
+      "id": "SYS-004",
+      "group": "SYS",
+      "title": "Clock is synchronized",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the clock collector did not run",
+      "evidence": {
+        "collector": "clock",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable systemd-timesyncd (`timedatectl set-ntp true`) or install chrony."
+      }
+    },
+    {
+      "id": "SYS-005",
+      "group": "SYS",
+      "title": "Disks have free space",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the disk collector did not run",
+      "evidence": {
+        "collector": "disk",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Prune images and build cache (`docker system prune`), cap logs (LOG-001 to LOG-003) and remove what is not needed."
+      }
+    },
+    {
+      "id": "USR-001",
+      "group": "USR",
+      "title": "Only root has uid 0",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the account, or give it a normal uid with `usermod -u` after checking what it owns."
+      }
+    },
+    {
+      "id": "USR-002",
+      "group": "USR",
+      "title": "No login account has an empty password",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock the account with `passwd -l \u003cuser\u003e` or set a password."
+      }
+    },
+    {
+      "id": "USR-003",
+      "group": "USR",
+      "title": "Cloud default account is locked down",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock it: `passwd -l \u003cuser\u003e`, set its shell to nologin, move its authorized_keys aside and drop its NOPASSWD line. Keep your own admin account working first."
+      }
+    },
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf \u003cfile\u003e`, and keep NOPASSWD to the PaaS account."
+      }
+    },
+    {
+      "id": "USR-005",
+      "group": "USR",
+      "title": "Docker group has no extra members",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove users who do not need it: `gpasswd -d \u003cuser\u003e docker`."
+      }
+    },
+    {
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock unused accounts with `passwd -l \u003cuser\u003e` or remove them."
+      }
+    },
+    {
+      "id": "USR-007",
+      "group": "USR",
+      "title": "Root recovery path is known",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Store the console or rescue procedure and any root password in a password manager."
+      }
+    },
+    {
+      "id": "UPD-001",
+      "group": "UPD",
+      "title": "Automatic security updates are enabled",
+      "level": "fail",
+      "severity": "high",
+      "subject": "host",
+      "message": "unattended-upgrades is installed but off: APT::Periodic::Unattended-Upgrade is not enabled; apt-daily-upgrade.timer is not enabled",
+      "evidence": {
+        "installed": true,
+        "periodic": "0",
+        "timer_enabled": false
+      },
+      "fix": {
+        "hint": "apt install unattended-upgrades; dpkg-reconfigure -plow unattended-upgrades"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "group": "UPD",
+      "title": "Unattended upgrades ran recently",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "unattended-upgrades last ran 9 days ago",
+      "evidence": {
+        "days": 9,
+        "last_run": "2026-02-20T06:10:00Z"
+      },
+      "fix": {
+        "hint": "Check the timer (`systemctl list-timers apt-daily-upgrade`) and /var/log/unattended-upgrades/."
+      }
+    },
+    {
+      "id": "UPD-003",
+      "group": "UPD",
+      "title": "Unattended upgrades include the security pocket",
+      "level": "warn",
+      "severity": "high",
+      "subject": "host",
+      "message": "the security pocket is not in Allowed-Origins or Origins-Pattern: security updates will not be installed automatically",
+      "evidence": {
+        "origins": [
+          "${distro_id}:${distro_codename}"
+        ]
+      },
+      "fix": {
+        "hint": "Include `${distro_id}:${distro_codename}-security` (Debian: `origin=Debian,codename=${distro_codename}-security`) in Unattended-Upgrade::Allowed-Origins."
+      }
+    },
+    {
+      "id": "UPD-004",
+      "group": "UPD",
+      "title": "Reboot policy is a decision",
+      "level": "warn",
+      "severity": "low",
+      "subject": "host",
+      "message": "reboot pending for 19 days and automatic reboot is off: pick a window or a manual routine",
+      "evidence": {
+        "automatic_reboot": false,
+        "days": 19,
+        "reboot_required": true
+      },
+      "fix": {
+        "hint": "Decide: set Unattended-Upgrade::Automatic-Reboot and a time, or schedule a manual reboot routine."
+      }
+    },
+    {
+      "id": "UPD-005",
+      "group": "UPD",
+      "title": "Release is within standard support",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "ubuntu 22.04 is supported until 2027-06-01",
+      "evidence": {
+        "days_left": 456,
+        "end_of_support": "2027-06-01",
+        "id": "ubuntu",
+        "version_id": "22.04"
+      },
+      "fix": {
+        "hint": "Upgrade to a supported release (do-release-upgrade on Ubuntu, the Debian release notes upgrade procedure)."
+      }
+    },
+    {
+      "id": "UPD-006",
+      "group": "UPD",
+      "title": "No pending security updates",
+      "level": "warn",
+      "severity": "high",
+      "subject": "host",
+      "message": "3 pending security update(s) (package lists are 9 days old)",
+      "evidence": {
+        "lists_updated": "2026-02-20T06:05:00Z",
+        "packages": [
+          "libssl3t64",
+          "openssh-server",
+          "sudo"
+        ],
+        "pending_security": 3,
+        "pending_total": 9
+      },
+      "fix": {
+        "hint": "apt update \u0026\u0026 apt upgrade"
+      }
+    },
+    {
+      "id": "KRN-001",
+      "group": "KRN",
+      "title": "IPv4 forwarding is on where Docker runs",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set net.ipv4.ip_forward=1 in a sysctl drop-in and never let a hardening profile own it."
+      }
+    },
+    {
+      "id": "KRN-002",
+      "group": "KRN",
+      "title": "Reverse path filter is loose where Docker or Tailscale run",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set net.ipv4.conf.all.rp_filter=2 and net.ipv4.conf.default.rp_filter=2 (loose) in a drop-in."
+      }
+    },
+    {
+      "id": "KRN-003",
+      "group": "KRN",
+      "title": "Network sysctls match the hardening baseline",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in and make /etc/ufw/sysctl.conf agree."
+      }
+    },
+    {
+      "id": "KRN-004",
+      "group": "KRN",
+      "title": "Kernel hardening sysctls match the baseline",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in."
+      }
+    },
+    {
+      "id": "KRN-005",
+      "group": "KRN",
+      "title": "IPv6 router advertisements are not switched off by a profile",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Leave net.ipv6.conf.all.accept_ra at its default where the provider uses router advertisements, or configure the address statically."
+      }
+    },
+    {
+      "id": "LOG-001",
+      "group": "LOG",
+      "title": "journald has a size cap",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a drop-in /etc/systemd/journald.conf.d/size.conf with `[Journal]` and `SystemMaxUse=1G`, then restart systemd-journald."
+      }
+    },
+    {
+      "id": "LOG-002",
+      "group": "LOG",
+      "title": "Proxy access logs are rotated",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a logrotate rule (use copytruncate when the proxy cannot reopen its log)."
+      }
+    },
+    {
+      "id": "LOG-003",
+      "group": "LOG",
+      "title": "Journal disk use",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "None; informational."
+      }
+    },
+    {
+      "id": "LOG-004",
+      "group": "LOG",
+      "title": "A metrics agent is present",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add monitoring with an alert for disk usage and SSH logins."
+      }
+    },
+    {
+      "id": "LOG-005",
+      "group": "LOG",
+      "title": "The journal survives a reboot",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Create /var/log/journal (or set Storage=persistent in a drop-in) and restart systemd-journald."
+      }
+    }
+  ]
+}

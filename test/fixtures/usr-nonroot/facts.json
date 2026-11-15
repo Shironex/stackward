@@ -1,0 +1,61 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 1000,
+    "euid": 1000,
+    "root": false
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "users": {
+    "accounts": [
+      {
+        "name": "root",
+        "uid": 0,
+        "gid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "login_shell": true
+      },
+      {
+        "name": "alice",
+        "uid": 1000,
+        "gid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "login_shell": true
+      }
+    ],
+    "sudoers": [
+      {
+        "path": "/etc/sudoers",
+        "perm": 288,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": false,
+        "readable": false
+      }
+    ],
+    "password_status_checked": false,
+    "lastlog_checked": false
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "users",
+      "status": "ok"
+    }
+  ]
+}
