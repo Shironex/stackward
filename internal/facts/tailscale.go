@@ -36,6 +36,9 @@ type Tailscale struct {
 	Serve *TailscaleServe `json:"serve,omitempty"`
 	// LockEnabled is Tailnet Lock; nil when unknown.
 	LockEnabled *bool `json:"lock_enabled,omitempty"`
+	// SSH is the RunSSH preference (Tailscale SSH server on); nil when
+	// the preferences could not be read.
+	SSH *bool `json:"ssh,omitempty"`
 }
 
 // TailscaleServe is what `tailscale serve status --json` shows, reduced to
@@ -94,6 +97,7 @@ func (tailscaleCollector) NeedsRoot() bool { return false }
 //	tailscale status --json
 //	tailscale serve status --json
 //	tailscale lock status --json
+//	tailscale debug prefs          (prints the preferences; only RunSSH is kept)
 func (tailscaleCollector) Collect(ctx context.Context, sys System, out *Facts) error {
 	t := &Tailscale{}
 	_, lookErr := sys.LookPath("tailscale")
@@ -135,6 +139,9 @@ func (tailscaleCollector) Collect(ctx context.Context, sys System, out *Facts) e
 		if res, err := sys.Run(ctx, "tailscale", "lock", "status", "--json"); err == nil && res.ExitCode == 0 {
 			t.LockEnabled = parseTailscaleLock(res.Stdout)
 		}
+	}
+	if res, err := sys.Run(ctx, "tailscale", "debug", "prefs"); err == nil && res.ExitCode == 0 {
+		t.SSH = parseTailscaleRunSSH(res.Stdout)
 	}
 	return errors.Join(errs...)
 }
@@ -254,6 +261,16 @@ func parseTailscaleLock(b []byte) *bool {
 		return &v
 	}
 	return nil
+}
+
+// parseTailscaleRunSSH reads RunSSH from `tailscale debug prefs`. Every
+// other preference (control URL, routes, host name) is dropped here.
+func parseTailscaleRunSSH(b []byte) *bool {
+	var doc struct{ RunSSH *bool }
+	if json.Unmarshal(b, &doc) != nil {
+		return nil
+	}
+	return doc.RunSSH
 }
 
 // ServiceUnit is the state of one systemd unit as `systemctl show` prints
