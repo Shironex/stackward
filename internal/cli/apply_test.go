@@ -293,3 +293,58 @@ func TestApplyAndUndoRefuseWhileAnotherRunHoldsTheLock(t *testing.T) {
 	}
 	_ = again()
 }
+
+func TestApplyFinishesAPendingRestartFirst(t *testing.T) {
+	a := newApplyTest(t)
+	a.runner.Exit["systemctl"] = 1
+	code, _, _ := a.apply("--step", "journald-cap", "--yes", a.plan)
+	if code != exitStepFailed {
+		t.Fatalf("exit %d", code)
+	}
+	a.runner.Exit["systemctl"] = 0
+	a.runner.Reset()
+	a.env.runID = "20260301T130000Z-d22d22"
+
+	// The next apply says so, runs the restart before its own steps and
+	// then applies what it was asked to.
+	code, out, errs := a.apply("--step", "sysctl-hardening", "--yes", a.plan)
+	if code != report.ExitOK {
+		t.Fatalf("exit %d: %s\n%s", code, out, errs)
+	}
+	for _, want := range []string{"Pending restarts", "step journald-cap of run 20260301T120000Z-c11c11", "restart finished"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	want := [][]string{{"systemctl", "restart", "systemd-journald"}, {"sysctl", "-p", "/etc/sysctl.d/90-stackward-hardening.conf"}}
+	if got := a.runner.Calls(); len(got) != 2 || strings.Join(got[0], " ") != strings.Join(want[0], " ") || strings.Join(got[1], " ") != strings.Join(want[1], " ") {
+		t.Errorf("commands %v, want %v", got, want)
+	}
+	pending, _, _ := apply.FindPending(a.env.host)
+	if len(pending) != 0 {
+		t.Errorf("still pending: %+v", pending)
+	}
+}
+
+func TestPendingRestartNeedsConfirmationAndStopsOnFailure(t *testing.T) {
+	a := newApplyTest(t)
+	a.runner.Exit["systemctl"] = 1
+	a.apply("--step", "journald-cap", "--yes", a.plan)
+	a.runner.Reset()
+	a.env.runID = "20260301T130000Z-d22d22"
+
+	// Without a terminal and without --yes: refused, nothing run.
+	if code, _, errs := a.apply("--step", "sysctl-hardening", a.plan); code != report.ExitError || !strings.Contains(errs, "pass --yes") || len(a.runner.Calls()) != 0 {
+		t.Errorf("exit %d: %s calls %v", code, errs, a.runner.Calls())
+	}
+	// The restart fails again: apply stops, the sysctl step does not run.
+	code, _, errs := a.apply("--step", "sysctl-hardening", "--yes", a.plan)
+	if code != exitStepFailed || !strings.Contains(errs, "still pending") {
+		t.Errorf("exit %d: %s", code, errs)
+	}
+	for _, c := range a.runner.Calls() {
+		if c[0] == "sysctl" {
+			t.Errorf("a step ran before the pending restart finished: %v", a.runner.Calls())
+		}
+	}
+}

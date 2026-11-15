@@ -82,9 +82,14 @@ type JournalStep struct {
 	// Step is the plan step as applied, with its old and new file content
 	// redacted, so undo can authorize it again and knows its undo
 	// commands.
-	Step     plan.Step        `json:"step"`
-	Files    []JournalFile    `json:"files"`
-	Commands []JournalCommand `json:"commands"`
+	Step plan.Step `json:"step"`
+	// RestartPending is set from the moment a file of the step is written
+	// until its commands have run: when it is still set, the files are in
+	// place but the restart or load did not finish. The next apply runs
+	// the commands first (see FindPending).
+	RestartPending bool             `json:"restart_pending,omitempty"`
+	Files          []JournalFile    `json:"files"`
+	Commands       []JournalCommand `json:"commands"`
 }
 
 // JournalFile is one file a step edited.

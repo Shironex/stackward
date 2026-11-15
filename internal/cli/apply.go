@@ -130,6 +130,9 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	defer func() { _ = release() }()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if code := finishPendingRestarts(ctx, env, yes, stdout, stderr); code >= 0 {
+		return code
+	}
 	p, sum, err := loadPlan(planFile)
 	if err != nil {
 		return fail("%v", err)
@@ -270,6 +273,49 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	}
 	fmt.Fprintf(stdout, "stackward undo: run %s undone; the journal %s says what was restored\n", runID, apply.JournalPath(runID))
 	return report.ExitOK
+}
+
+// finishPendingRestarts finishes, before anything else, the restarts that an
+// earlier run left undone (its files written, its commands not run). It
+// returns -1 when apply may go on, or the exit code to stop with.
+func finishPendingRestarts(ctx context.Context, env applyEnv, yes bool, stdout, stderr io.Writer) int {
+	pending, warnings, err := apply.FindPending(env.host)
+	for _, w := range warnings {
+		fmt.Fprintf(stderr, "stackward apply: warning: %s\n", w)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "stackward apply: looking for pending restarts: %v; nothing was changed\n", err)
+		return report.ExitError
+	}
+	if len(pending) == 0 {
+		return -1
+	}
+	fmt.Fprintf(stdout, "Pending restarts: an earlier run wrote these files but its restart did not finish. They are finished first:\n")
+	for _, p := range pending {
+		fmt.Fprintf(stdout, "  step %s of run %s:", p.StepID, p.RunID)
+		for _, c := range p.Commands {
+			fmt.Fprintf(stdout, " %s;", strings.Join(c, " "))
+		}
+		fmt.Fprintln(stdout)
+	}
+	ok, err := confirm(env, yes, stdout, "\nFinish the pending restarts now? [y/N] ")
+	if !ok {
+		if err != nil {
+			fmt.Fprintf(stderr, "stackward apply: %v; nothing was changed\n", err)
+		} else {
+			fmt.Fprintln(stdout, "stackward apply: not confirmed; nothing was changed")
+		}
+		return report.ExitError
+	}
+	err = apply.FinishPending(ctx, pending, apply.PendingOptions{
+		Host: env.host, Now: env.now,
+		Progress: func(format string, a ...any) { fmt.Fprintf(stdout, "  "+format+"\n", a...) },
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "stackward apply: %v\nThe pending restart is still pending; nothing else was applied.\n", err)
+		return exitStepFailed
+	}
+	return -1
 }
 
 // needRootOnLinux refuses to change anything off Linux or without root.
