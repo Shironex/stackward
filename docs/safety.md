@@ -226,6 +226,16 @@ selected (or of the run you undo):
 | `usermod --shell /usr/sbin/nologin USER`, `usermod --lock USER` | lock-default-user | the lock (`--lock` only for a usable password) |
 | `mv -T /home/USER/.ssh/authorized_keys /home/USER/.ssh/authorized_keys.stackward-locked` | lock-default-user | the lock; undo moves it back |
 | `usermod --unlock USER`, `usermod --shell SHELL USER` | lock-default-user | undo only: the password lock and the shell the audit saw |
+| `apt-config dump -c <staged file>` | unattended-upgrades, unattended-upgrades-install, unattended-upgrades-reboot | before the apt.conf.d drop-in is moved into place |
+| `systemctl enable apt-daily-upgrade.timer`, `systemctl start apt-daily-upgrade.timer` | unattended-upgrades, unattended-upgrades-install | only when the audit saw the timer disabled (start only when it was also stopped); undo: `systemctl stop`, `systemctl disable` |
+| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades` | unattended-upgrades-install (opt in) | when the step is not already applied; undo: the same with `purge -y` |
+| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban` | fail2ban-sshd (access-critical) when fail2ban is missing | before the configuration test; undo: the same with `purge -y` |
+| `fail2ban-client -t` | fail2ban-sshd | after the jail is written, before fail2ban loads it |
+| `systemctl reload fail2ban` (`restart` right after an install) | fail2ban-sshd | after the configuration test; undo |
+
+No step reboots the host. `unattended-upgrades-reboot` only writes the
+setting that lets unattended-upgrades reboot at its window (04:00 host
+time) after a run that leaves `/var/run/reboot-required`.
 
 An access-critical transaction also runs these, around its steps (see
 below):
@@ -241,8 +251,8 @@ below):
 | `systemctl enable stackward-boot-rollback-ID.service` | after the unit file is written, before the steps: links the boot unit into `sysinit.target.wants` |
 | `systemctl daemon-reload` | after the boot unit and its link are removed (confirm, every rollback, the boot unit itself) |
 
-Before a step that closes or narrows a way in, the
-[lockout guard](#lockout-guard) reads this host's state again with the
+Before a step that closes or narrows a way in, or starts banning SSH
+clients, the [lockout guard](#lockout-guard) reads this host's state again with the
 audit's own collectors (`ssh`, `users`, `tailscale`, `listeners`,
 `firewall`): the read only commands of the [audit table](#commands-stackward-runs)
 above, nothing else. Apply runs them without the Landlock sandbox, because
@@ -389,6 +399,7 @@ The proofs:
 | keeps public SSH open (password auth off, root login off, AllowUsers, a new port, ...) | a non-root account with sudo and a usable authorized key logs in with that key under the sshd configuration the step leaves behind: AllowUsers and AllowGroups, DenyUsers and DenyGroups, `PubkeyAuthentication`, `AuthenticationMethods` (some list a key alone satisfies), `AuthorizedKeysFile` and every Match block, evaluated for that account and the session's source address. A new port must be let in by UFW from anywhere |
 | closes public SSH | the same account logs in over the tailnet: Tailscale is `Running`, the node's key expiry is off, sshd listens on a wildcard or tailnet address, and a firewall rule lets the tailnet reach sshd (on `tailscale0` or from `100.64.0.0/10`), or the step adds one. Or: the step still lets a network reach sshd, the session that plans or applies comes from it, and the account logs in from there |
 | disables an account or removes its keys | another account passes the first row; the account that applies is never disabled |
+| starts banning SSH clients (the fail2ban sshd jail) | nothing to prove about a second way in, but the session that plans or applies must come from an address the jail ignores (loopback, the jail's own `ignoreip`, the tailnet when Tailscale is installed, the planning session's address), so a failed test login cannot ban the owner. A session with no known source (the provider console) passes |
 
 From this follow the three rules: public SSH never closes without the
 tailnet path (or the allowed source) proven; the last admin key is never

@@ -63,7 +63,7 @@ Every step has one of three risk classes.
 |---|---|---|
 | `safe` | Changes a setting that cannot cut you off or stop your services; may restart a logging daemon. | journald size cap, sysctl hardening drop-in |
 | `networking` | Can interrupt traffic: restarts Docker, so containers stop and start. Always says what it restarts. | Docker log rotation in `daemon.json` |
-| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | admin and PaaS accounts, the sshd drop-in, locking the default cloud account |
+| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | admin and PaaS accounts, the sshd drop-in, locking the default cloud account, the fail2ban sshd jail |
 
 Some steps are **opt in** (`opt_in: true`): apply runs them only when you
 select them by id. The Docker step is opt in because of its restart.
@@ -79,6 +79,10 @@ select them by id. The Docker step is opt in because of its restart.
 | `paas-user` | SSH-003 | access-critical | with `--paas-user NAME` on a host that runs a platform: the same account and sudoers drop-in, with an empty `~/.ssh` for the platform's key |
 | `sshd-hardening` | SSH-001, SSH-002, SSH-003, SSH-004, SSH-005 | access-critical | creates `/etc/ssh/sshd_config.d/00-stackward-hardening.conf` with the failing settings only (`PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`, `PermitEmptyPasswords no`, `MaxAuthTries 3`), checked with `sshd -t -f`, reloads ssh.service |
 | `lock-default-user` | USR-003 | access-critical | for a cloud image account (`ubuntu`, `debian`, `admin`, `ec2-user`) USR-003 warns about: sets its shell to `/usr/sbin/nologin`, locks a usable password, moves `authorized_keys` aside to `authorized_keys.stackward-locked`; undo puts all three back |
+| `unattended-upgrades` | UPD-001 | safe | creates `/etc/apt/apt.conf.d/90stackward-unattended-upgrades` with `APT::Periodic::Update-Package-Lists "1"` and `APT::Periodic::Unattended-Upgrade "1"`, checked with `apt-config dump -c`; enables (and starts) `apt-daily-upgrade.timer` only when the audit saw it disabled |
+| `unattended-upgrades-install` | UPD-001 | safe, opt in | the same drop-in and timer, plus `apt-get install -y unattended-upgrades` as a named command, when the package is missing; undo purges it |
+| `unattended-upgrades-reboot` | SYS-002, SYS-003, UPD-004 | networking, opt in | the reboot decision: creates `/etc/apt/apt.conf.d/91stackward-automatic-reboot` with `Automatic-Reboot "true"` and `Automatic-Reboot-Time "04:00"`; runs nothing |
+| `fail2ban-sshd` | CS-010, SSH-011 | access-critical, opt in | creates `/etc/fail2ban/jail.d/90-stackward-sshd.local` turning on the sshd jail on sshd's ports, checks it with `fail2ban-client -t`, reloads fail2ban; installs fail2ban first (a named command) when it is missing |
 
 The account and SSH steps, in the order apply should run them:
 
@@ -125,6 +129,24 @@ Rules they follow:
   would undo a value, the step says so in a note.
 - `kernel.unprivileged_bpf_disabled = 1` cannot be lowered again without a
   reboot; the step says so and its undo does not try.
+- Nothing is installed or upgraded silently: a package install is a command
+  in the step, shown in the plan, and only in opt in steps.
+- The reboot is a decision, never a surprise. Apply never reboots.
+  `unattended-upgrades-reboot` is opt in and only lets unattended-upgrades
+  reboot at 04:00 host time after a run that leaves
+  `/var/run/reboot-required`. It is planned when a reboot is pending or
+  the running kernel is old (SYS-002, SYS-003, UPD-004), and when
+  unattended-upgrades is being turned on now; the `unattended-upgrades`
+  step states the choice in a note either way. An automatic reboot the
+  owner already set is kept.
+- The fail2ban jail is planned only when SSH is public and neither a
+  fail2ban sshd jail nor CrowdSec protects it (CS-010 fails). Its
+  `ignoreip` keeps loopback and the jail's existing entries, adds the
+  tailnet (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`) when Tailscale is
+  installed (CS-011) and the client address of the SSH session that made
+  a live plan. A plan from a saved facts file knows no such address and
+  says so; the [lockout guard](safety.md#lockout-guard) then refuses to
+  apply the jail from an SSH session whose address it would not ignore.
 
 ## The plan file (plan.v1)
 
