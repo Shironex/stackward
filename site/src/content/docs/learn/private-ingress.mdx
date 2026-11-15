@@ -85,7 +85,8 @@ tailscale serve status
 Is the tunnel connector running?
 
 ```sh
-docker ps --filter ancestor=cloudflare/cloudflared --format '{{.Names}}\t{{.Status}}'
+docker ps --filter ancestor=cloudflare/cloudflared \
+  --format '{{.Names}}\t{{.Status}}'
 systemctl is-active cloudflared
 ```
 

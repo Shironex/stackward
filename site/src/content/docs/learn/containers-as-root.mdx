@@ -58,7 +58,8 @@ The user, privileged flag, added capabilities and namespaces of every running
 container. This format string prints only those fields, never the environment:
 
 ```sh
-docker ps -q | xargs docker inspect --format '{{.Name}} user={{if .Config.User}}{{.Config.User}}{{else}}root{{end}} privileged={{.HostConfig.Privileged}} capadd={{.HostConfig.CapAdd}} net={{.HostConfig.NetworkMode}} pid={{.HostConfig.PidMode}} secopt={{.HostConfig.SecurityOpt}}'
+docker ps -q | xargs docker inspect \
+  --format '{{.Name}} user={{if .Config.User}}{{.Config.User}}{{else}}root{{end}} privileged={{.HostConfig.Privileged}} capadd={{.HostConfig.CapAdd}} net={{.HostConfig.NetworkMode}} pid={{.HostConfig.PidMode}} secopt={{.HostConfig.SecurityOpt}}'
 ```
 
 An empty `Config.User`, `root`, `0` or `0:0` all mean root. Only the part
@@ -67,7 +68,8 @@ before the colon decides.
 Host bind mounts:
 
 ```sh
-docker ps -q | xargs docker inspect --format '{{.Name}} {{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}->{{.Destination}}(rw={{.RW}}) {{end}}{{end}}'
+docker ps -q | xargs docker inspect \
+  --format '{{.Name}} {{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}->{{.Destination}}(rw={{.RW}}) {{end}}{{end}}'
 ```
 
 ## What the fix changes

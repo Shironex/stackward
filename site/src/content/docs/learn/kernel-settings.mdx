@@ -58,7 +58,13 @@ The breaking settings have a different cost: an outage, and the temptation to
 The values that matter, in one read only call:
 
 ```sh
-sysctl net.ipv4.ip_forward net.ipv4.conf.all.rp_filter net.ipv4.conf.all.accept_redirects net.ipv4.conf.all.accept_source_route net.ipv4.tcp_syncookies net.ipv4.conf.all.log_martians kernel.kptr_restrict kernel.dmesg_restrict kernel.unprivileged_bpf_disabled kernel.yama.ptrace_scope fs.protected_symlinks fs.protected_hardlinks
+sysctl net.ipv4.ip_forward net.ipv4.conf.all.rp_filter \
+  net.ipv4.conf.all.accept_redirects \
+  net.ipv4.conf.all.accept_source_route net.ipv4.tcp_syncookies \
+  net.ipv4.conf.all.log_martians kernel.kptr_restrict \
+  kernel.dmesg_restrict kernel.unprivileged_bpf_disabled \
+  kernel.yama.ptrace_scope fs.protected_symlinks \
+  fs.protected_hardlinks
 sysctl net.ipv6.conf.all.accept_ra
 ```
 
@@ -66,7 +72,8 @@ Where values come from (later files win):
 
 ```sh
 ls /etc/sysctl.d/ /usr/lib/sysctl.d/
-grep -s -E 'ip_forward|rp_filter|accept_ra' /etc/sysctl.conf /etc/sysctl.d/*.conf /etc/ufw/sysctl.conf
+grep -s -E 'ip_forward|rp_filter|accept_ra' \
+  /etc/sysctl.conf /etc/sysctl.d/*.conf /etc/ufw/sysctl.conf
 ```
 
 UFW has its own `/etc/ufw/sysctl.conf`, applied when UFW starts, which can

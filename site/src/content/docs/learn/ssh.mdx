@@ -60,7 +60,8 @@ test mode: it checks the files and prints the effective result, after every
 `Include` and default has been applied.
 
 ```sh
-sudo sshd -T | grep -Ei '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|permitemptypasswords|maxauthtries|allowusers|allowgroups) '
+sudo sshd -T \
+  | grep -Ei '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|permitemptypasswords|maxauthtries|allowusers|allowgroups) '
 ```
 
 Then look at the order in which drop-ins are read, and which of them set the
@@ -68,7 +69,8 @@ same keywords:
 
 ```sh
 ls -1 /etc/ssh/sshd_config.d/
-sudo grep -RniE '^\s*(passwordauthentication|kbdinteractiveauthentication|permitrootlogin)' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/
+sudo grep -RniE '^\s*(passwordauthentication|kbdinteractiveauthentication|permitrootlogin)' \
+  /etc/ssh/sshd_config /etc/ssh/sshd_config.d/
 ```
 
 Check where sshd is listening, and compare with the `port` and
