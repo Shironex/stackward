@@ -14,8 +14,8 @@ import (
 // SSH checks read what the ssh collector gathers (facts/ssh.go). The
 // effective configuration comes from sshd -T as root, or from the parsed
 // files otherwise; a value the files could not settle is unknown, never a
-// pass. SSH-011 (reachability with the firewall verdict) and SSH-016
-// (Tailscale SSH) need the firewall and Tailscale facts and land with them.
+// pass. SSH-011 joins the SSH facts with the firewall, listener, fail2ban
+// and CrowdSec facts; SSH-016 joins them with the Tailscale facts.
 
 func init() {
 	Register(Check{ID: "SSH-001", Run: checkPasswordAuth})
@@ -28,10 +28,12 @@ func init() {
 	Register(Check{ID: "SSH-008", Run: checkDropInOrder})
 	Register(Check{ID: "SSH-009", Run: checkMatchCoverage})
 	Register(Check{ID: "SSH-010", Run: checkListeners})
+	Register(Check{ID: "SSH-011", Run: checkSSHReachableAuth})
 	Register(Check{ID: "SSH-012", Run: checkHostKeys})
 	Register(Check{ID: "SSH-013", Run: checkSSHFileModes})
 	Register(Check{ID: "SSH-014", Run: checkAuthorizedKeyTypes})
 	Register(Check{ID: "SSH-015", Run: checkWeakAlgorithms})
+	Register(Check{ID: "SSH-016", Run: checkTailscaleSSH})
 }
 
 // maxAuthTriesLimit is the highest MaxAuthTries SSH-005 accepts.
@@ -874,4 +876,105 @@ func algWhy(s *facts.SSH) string {
 		return "the built in defaults depend on the OpenSSH build and sshd -T was unavailable (" + s.SshdTError + ")"
 	}
 	return why(s)
+}
+
+// passwordLogin says whether a password alone logs in for every
+// connection: PasswordAuthentication, or keyboard-interactive without a
+// PAM second factor, set globally or by a Match all block and offered
+// alone by AuthenticationMethods. Conditional Match blocks do not count
+// (SSH-001 and SSH-002 report them).
+func passwordLogin(s *facts.SSH) (tri, string) {
+	pw, pwOK := s.Value("passwordauthentication")
+	kbd, kbdOK := s.Value("kbdinteractiveauthentication")
+	pwAll, _ := matchOverrides(s, "passwordauthentication", isYes)
+	kbdAll, _ := matchOverrides(s, "kbdinteractiveauthentication", isYes)
+	if (pw == "yes" || len(pwAll) > 0) && methodUse(s, "password") == "sole" {
+		return triYes, "PasswordAuthentication"
+	}
+	if (kbd == "yes" || len(kbdAll) > 0) && len(s.PAM2FA) == 0 && methodUse(s, "keyboard-interactive") == "sole" {
+		return triYes, "KbdInteractiveAuthentication"
+	}
+	if !pwOK || !kbdOK {
+		return triUnknown, ""
+	}
+	return triNo, ""
+}
+
+// SSH-011: sshd reachable from anywhere must not take passwords, and
+// with keys only it should still have a brute force jail.
+func checkSSHReachableAuth(in Input) []Result {
+	f := in.Facts
+	s, res := sshFacts(in)
+	if s == nil {
+		return res
+	}
+	if f.Listeners == nil {
+		return []Result{NotInspected(f, "listeners")}
+	}
+	if f.Firewall == nil {
+		return []Result{NotInspected(f, "firewall")}
+	}
+	reach := sshReachability(f)
+	ev := map[string]any{"ssh_ports": reach.ports, "open_from_anywhere": reach.open.String(),
+		"password_login": "unknown", "brute_force_guard": "unknown"}
+	switch reach.open {
+	case triNo:
+		return One(Pass, "sshd is not reachable from anywhere: "+strings.Join(reach.reasons, "; "), ev)
+	case triUnknown:
+		return One(Unknown, "could not tell whether sshd is reachable from anywhere: "+strings.Join(reach.reasons, "; "), ev)
+	}
+	where := reach.where()
+	pw, by := passwordLogin(s)
+	ev["password_login"] = pw.String()
+	switch pw {
+	case triYes:
+		return One(Fail, fmt.Sprintf("sshd is reachable from anywhere on %s and accepts a password alone (%s): every bot on the internet can guess", where, by), ev)
+	case triUnknown:
+		return One(Unknown, fmt.Sprintf("sshd is reachable from anywhere on %s; whether it accepts passwords is unknown: %s", where, why(s)), ev)
+	}
+	g := sshProtection(f, reach.ports)
+	ev["brute_force_guard"] = g.level.String()
+	switch g.level {
+	case triYes:
+		return One(Pass, fmt.Sprintf("sshd is reachable from anywhere on %s, takes keys only and brute force is banned", where), ev)
+	case triUnknown:
+		return One(Unknown, fmt.Sprintf("sshd is reachable from anywhere on %s and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read (run with sudo)", where), ev)
+	}
+	return One(Warn, fmt.Sprintf("sshd is reachable from anywhere on %s with keys only and no fail2ban jail or CrowdSec sshd collection bans brute force", where), ev)
+}
+
+// SSH-016: Tailscale SSH and OpenSSH side by side are two login paths
+// with different rules.
+func checkTailscaleSSH(in Input) []Result {
+	f := in.Facts
+	t := f.Tailscale
+	if t == nil {
+		return []Result{NotInspected(f, "tailscale")}
+	}
+	if !t.Installed {
+		return One(Skip, "Tailscale is not installed", map[string]any{"tailscale_ssh": "absent", "openssh": "unknown"})
+	}
+	ev := map[string]any{"tailscale_ssh": "unknown", "openssh": "unknown", "backend_state": valueOrUnknown(t.State())}
+	if t.SSH == nil {
+		return One(Unknown, "could not read whether Tailscale SSH is on (tailscale debug prefs did not answer)", ev)
+	}
+	if !*t.SSH {
+		ev["tailscale_ssh"] = "off"
+		return One(Pass, "Tailscale SSH is off; OpenSSH is the only SSH server", ev)
+	}
+	ev["tailscale_ssh"] = "on"
+	s := f.SSH
+	if s == nil {
+		return []Result{NotInspected(f, "ssh")}
+	}
+	switch {
+	case !s.Installed:
+		ev["openssh"] = "absent"
+		return One(Pass, "Tailscale SSH is the only SSH server (no OpenSSH server installed)", ev)
+	case s.ListeningInspected && len(s.Listening) == 0:
+		ev["openssh"] = "not listening"
+		return One(Pass, "Tailscale SSH is on and OpenSSH does not listen", ev)
+	}
+	ev["openssh"] = "installed"
+	return One(Warn, "Tailscale SSH is on alongside OpenSSH: two login paths with different authentication and logging to reason about", ev)
 }
