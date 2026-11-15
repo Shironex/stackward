@@ -1,0 +1,23 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "box.example.com",
+    "uid": 1000,
+    "euid": 1000,
+    "root": false
+  },
+  "kernel": {
+    "release": "6.8.0-45-generic"
+  },
+  "reboot": {
+    "required": false
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "partial",
+      "error": "os-release: open /etc/os-release: permission denied; planted for the redaction test DB_PASSWORD=not-a-real-value"
+    }
+  ]
+}

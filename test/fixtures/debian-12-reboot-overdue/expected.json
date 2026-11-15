@@ -1,0 +1,111 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:fb7c54dffdfc947b",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "os_id": "debian",
+    "os_version": "12",
+    "kernel": "6.1.0-27-amd64"
+  },
+  "profile": {
+    "name": "unknown",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 3,
+    "results": 3,
+    "checked": 3,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "os",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 1,
+    "warn": 1,
+    "unknown": 0,
+    "info": 0,
+    "pass": 1,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "pass",
+      "severity": "info",
+      "subject": "host",
+      "message": "debian 12 is a tested release",
+      "evidence": {
+        "id": "debian",
+        "pretty_name": "Debian GNU/Linux 12 (bookworm)",
+        "tested": [
+          "ubuntu 22.04",
+          "ubuntu 24.04",
+          "ubuntu 26.04",
+          "debian 12",
+          "debian 13"
+        ],
+        "version_id": "12"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "fail",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "reboot pending for 20 days",
+      "evidence": {
+        "days": 20,
+        "packages": [
+          "linux-image-6.1.0-28-amd64"
+        ],
+        "required": true,
+        "since": "2026-02-09T06:30:00Z"
+      },
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "running kernel 6.1.0-27-amd64 is older than installed 6.1.0-28-amd64",
+      "evidence": {
+        "installed": [
+          "6.1.0-27-amd64",
+          "6.1.0-28-amd64"
+        ],
+        "newest": "6.1.0-28-amd64",
+        "running": "6.1.0-27-amd64"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:28059829b1051f04",
+    "os": "Rocky Linux 9.4 (Blue Onyx)",
+    "os_id": "rocky",
+    "os_version": "9.4",
+    "kernel": "5.14.0-427.13.1.el9_4.x86_64"
+  },
+  "profile": {
+    "name": "unknown",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 3,
+    "results": 3,
+    "checked": 1,
+    "unknown": 1,
+    "skipped": 1,
+    "root": true,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "os",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "unknown": 1,
+    "info": 0,
+    "pass": 1,
+    "skip": 1
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "skip",
+      "severity": "info",
+      "subject": "host",
+      "message": "rocky is not a tested distribution family; many results may be unknown",
+      "evidence": {
+        "id": "rocky",
+        "pretty_name": "Rocky Linux 9.4 (Blue Onyx)",
+        "tested": [
+          "ubuntu 22.04",
+          "ubuntu 24.04",
+          "ubuntu 26.04",
+          "debian 12",
+          "debian 13"
+        ],
+        "version_id": "9.4"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no reboot marker is known for rocky",
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "running the newest installed kernel 5.14.0-427.13.1.el9_4.x86_64",
+      "evidence": {
+        "installed": [
+          "5.14.0-427.13.1.el9_4.x86_64"
+        ],
+        "newest": "5.14.0-427.13.1.el9_4.x86_64",
+        "running": "5.14.0-427.13.1.el9_4.x86_64"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    }
+  ]
+}

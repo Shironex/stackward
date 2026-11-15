@@ -1,0 +1,28 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "db1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "debian",
+    "version_id": "12",
+    "version_codename": "bookworm",
+    "pretty_name": "Debian GNU/Linux 12 (bookworm)"
+  },
+  "kernel": {
+    "release": "6.1.0-27-amd64",
+    "installed": ["6.1.0-27-amd64", "6.1.0-28-amd64"]
+  },
+  "reboot": {
+    "required": true,
+    "since": "2026-02-09T06:30:00Z",
+    "packages": ["linux-image-6.1.0-28-amd64"]
+  },
+  "collectors": [
+    {"name": "os", "status": "ok"}
+  ]
+}
