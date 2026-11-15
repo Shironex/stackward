@@ -157,7 +157,7 @@ func TestCommands(t *testing.T) {
 	if code, out, _ := run("version"); code != report.ExitOK || !strings.HasPrefix(out, "stackward ") {
 		t.Errorf("version: %d %q", code, out)
 	}
-	for _, c := range []string{"probe", "tui"} {
+	for _, c := range []string{"probe"} {
 		if code, _, errs := run(c); code != report.ExitError || !strings.Contains(errs, "not in this build yet") {
 			t.Errorf("%s: %d %q", c, code, errs)
 		}

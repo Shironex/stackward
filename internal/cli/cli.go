@@ -34,9 +34,9 @@ Usage:
   stackward explain [id]      explain a check, or list every check
   stackward version           print the version
   stackward probe             (not in this build yet)
-  stackward tui               (not in this build yet)
+  stackward tui [flags]       browse the findings in the terminal
 
-Run "stackward audit -h" for audit flags.
+Run "stackward audit -h" or "stackward tui -h" for their flags.
 
 Exit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.
 `
@@ -55,7 +55,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runExplain(args[1:], stdout, stderr)
 	case "version", "--version":
 		return runVersion(stdout)
-	case "probe", "tui":
+	case "tui":
+		return runTUI(args[1:], stdout, stderr)
+	case "probe":
 		fmt.Fprintf(stderr, "stackward %s: not in this build yet\n", args[0])
 		return report.ExitError
 	case "help", "-h", "--help":
@@ -214,15 +216,7 @@ func loadFacts(path string) (*facts.Facts, error) {
 
 // colorOK reports whether w is a terminal and NO_COLOR is unset.
 func colorOK(w io.Writer) bool {
-	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
-		return false
-	}
-	f, ok := w.(*os.File)
-	if !ok {
-		return false
-	}
-	fi, err := f.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+	return colorEnv() && isTerminal(w)
 }
 
 func runExplain(args []string, stdout, stderr io.Writer) int {
