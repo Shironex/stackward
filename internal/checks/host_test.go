@@ -423,3 +423,44 @@ func TestSYS004And005(t *testing.T) {
 		t.Errorf("paths on one filesystem must give one result: %v", rs)
 	}
 }
+
+func TestSysctlFixes(t *testing.T) {
+	if SysctlFixes(nil) != nil {
+		t.Error("nil facts must give no fixes")
+	}
+	good := allOK(netBaseline)
+	for k, v := range allOK(kernelBaseline) {
+		good[k] = v
+	}
+	good[keyRPFilterAll], good[keyRPFilterDef] = "2", "2"
+	good[keyIPForward] = "0"
+	if got := SysctlFixes(sysctlFacts(true, false, good).Sysctl); len(got) != 0 {
+		t.Errorf("baseline values gave fixes (ip_forward must never be one): %v", got)
+	}
+	bad := map[string]string{}
+	for k, v := range good {
+		bad[k] = v
+	}
+	bad[keyRPFilterAll] = "1"
+	bad["net.ipv4.conf.all.accept_redirects"] = "1"
+	bad["kernel.kptr_restrict"] = "0"
+	f := sysctlFacts(true, false, bad)
+	want := []SysctlFix{
+		{"KRN-002", keyRPFilterAll, 1, 2},
+		{"KRN-003", "net.ipv4.conf.all.accept_redirects", 1, 0},
+		{"KRN-004", "kernel.kptr_restrict", 0, 1},
+	}
+	got := SysctlFixes(f.Sysctl)
+	if len(got) != len(want) {
+		t.Fatalf("fixes %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("fix %d: %v, want %v", i, got[i], want[i])
+		}
+	}
+	// Strict rp_filter is only a finding with Docker or Tailscale.
+	if got := SysctlFixes(sysctlFacts(false, false, map[string]string{keyRPFilterAll: "1"}).Sysctl); len(got) != 0 {
+		t.Errorf("rp_filter fixed without Docker or Tailscale: %v", got)
+	}
+}
