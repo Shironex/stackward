@@ -13,6 +13,7 @@
     "dev": "node scripts/run.mjs dev",
     "build": "node scripts/run.mjs build",
     "preview": "node scripts/run.mjs preview",
+    "sample": "node scripts/sample.mjs",
     "check": "node scripts/check-build.mjs",
     "test": "node --test scripts/*.test.mjs"
   },

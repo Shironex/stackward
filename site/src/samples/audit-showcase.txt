@@ -1,0 +1,49 @@
+stackward dev audit (stackward.report.v1)
+host:      sha256:82c1a34869ebe223
+os:        Ubuntu 24.04.1 LTS
+kernel:    6.8.0-48-generic
+collected: 2026-03-01T12:00:00Z
+profile:   unknown (inferred)
+root:      yes
+sandbox:   disabled (turned off with --no-sandbox)
+coverage:  108 checked, 23 unknown, 7 skipped (100 checks)
+
+NET  Firewall and exposure  (3 passing or skipped not shown)
+  FAIL    NET-002  UFW filters IPv6 when the host has a global IPv6 address [high]
+          UFW has IPV6=no while the host has a global IPv6 address: IPv6 traffic is not filtered
+          fix: Set IPV6=yes in /etc/default/ufw, then ufw reload
+  UNKNOWN NET-003  SSH is not open to anywhere when a private path exists [high]
+          SSH is open to anywhere on tcp/22; Tailscale facts are missing, so whether a private path exists is unknown
+  INFO    NET-004 port:tcp/22  Exposure: every listening socket and who can reach it [moderate]
+          tcp/22 (sshd) is public by design: UFW allows tcp/22 from anywhere (allow in 22/tcp from anywhere)
+  WARN    NET-004 port:tcp/8000  Exposure: every listening socket and who can reach it [moderate]
+          tcp/8000 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)
+          fix: Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall
+  UNKNOWN NET-005  No public 80/443 rule on a tunnel or tailnet only host [moderate]
+          ingress profile unknown; pass --profile to judge 80/443 rules
+  INFO    NET-006  DOCKER-USER chain state [info]
+          DOCKER-USER exists with no filtering rules: published ports are not filtered by the host firewall
+  UNKNOWN NET-009  Provider firewall (outside view) [info]
+          the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable
+
+DKR  Docker  (47 passing or skipped not shown)
+  WARN    DKR-034  Docker Engine is supported upstream [moderate]
+          Docker Engine 27 left upstream support on 2025-05-03
+          fix: Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.
+
+SEC  Secrets on disk  (7 passing or skipped not shown)
+  FAIL    SEC-003 file:/data/coolify/ssh/keys  Platform SSH key folder is closed to other users [critical]
+          SSH key folder is open to group or others (mode 0755, want 0700)
+          fix: chmod 700 the folder and chmod 600 every key in it.
+
+PAAS  Coolify and Dokploy  (4 passing or skipped not shown)
+  INFO    PAAS-001 file:/data/coolify  Self hosted platform detected [info]
+          coolify detected, role panel
+  FAIL    PAAS-003 port:tcp/8000  Platform panel ports are not open to the world [high]
+          coolify panel port 8000 listens on all interfaces and the firewall does not filter it
+          fix: Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.
+  UNKNOWN PAAS-004  No platform database is published publicly [critical]
+          container facts are present but this build cannot read them for PaaS checks
+
+summary: 3 fail, 3 warn, 23 unknown, 9 info, 93 pass, 7 skip
+explain any check with: stackward explain <id>

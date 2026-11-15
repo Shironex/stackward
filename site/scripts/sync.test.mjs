@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { escapeMarkdown, parseGroups, proseWithIds, rewriteDocLinks } from './sync.mjs';
+import { excerpt } from './sample.mjs';
 import { allowedIPv4, startTags } from './check-build.mjs';
 
 test('parseGroups reads catalog.Groups in order', () => {
@@ -59,4 +60,25 @@ test('the link checker reads real tags, not text that looks like one', () => {
 test('only documentation, private and tailnet IPv4 ranges are allowed', () => {
   for (const ok of ['192.0.2.10', '198.51.100.20', '203.0.113.7', '100.64.0.10', '10.0.0.0', '172.16.0.0', '192.168.1.1', '127.0.0.1', '1.2.3.400']) assert.ok(allowedIPv4(ok), ok);
   for (const bad of ['8.8.8.8', '1.1.1.1', '198.51.99.1', '203.0.114.9']) assert.ok(!allowedIPv4(bad), bad);
+});
+
+test('the sample excerpt keeps the header, chosen groups and summary only', () => {
+  const report = [
+    'stackward v0.0.0-2026+dirty audit (stackward.report.v1)',
+    'host:      sha256:abc',
+    '',
+    'SYS  System  (4 passing or skipped not shown)',
+    '  WARN    SYS-003  Kernel [moderate]',
+    '',
+    'NET  Firewall and exposure',
+    '  FAIL    NET-002  IPv6 [high]',
+    '',
+    'summary: 1 fail, 1 warn',
+    'explain any check with: stackward explain <id>',
+  ].join('\n');
+  const out = excerpt(report, ['NET']);
+  assert.ok(out.startsWith('stackward dev audit (stackward.report.v1)\n'));
+  assert.ok(out.includes('NET-002') && !out.includes('SYS-003'));
+  assert.ok(out.includes('summary: 1 fail, 1 warn'));
+  assert.throws(() => excerpt('nothing here'));
 });
