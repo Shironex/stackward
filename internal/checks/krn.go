@@ -164,16 +164,7 @@ func checkNetBaseline(in Input) []Result {
 		return []Result{NotInspected(in.Facts, "sysctl")}
 	}
 	off, unavailable, judged := offBaseline(s, netBaseline)
-	// ufw reapplies /etc/ufw/sysctl.conf on enable and reload, so a value
-	// there undoes a hardening drop-in even when the running value is fine.
-	var ufw []string
-	for _, b := range netBaseline {
-		if raw, ok := s.UFW[b.key]; ok {
-			if n, err := strconv.Atoi(raw); err == nil && !b.ok(n) {
-				ufw = append(ufw, fmt.Sprintf("%s=%d (want %s)", b.key, n, b.wantText()))
-			}
-		}
-	}
+	ufw := UFWSysctlOverrides(s)
 	ev := map[string]any{"off_baseline": nonNil(off), "ufw_overrides": nonNil(ufw), "unavailable": nonNil(unavailable), "judged": judged}
 	switch {
 	case judged == 0:
@@ -182,6 +173,22 @@ func checkNetBaseline(in Input) []Result {
 		return One(Warn, fmt.Sprintf("%d network setting(s) off baseline, %d reset by /etc/ufw/sysctl.conf", len(off), len(ufw)), ev)
 	}
 	return One(Pass, "network sysctls match the baseline", ev)
+}
+
+// UFWSysctlOverrides returns the network baseline settings that
+// /etc/ufw/sysctl.conf sets off baseline, as "key=value (want x)". ufw
+// reapplies that file on enable and reload, so a value there undoes a
+// hardening drop-in even when the running value is fine.
+func UFWSysctlOverrides(s *facts.Sysctl) []string {
+	var ufw []string
+	for _, b := range netBaseline {
+		if raw, ok := s.UFW[b.key]; ok {
+			if n, err := strconv.Atoi(raw); err == nil && !b.ok(n) {
+				ufw = append(ufw, fmt.Sprintf("%s=%d (want %s)", b.key, n, b.wantText()))
+			}
+		}
+	}
+	return ufw
 }
 
 func checkKernelBaseline(in Input) []Result {
@@ -225,4 +232,43 @@ func checkAcceptRA(in Input) []Result {
 		return One(Warn, "accept_ra=0 set in "+cfg.File+" while this host holds a router advertised IPv6 address: IPv6 will break when it expires", ev)
 	}
 	return One(Pass, "accept_ra is not switched off in a way that breaks IPv6 here", ev)
+}
+
+// SysctlFix is one running kernel setting that a KRN check judges wrong and
+// the value that fixes it. `stackward plan` turns these into a drop-in, so
+// the plan and the checks share one baseline.
+type SysctlFix struct {
+	CheckID string
+	Key     string
+	Current int
+	Want    int
+}
+
+// SysctlFixes returns, in table order, the readable settings that KRN-002
+// (strict rp_filter on a Docker or Tailscale host, fixed with 2), KRN-003
+// and KRN-004 judge off baseline. A minimum baseline is fixed with its
+// minimum. It never returns net.ipv4.ip_forward.
+func SysctlFixes(s *facts.Sysctl) []SysctlFix {
+	if s == nil {
+		return nil
+	}
+	var out []SysctlFix
+	if s.DockerPresent || s.TailscalePresent {
+		for _, key := range []string{keyRPFilterAll, keyRPFilterDef} {
+			if v, ok := sysctlInt(s, key); ok && v == 1 {
+				out = append(out, SysctlFix{CheckID: "KRN-002", Key: key, Current: v, Want: 2})
+			}
+		}
+	}
+	for _, t := range []struct {
+		id    string
+		table []baseline
+	}{{"KRN-003", netBaseline}, {"KRN-004", kernelBaseline}} {
+		for _, b := range t.table {
+			if v, ok := sysctlInt(s, b.key); ok && !b.ok(v) {
+				out = append(out, SysctlFix{CheckID: t.id, Key: b.key, Current: v, Want: b.want})
+			}
+		}
+	}
+	return out
 }
