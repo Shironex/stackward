@@ -38,6 +38,48 @@ type Report struct {
 	Coverage    Coverage `json:"coverage"`
 	Summary     Summary  `json:"summary"`
 	Results     []Item   `json:"results"`
+	// Probe is set by `stackward probe` only; audit reports never carry it.
+	Probe *Probe `json:"probe,omitempty"`
+}
+
+// Probe describes what `stackward probe` looked at from outside: the target
+// as given, the addresses it resolved to, how each address family went and
+// every port it tried.
+type Probe struct {
+	Target string `json:"target"`
+	// Hostname is the --hostname checked over HTTPS, if any.
+	Hostname  string         `json:"hostname,omitempty"`
+	Addresses []ProbeAddress `json:"addresses"`
+	Families  []ProbeFamily  `json:"families"`
+	Ports     []ProbePort    `json:"ports"`
+	// Notes are caveats the reader needs (for example a skipped TLS
+	// verification or an address family this machine cannot reach).
+	Notes []string `json:"notes,omitempty"`
+}
+
+// ProbeAddress is one resolved address of the target.
+type ProbeAddress struct {
+	Address string `json:"address"`
+	Family  string `json:"family"`
+}
+
+// ProbeFamily is how one address family went: probed, no-address or
+// unreachable (this machine has no route to it).
+type ProbeFamily struct {
+	Family string `json:"family"`
+	Status string `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// ProbePort is one TCP connect attempt.
+type ProbePort struct {
+	Address string `json:"address"`
+	Family  string `json:"family"`
+	Port    int    `json:"port"`
+	// State is open, closed (refused), filtered (no answer), unreachable or
+	// error.
+	State  string `json:"state"`
+	Banner string `json:"banner,omitempty"`
 }
 
 // Tool identifies the producer.
@@ -124,6 +166,8 @@ type Meta struct {
 	ProfileSource string
 	ShowHostname  bool
 	ChecksRun     int
+	// Probe marks a probe report and describes its target.
+	Probe *Probe
 }
 
 // Build assembles a report. Results must already be in report order (as
@@ -170,6 +214,10 @@ func Build(f *facts.Facts, results []checks.Result, cat *catalog.Catalog, m Meta
 		r.count(res.Level)
 	}
 
+	if m.Probe != nil {
+		r.Probe = redactProbe(m.Probe)
+	}
+
 	r.Coverage.Checks = m.ChecksRun
 	r.Coverage.Results = len(results)
 	r.Coverage.Root = f.IsRoot()
@@ -205,6 +253,27 @@ func (r *Report) count(l checks.Level) {
 		r.Summary.Skip++
 		r.Coverage.Skipped++
 	}
+}
+
+// redactProbe copies p with every free text field redacted.
+func redactProbe(p *Probe) *Probe {
+	cp := *p
+	cp.Addresses = append([]ProbeAddress{}, p.Addresses...)
+	cp.Families = make([]ProbeFamily, len(p.Families))
+	for i, f := range p.Families {
+		f.Detail = redact.String(f.Detail)
+		cp.Families[i] = f
+	}
+	cp.Ports = make([]ProbePort, len(p.Ports))
+	for i, pt := range p.Ports {
+		pt.Banner = redact.String(pt.Banner)
+		cp.Ports[i] = pt
+	}
+	cp.Notes = nil
+	for _, n := range p.Notes {
+		cp.Notes = append(cp.Notes, redact.String(n))
+	}
+	return &cp
 }
 
 // HashHostname returns the hostname_hash form of a hostname.

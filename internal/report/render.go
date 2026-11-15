@@ -59,24 +59,11 @@ func WriteText(w io.Writer, r *Report, o TextOptions) error {
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
 
-	p("stackward %s audit (%s)\n", r.Tool.Version, r.Schema)
-	host := r.Host.HostnameHash
-	if r.Host.Hostname != "" {
-		host = r.Host.Hostname
+	if r.Probe != nil {
+		writeProbeHeader(p, r)
+	} else {
+		writeAuditHeader(p, r)
 	}
-	p("host:      %s\n", orDash(host))
-	p("os:        %s\n", orDash(strings.TrimSpace(r.Host.OS)))
-	p("kernel:    %s\n", orDash(r.Host.Kernel))
-	p("collected: %s\n", orDash(r.GeneratedAt))
-	p("profile:   %s (%s)\n", r.Profile.Name, r.Profile.Source)
-	root := "yes"
-	if !r.Coverage.Root {
-		root = "no, run with sudo for full coverage"
-	}
-	p("root:      %s\n", root)
-	p("sandbox:   %s\n", sandboxLine(r.Coverage.Sandbox))
-	p("coverage:  %d checked, %d unknown, %d skipped (%d checks)\n",
-		r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped, r.Coverage.Checks)
 	for _, c := range r.Coverage.Collectors {
 		if c.Status == "ok" {
 			continue
@@ -137,6 +124,68 @@ func WriteText(w io.Writer, r *Report, o TextOptions) error {
 	p("explain any check with: stackward explain <id>\n")
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+type printer func(format string, a ...any)
+
+func writeAuditHeader(p printer, r *Report) {
+	p("stackward %s audit (%s)\n", r.Tool.Version, r.Schema)
+	host := r.Host.HostnameHash
+	if r.Host.Hostname != "" {
+		host = r.Host.Hostname
+	}
+	p("host:      %s\n", orDash(host))
+	p("os:        %s\n", orDash(strings.TrimSpace(r.Host.OS)))
+	p("kernel:    %s\n", orDash(r.Host.Kernel))
+	p("collected: %s\n", orDash(r.GeneratedAt))
+	p("profile:   %s (%s)\n", r.Profile.Name, r.Profile.Source)
+	root := "yes"
+	if !r.Coverage.Root {
+		root = "no, run with sudo for full coverage"
+	}
+	p("root:      %s\n", root)
+	p("sandbox:   %s\n", sandboxLine(r.Coverage.Sandbox))
+	writeCoverageLine(p, r)
+}
+
+// writeProbeHeader replaces the host block of an audit with the target, its
+// addresses, each address family and the ports that answered.
+func writeProbeHeader(p printer, r *Report) {
+	pr := r.Probe
+	p("stackward %s probe (%s)\n", r.Tool.Version, r.Schema)
+	p("target:    %s\n", orDash(pr.Target))
+	p("hostname:  %s\n", orDash(pr.Hostname))
+	addrs := make([]string, 0, len(pr.Addresses))
+	for _, a := range pr.Addresses {
+		addrs = append(addrs, a.Address+" ("+a.Family+")")
+	}
+	p("addresses: %s\n", orDash(strings.Join(addrs, ", ")))
+	for _, f := range pr.Families {
+		line := f.Status
+		if f.Detail != "" {
+			line += ": " + f.Detail
+		}
+		p("%-10s %s\n", f.Family+":", line)
+	}
+	p("probed:    %s\n", orDash(r.GeneratedAt))
+	p("profile:   %s (%s)\n", r.Profile.Name, r.Profile.Source)
+	p("sandbox:   %s\n", sandboxLine(r.Coverage.Sandbox))
+	var open []string
+	for _, pt := range pr.Ports {
+		if pt.State == "open" {
+			open = append(open, fmt.Sprintf("tcp/%d on %s", pt.Port, pt.Address))
+		}
+	}
+	p("open:      %s\n", orDash(strings.Join(open, ", ")))
+	for _, n := range pr.Notes {
+		p("note:      %s\n", n)
+	}
+	writeCoverageLine(p, r)
+}
+
+func writeCoverageLine(p printer, r *Report) {
+	p("coverage:  %d checked, %d unknown, %d skipped (%d checks)\n",
+		r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped, r.Coverage.Checks)
 }
 
 func sandboxLine(s sandbox.Status) string {
