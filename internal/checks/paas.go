@@ -149,6 +149,14 @@ func paasDockerFilter(f *facts.Facts, proto string, port int) paasFilter {
 	return paasFilterUnknown
 }
 
+// paasForwardBackend reports whether the shared forward filter has a special
+// answer for this host that paasFilterFor cannot give: Docker's nftables
+// backend, or Docker running with iptables off.
+func paasForwardBackend(f *facts.Facts) bool {
+	d := f.Docker
+	return f.Firewall.DockerBackend == "nftables" || (d.Daemon != nil && d.Daemon.IPTables != nil && !*d.Daemon.IPTables)
+}
+
 // Collector names of the domains read through the hooks, for NotInspected.
 const (
 	paasDockerCollector    = "docker"
@@ -419,14 +427,14 @@ func checkPaaSProxyExposure(in Input) []Result {
 		if lwhy != nil {
 			return []Result{*why}
 		}
-		return []Result{paasJudgeProxy(proxy, "host", in.Profile, paasTunnelRuns(f))}
+		return []Result{paasJudgeProxy(f, proxy, "host", in.Profile, paasTunnelRuns(f))}
 	}
 	var out []Result
 	for _, c := range containers {
 		if !isPaaSProxy(c) {
 			continue
 		}
-		out = append(out, paasJudgeProxy(c, "container:"+c.Name, in.Profile, paasTunnelRuns(f)))
+		out = append(out, paasJudgeProxy(f, c, "container:"+c.Name, in.Profile, paasTunnelRuns(f)))
 	}
 	if len(out) == 0 {
 		return One(Skip, "no platform proxy container found", nil)
@@ -457,26 +465,64 @@ func paasTunnelRuns(f *facts.Facts) bool {
 	return present && known
 }
 
-func paasJudgeProxy(c paasContainer, subject string, prof profile.Name, tunnel bool) Result {
-	var published, exposedWeb, exposedOther []string
+// paasJudgeProxy judges the proxy's published ports. A binding on all
+// interfaces only counts as exposed when the forward filter lets a
+// connection through from any source (the judgement DKR-001 uses); one the
+// filter drops is a warning to bind to loopback, and one whose filtering
+// cannot be read is unknown.
+func paasJudgeProxy(f *facts.Facts, c paasContainer, subject string, prof profile.Name, tunnel bool) Result {
+	d := f.Docker
+	if d == nil {
+		d = &facts.Docker{}
+	}
+	var published, exposedWeb, exposedOther, filtered, undecided, why []string
 	for _, p := range c.Ports {
 		published = append(published, paasPortLabel(p))
 		if !paasExposed(p.HostIP) {
 			continue
 		}
+		label := paasPortLabel(p)
+		proto := p.Proto
+		if proto == "" {
+			proto = "tcp"
+		}
+		open, _, reason := forwardFilter(f, d, proto, p.HostIP, p.HostPort, p.ContainerPort)
+		switch open {
+		case triNo:
+			filtered = append(filtered, label)
+			continue
+		case triUnknown:
+			undecided = append(undecided, label)
+			why = append(why, label+": "+reason)
+			continue
+		}
 		if p.HostPort == 80 || p.HostPort == 443 {
-			exposedWeb = append(exposedWeb, paasPortLabel(p))
+			exposedWeb = append(exposedWeb, label)
 		} else {
-			exposedOther = append(exposedOther, paasPortLabel(p))
+			exposedOther = append(exposedOther, label)
 		}
 	}
 	exposed := append(append([]string{}, exposedWeb...), exposedOther...)
 	r := Result{Subject: subject, Evidence: map[string]any{
 		"published": paasNonNil(published), "exposed": paasNonNil(exposed), "profile": string(prof),
 	}}
+	if len(filtered) > 0 {
+		r.Evidence["filtered"] = filtered
+	}
+	if len(undecided) > 0 {
+		r.Evidence["unknown"] = undecided
+	}
 	switch {
 	case len(published) == 0:
 		r.Level, r.Message = Pass, "nothing listens on 80 or 443"
+	case len(exposed) == 0 && len(undecided) > 0:
+		r.Level = Unknown
+		r.Message = fmt.Sprintf("proxy is published on all interfaces (%s) and stackward could not tell what filters it: %s",
+			strings.Join(undecided, ", "), strings.Join(why, "; "))
+	case len(exposed) == 0 && len(filtered) > 0:
+		r.Level = Warn
+		r.Message = fmt.Sprintf("proxy is published on all interfaces (%s) but filtered by the forward filter (ufw-docker or DOCKER-USER) today; bind to 127.0.0.1 so a firewall change cannot expose it",
+			strings.Join(filtered, ", "))
 	case len(exposed) == 0:
 		r.Level, r.Message = Pass, "proxy is published on loopback or private addresses only"
 	case prof == profile.Tunnel || prof == profile.TailnetOnly:
@@ -578,7 +624,8 @@ func paasJudgeHostPort(f *facts.Facts, ls []paasListener, proto string, port int
 		}
 	}
 	filter := readPaaSFilter(f.Firewall, proto, port, viaDocker)
-	if viaDocker && f.Firewall != nil && f.Listeners != nil && ufwDockerChainOf(f) != nil {
+	if viaDocker && f.Firewall != nil && f.Listeners != nil && f.Docker != nil &&
+		(ufwDockerChainOf(f) != nil || paasForwardBackend(f)) {
 		filter = paasDockerFilter(f, proto, port)
 	}
 	ev := map[string]any{"binds": paasNonNil(binds), "exposed": paasNonNil(exposed), "filter": string(filter)}
@@ -664,7 +711,7 @@ func checkPaaSPublicDatabase(in Input) []Result {
 		}
 		checked++
 		var exposed, why []string
-		level := Warn
+		level, undecided := Warn, false
 		for _, p := range c.Ports {
 			if !paasExposed(p.HostIP) {
 				continue
@@ -677,14 +724,23 @@ func checkPaaSPublicDatabase(in Input) []Result {
 			}
 			open, _, reason := forwardFilter(f, f.Docker, proto, p.HostIP, p.HostPort, p.ContainerPort)
 			why = append(why, label+": "+reason)
-			if open != triNo {
+			switch open {
+			case triYes:
 				level = Fail
+			case triUnknown:
+				undecided = true
 			}
 		}
 		if len(exposed) == 0 {
 			continue
 		}
+		if undecided && level != Fail {
+			level = Unknown
+		}
 		msg := fmt.Sprintf("%s database published on all interfaces: %s", owner, strings.Join(why, "; "))
+		if level == Unknown {
+			msg = fmt.Sprintf("%s database published on all interfaces and stackward could not tell what filters it: %s", owner, strings.Join(why, "; "))
+		}
 		if level == Warn {
 			msg = fmt.Sprintf("%s database published on all interfaces behind a forward filter; turn off public access or confirm from outside with probe: %s", owner, strings.Join(why, "; "))
 		}

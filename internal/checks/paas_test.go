@@ -31,6 +31,12 @@ func paasCoolifyFacts() *facts.Facts {
 	}
 }
 
+// paasUnfilteredFirewall is a host whose published ports no firewall
+// filters: the iptables backend and no rules in DOCKER-USER.
+func paasUnfilteredFirewall() *facts.Firewall {
+	return &facts.Firewall{DockerBackend: "iptables", DockerUser: "absent"}
+}
+
 func paasLevels(rs []Result) string {
 	var out []string
 	for _, r := range rs {
@@ -66,6 +72,7 @@ func TestPaaSChecksUnknownWithoutFacts(t *testing.T) {
 func TestPaaSProxyFromListeners(t *testing.T) {
 	// Default hooks: Docker unmapped, listeners mapped from the real facts.
 	f := paasCoolifyFacts()
+	f.Firewall = paasUnfilteredFirewall()
 	f.Listeners = &facts.Listeners{Sockets: []facts.Listener{
 		{Proto: "tcp", Address: "0.0.0.0", Port: 443, Processes: []string{"docker-proxy"}},
 		{Proto: "tcp", Address: "::", Port: 80, Processes: []string{"docker-proxy"}},
@@ -191,7 +198,9 @@ func TestPaaSProxyExposure(t *testing.T) {
 	}
 	for _, c := range cases {
 		withPaaSViews(t, proxy(c.ports...), nil, paasFilterUnknown)
-		rs := checkPaaSProxyExposure(Input{Facts: paasCoolifyFacts(), Profile: c.prof})
+		pf := paasCoolifyFacts()
+		pf.Firewall = paasUnfilteredFirewall()
+		rs := checkPaaSProxyExposure(Input{Facts: pf, Profile: c.prof})
 		if len(rs) != 1 || rs[0].Level != c.want || rs[0].Subject != "container:coolify-proxy" {
 			t.Errorf("%s: %s %q", c.name, paasLevels(rs), rs[0].Message)
 		}
@@ -200,6 +209,7 @@ func TestPaaSProxyExposure(t *testing.T) {
 	// the tunnel, not a pass and not a warning.
 	withPaaSViews(t, proxy(web...), nil, paasFilterUnknown)
 	f := paasCoolifyFacts()
+	f.Firewall = paasUnfilteredFirewall()
 	f.Docker = &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Name: "tunnel", Image: "cloudflare/cloudflared:2026.10.0", Running: true}}}
 	if rs := checkPaaSProxyExposure(Input{Facts: f, Profile: profile.PaaSPanel}); rs[0].Level != Info || !strings.Contains(rs[0].Message, "tunnel") {
 		t.Errorf("panel with tunnel: %s %q", rs[0].Level, rs[0].Message)
@@ -257,10 +267,37 @@ func TestPaaSPublicDatabase(t *testing.T) {
 	}
 	for _, c := range cases {
 		withPaaSViews(t, c.cs, nil, paasFilterUnknown)
-		rs := EvaluateChecks([]Check{{ID: "PAAS-004", Run: checkPaaSPublicDatabase}}, Input{Facts: paasCoolifyFacts()})
+		pf := paasCoolifyFacts()
+		pf.Firewall = paasUnfilteredFirewall()
+		rs := EvaluateChecks([]Check{{ID: "PAAS-004", Run: checkPaaSPublicDatabase}}, Input{Facts: pf})
 		if got := paasLevels(rs); got != c.want {
 			t.Errorf("%s: %s", c.name, got)
 		}
+	}
+	// Filtering that cannot be read is unknown, a ufw-docker drop is a warning.
+	db := []paasContainer{{Name: "db1", Image: "postgres:16-alpine", Labels: coolifyLabels,
+		Ports: []paasPort{{HostIP: "0.0.0.0", HostPort: 5432, ContainerPort: 5432}}}}
+	withPaaSViews(t, db, nil, paasFilterUnknown)
+	for name, c := range map[string]struct {
+		fw   *facts.Firewall
+		want string
+	}{
+		"unreadable":        {&facts.Firewall{DockerBackend: "iptables"}, "container:db1=unknown"},
+		"no firewall facts": {nil, "container:db1=unknown"},
+	} {
+		pf := paasCoolifyFacts()
+		pf.Firewall = c.fw
+		rs := EvaluateChecks([]Check{{ID: "PAAS-004", Run: checkPaaSPublicDatabase}}, Input{Facts: pf})
+		if got := paasLevels(rs); got != c.want {
+			t.Errorf("%s: %s", name, got)
+		}
+	}
+	uf := ufwDockerHost(false)
+	uf.PaaS = paasCoolifyFacts().PaaS
+	withPaaSViews(t, []paasContainer{{Name: "db1", Image: "postgres:16-alpine", Labels: coolifyLabels,
+		Ports: []paasPort{{HostIP: "0.0.0.0", HostPort: 8000, ContainerPort: 8000}}}}, nil, paasFilterUnknown)
+	if got := paasLevels(checkPaaSPublicDatabase(Input{Facts: uf})); got != "container:db1=warn" {
+		t.Errorf("ufw-docker drop: %s", got)
 	}
 }
 
@@ -399,5 +436,46 @@ func TestPaaSDefaultNetworkWithoutContainers(t *testing.T) {
 	}
 	if got := paasLevels(checkPaaSDefaultNetwork(Input{Facts: &facts.Facts{PaaS: &facts.PaaS{}, Docker: &facts.Docker{}}})); got != "=skip" {
 		t.Errorf("no platform: %s", got)
+	}
+}
+
+// PAAS-002 uses the forward filter DKR-001 and CF-003 use: a proxy published
+// on all interfaces but dropped for every outside source is a warning, a
+// reachable one fails on a tunnel host, filtering that cannot be read is
+// unknown.
+func TestPaaSProxyExposureForwardFilter(t *testing.T) {
+	web := []paasPort{{HostIP: "0.0.0.0", HostPort: 80, ContainerPort: 80, Proto: "tcp"}, {HostIP: "0.0.0.0", HostPort: 443, ContainerPort: 443, Proto: "tcp"}}
+	withPaaSViews(t, []paasContainer{{Name: "coolify-proxy", Image: "traefik:v3.1", Ports: web}}, nil, paasFilterUnknown)
+	host := func(fw string, routes ...facts.UFWRule) *facts.Facts {
+		f := ufwDockerHost(false, routes...)
+		f.PaaS = paasCoolifyFacts().PaaS
+		f.Firewall.DockerUser = fw
+		return f
+	}
+	cases := []struct {
+		name string
+		f    *facts.Facts
+		want Level
+		msg  string
+	}{
+		{"ufw-docker drops it", host("filtered"), Warn, "bind to 127.0.0.1"},
+		{"route rule allows 443", host("filtered", route443), Fail, "0.0.0.0:443->443/tcp"},
+		{"DOCKER-USER needs root", host(""), Unknown, "needs root"},
+	}
+	for _, c := range cases {
+		if c.name == "DOCKER-USER needs root" {
+			c.f.Firewall.Iptables.DockerUserRules = nil
+			c.f.Firewall.UFWDocker = nil
+		}
+		rs := checkPaaSProxyExposure(Input{Facts: c.f, Profile: profile.Tunnel})
+		if len(rs) != 1 || rs[0].Level != c.want || !strings.Contains(rs[0].Message, c.msg) {
+			t.Errorf("%s: %s %q, want %s containing %q", c.name, paasLevels(rs), rs[0].Message, c.want, c.msg)
+		}
+	}
+	// The same host stays consistent with CF-003.
+	f := host("filtered")
+	f.Cloudflared = cfTunnel(2)
+	if r := netOne(t, "CF-003", f, ""); r.Level != Pass {
+		t.Errorf("CF-003 = %s (%s), want pass", r.Level, r.Message)
 	}
 }
