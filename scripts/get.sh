@@ -6,11 +6,11 @@
 #   less get.sh
 #   sh get.sh -d "$HOME/.local/bin"
 #
-# While only pre-releases exist there is no "latest" release: fetch get.sh
-# from the tag instead and pass the same tag with -v:
+# To install a specific release, fetch get.sh from its tag and pass the same
+# tag with -v:
 #
-#   curl -fsSLO https://github.com/Shironex/stackward/releases/download/v0.1.0-rc.1/get.sh
-#   sh get.sh -v v0.1.0-rc.1 -d "$HOME/.local/bin"
+#   curl -fsSLO https://github.com/Shironex/stackward/releases/download/v0.1.0/get.sh
+#   sh get.sh -v v0.1.0 -d "$HOME/.local/bin"
 #
 # What it does:
 #   1. detects your OS and CPU (linux or darwin, amd64 or arm64)
@@ -76,13 +76,14 @@ aarch64 | arm64) arch=arm64 ;;
 esac
 
 # Version: an explicit tag, or whatever the latest release redirects to.
+# GitHub's "latest" never points at a pre-release.
 if [ -z "$version" ]; then
 	final=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$BASE_URL/releases/latest") ||
-		die "could not look up the latest stable release; if only pre-releases exist, name a tag with -v, for example -v v0.1.0-rc.1"
+		die "could not look up the latest stable release; if only pre-releases exist, name a tag with -v, for example -v v0.1.0"
 	version=${final##*/}
 	case "$version" in
 	v[0-9]*) ;;
-	*) die "there is no stable release yet; name a tag with -v, for example -v v0.1.0-rc.1 (see $BASE_URL/releases)" ;;
+	*) die "there is no stable release yet; name a tag with -v, for example -v v0.1.0 (see $BASE_URL/releases)" ;;
 	esac
 fi
 case "$version" in

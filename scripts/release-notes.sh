@@ -1,7 +1,7 @@
 #!/bin/sh
 # release-notes.sh: print the CHANGELOG.md section for one release.
 #
-#   sh scripts/release-notes.sh v0.1.0-rc.1 [CHANGELOG.md]
+#   sh scripts/release-notes.sh v0.1.0 [CHANGELOG.md]
 #
 # Prints the body under the heading "## <version> (<date>)", without the
 # heading, up to the next "## " heading. Fails when the section is missing or
