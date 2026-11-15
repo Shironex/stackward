@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-108 checks in the catalog.
+109 checks in the catalog.
 
 ## System (SYS)
 
@@ -67,6 +67,7 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 
 | Id | Severity | Check |
 |---|---|---|
+| [DKR-001](DKR-001.md) | critical | Published container ports do not bypass the host firewall |
 | [DKR-002](DKR-002.md) | critical | Docker API is not on TCP without TLS |
 | [DKR-003](DKR-003.md) | critical | Docker socket is not world writable |
 | [DKR-010](DKR-010.md) | critical | No container mounts the Docker socket |

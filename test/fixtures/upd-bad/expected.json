@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 102,
-    "results": 102,
+    "checks": 103,
+    "results": 103,
     "checked": 9,
-    "unknown": 93,
+    "unknown": 94,
     "skipped": 0,
     "root": true,
     "sandbox": {
@@ -41,7 +41,7 @@
   "summary": {
     "fail": 2,
     "warn": 4,
-    "unknown": 93,
+    "unknown": 94,
     "info": 0,
     "pass": 3,
     "skip": 0
@@ -653,6 +653,23 @@
       },
       "fix": {
         "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
       }
     },
     {

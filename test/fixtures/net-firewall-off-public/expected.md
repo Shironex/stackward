@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 102 checks, 106 results: 8 checked, 94 unknown, 4 skipped, root: yes
+- **Coverage:** 103 checks, 107 results: 8 checked, 95 unknown, 4 skipped, root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 94 |
+| unknown | 95 |
 | info | 3 |
 | pass | 0 |
 | skip | 4 |
@@ -112,7 +112,7 @@
 
 ## Not inspected
 
-<details><summary>94 checks not inspected</summary>
+<details><summary>95 checks not inspected</summary>
 
 **SYS: System**
 
@@ -168,6 +168,7 @@
 
 | Check | Title | Subject | Reason |
 |---|---|---|---|
+| [DKR-001](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-001.md) | Published container ports do not bypass the host firewall | `host` | not inspected: the docker collector did not run |
 | [DKR-002](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-002.md) | Docker API is not on TCP without TLS | `host` | not inspected: the docker collector did not run |
 | [DKR-003](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-003.md) | Docker socket is not world writable | `host` | not inspected: the docker collector did not run |
 | [DKR-010](https://github.com/Shironex/stackward/blob/main/docs/checks/DKR-010.md) | No container mounts the Docker socket | `host` | not inspected: the docker collector did not run |
