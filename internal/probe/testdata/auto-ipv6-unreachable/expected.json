@@ -1,0 +1,766 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {},
+  "profile": {
+    "name": "unknown",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 6,
+    "results": 20,
+    "checked": 1,
+    "unknown": 18,
+    "skipped": 1,
+    "root": false,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "resolve",
+        "status": "ok"
+      },
+      {
+        "name": "tcp",
+        "status": "ok"
+      },
+      {
+        "name": "http-raw",
+        "status": "skipped",
+        "reason": "no web port answered"
+      },
+      {
+        "name": "https-hostname",
+        "status": "skipped",
+        "reason": "no --hostname given"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 1,
+    "unknown": 18,
+    "info": 0,
+    "pass": 0,
+    "skip": 1
+  },
+  "results": [
+    {
+      "id": "PRB-001",
+      "group": "PRB",
+      "title": "SSH is not reachable from the internet on a private ingress host",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/22",
+      "message": "SSH answers from outside on port 22 at 192.0.2.30 (SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3); profile unknown, judged as if nothing should be public; pass --profile to judge against your ingress",
+      "evidence": {
+        "banner": "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3",
+        "closed": [],
+        "filtered": [],
+        "open": [
+          "192.0.2.30"
+        ],
+        "port": 22,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Make SSH work over the tailnet first, then close the public SSH rule in the host firewall and the provider firewall (see SSH and NET checks)."
+      }
+    },
+    {
+      "id": "PRB-002",
+      "group": "PRB",
+      "title": "Web ports do not answer on the raw IP behind a tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/443",
+      "message": "port 443 (HTTPS) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 443,
+        "responses": [],
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only and let the tunnel connector reach it locally, then drop the public 80 and 443 rules in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-002",
+      "group": "PRB",
+      "title": "Web ports do not answer on the raw IP behind a tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/80",
+      "message": "port 80 (HTTP) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 80,
+        "responses": [],
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only and let the tunnel connector reach it locally, then drop the public 80 and 443 rules in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-003",
+      "group": "PRB",
+      "title": "Docker API ports are not reachable from the internet",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "port:tcp/2375",
+      "message": "port 2375 (Docker API) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 2375,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Remove the tcp:// listener from the Docker daemon (hosts in daemon.json, -H in the service unit) and reach Docker over SSH or the tailnet instead."
+      }
+    },
+    {
+      "id": "PRB-003",
+      "group": "PRB",
+      "title": "Docker API ports are not reachable from the internet",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "port:tcp/2376",
+      "message": "port 2376 (Docker API over TLS) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 2376,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Remove the tcp:// listener from the Docker daemon (hosts in daemon.json, -H in the service unit) and reach Docker over SSH or the tailnet instead."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/3000",
+      "message": "port 3000 (Dokploy or Grafana) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3000,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/3100",
+      "message": "port 3100 (Loki) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3100,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/6001",
+      "message": "port 6001 (Coolify realtime) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6001,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/6002",
+      "message": "port 6002 (Coolify terminal) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6002,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/8000",
+      "message": "port 8000 (Coolify) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8000,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/8080",
+      "message": "port 8080 (Traefik dashboard or admin UI) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8080,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/8081",
+      "message": "port 8081 (admin UI) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8081,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/9000",
+      "message": "port 9000 (Portainer) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9000,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/9090",
+      "message": "port 9090 (Prometheus) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9090,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/27017",
+      "message": "port 27017 (MongoDB) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 27017,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/3306",
+      "message": "port 3306 (MySQL or MariaDB) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3306,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/5432",
+      "message": "port 5432 (PostgreSQL) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 5432,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/6379",
+      "message": "port 6379 (Redis) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6379,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "port:tcp/9200",
+      "message": "port 9200 (Elasticsearch) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30",
+      "evidence": {
+        "closed": [
+          "192.0.2.30"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9200,
+        "unreachable": [
+          "2001:db8:2::30"
+        ]
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-006",
+      "group": "PRB",
+      "title": "The app hostname answers over HTTPS without TLS or redirect anomalies",
+      "level": "skip",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no --hostname given; pass --hostname app.example.com to check it over HTTPS",
+      "fix": {
+        "hint": "Behind a tunnel, turn off the app's own redirect to HTTPS (or trust the proxy's X-Forwarded-Proto) and let the tunnel enforce HTTPS; renew or fix the certificate when verification fails."
+      }
+    }
+  ],
+  "probe": {
+    "target": "server.example.com",
+    "addresses": [
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6"
+      }
+    ],
+    "families": [
+      {
+        "family": "ipv4",
+        "status": "probed"
+      },
+      {
+        "family": "ipv6",
+        "status": "unreachable",
+        "detail": "this machine has no route to ipv6; run probe from a machine with ipv6 connectivity"
+      }
+    ],
+    "ports": [
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 22,
+        "state": "open",
+        "banner": "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 22,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 80,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 80,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 443,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 443,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 2375,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 2375,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 2376,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 2376,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 3000,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 3000,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 3100,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 3100,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 3306,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 3306,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 5432,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 5432,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 6001,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 6001,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 6002,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 6002,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 6379,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 6379,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 8000,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 8000,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 8080,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 8080,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 8081,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 8081,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 9000,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 9000,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 9090,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 9090,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 9200,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 9200,
+        "state": "unreachable"
+      },
+      {
+        "address": "192.0.2.30",
+        "family": "ipv4",
+        "port": 27017,
+        "state": "closed"
+      },
+      {
+        "address": "2001:db8:2::30",
+        "family": "ipv6",
+        "port": 27017,
+        "state": "unreachable"
+      }
+    ],
+    "notes": [
+      "profile unknown: probe has no host facts, so open SSH and web ports are judged as if nothing should be public; pass --profile tunnel, public-web, tailnet-only or paas-panel",
+      "the target is a name: if it points at a CDN or tunnel edge, probe the origin IP instead and pass the name with --hostname"
+    ]
+  }
+}

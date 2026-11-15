@@ -1,0 +1,61 @@
+stackward test probe (stackward.report.v1)
+target:    server.example.com
+hostname:  -
+addresses: 192.0.2.30 (ipv4), 2001:db8:2::30 (ipv6)
+ipv4:      probed
+ipv6:      unreachable: this machine has no route to ipv6; run probe from a machine with ipv6 connectivity
+probed:    2026-03-01T12:00:00Z
+profile:   unknown (inferred)
+sandbox:   unavailable (golden test)
+open:      tcp/22 on 192.0.2.30
+note:      profile unknown: probe has no host facts, so open SSH and web ports are judged as if nothing should be public; pass --profile tunnel, public-web, tailnet-only or paas-panel
+note:      the target is a name: if it points at a CDN or tunnel edge, probe the origin IP instead and pass the name with --hostname
+coverage:  1 checked, 18 unknown, 1 skipped (6 checks)
+collector: http-raw skipped: no web port answered
+collector: https-hostname skipped: no --hostname given
+
+PRB  Outside view
+  WARN    PRB-001 port:tcp/22  SSH is not reachable from the internet on a private ingress host [moderate]
+          SSH answers from outside on port 22 at 192.0.2.30 (SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3); profile unknown, judged as if nothing should be public; pass --profile to judge against your ingress
+          fix: Make SSH work over the tailnet first, then close the public SSH rule in the host firewall and the provider firewall (see SSH and NET checks).
+  UNKNOWN PRB-002 port:tcp/443  Web ports do not answer on the raw IP behind a tunnel [high]
+          port 443 (HTTPS) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-002 port:tcp/80  Web ports do not answer on the raw IP behind a tunnel [high]
+          port 80 (HTTP) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-003 port:tcp/2375  Docker API ports are not reachable from the internet [critical]
+          port 2375 (Docker API) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-003 port:tcp/2376  Docker API ports are not reachable from the internet [critical]
+          port 2376 (Docker API over TLS) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/3000  Panels and dashboards are not reachable from the internet [high]
+          port 3000 (Dokploy or Grafana) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/3100  Panels and dashboards are not reachable from the internet [high]
+          port 3100 (Loki) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/6001  Panels and dashboards are not reachable from the internet [high]
+          port 6001 (Coolify realtime) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/6002  Panels and dashboards are not reachable from the internet [high]
+          port 6002 (Coolify terminal) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/8000  Panels and dashboards are not reachable from the internet [high]
+          port 8000 (Coolify) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/8080  Panels and dashboards are not reachable from the internet [high]
+          port 8080 (Traefik dashboard or admin UI) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/8081  Panels and dashboards are not reachable from the internet [high]
+          port 8081 (admin UI) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/9000  Panels and dashboards are not reachable from the internet [high]
+          port 9000 (Portainer) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-004 port:tcp/9090  Panels and dashboards are not reachable from the internet [high]
+          port 9090 (Prometheus) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-005 port:tcp/27017  Databases are not reachable from the internet [high]
+          port 27017 (MongoDB) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-005 port:tcp/3306  Databases are not reachable from the internet [high]
+          port 3306 (MySQL or MariaDB) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-005 port:tcp/5432  Databases are not reachable from the internet [high]
+          port 5432 (PostgreSQL) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-005 port:tcp/6379  Databases are not reachable from the internet [high]
+          port 6379 (Redis) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  UNKNOWN PRB-005 port:tcp/9200  Databases are not reachable from the internet [high]
+          port 9200 (Elasticsearch) could not be checked on 2001:db8:2::30 (network is unreachable); closed or filtered on 192.0.2.30
+  SKIP    PRB-006  The app hostname answers over HTTPS without TLS or redirect anomalies [moderate]
+          no --hostname given; pass --hostname app.example.com to check it over HTTPS
+
+summary: 0 fail, 1 warn, 18 unknown, 0 info, 0 pass, 1 skip
+explain any check with: stackward explain <id>
