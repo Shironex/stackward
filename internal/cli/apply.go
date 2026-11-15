@@ -42,6 +42,12 @@ type applyEnv struct {
 	isTTY    func() bool
 	now      func() time.Time
 	runID    string
+	// session reads the login session this command runs in (transaction
+	// and confirm); exe is the path of the running binary, which the
+	// rollback timer runs a copy of; sleep waits (the timer's lock retry).
+	session func() apply.Session
+	exe     func() (string, error)
+	sleep   func(time.Duration)
 }
 
 func hostApplyEnv() applyEnv {
@@ -55,7 +61,10 @@ func hostApplyEnv() applyEnv {
 			fi, err := os.Stdin.Stat()
 			return err == nil && fi.Mode()&os.ModeCharDevice != 0
 		},
-		now: time.Now,
+		now:     time.Now,
+		session: func() apply.Session { return apply.ReadSession("/proc", os.Getpid(), os.Getenv) },
+		exe:     os.Executable,
+		sleep:   time.Sleep,
 	}
 }
 
@@ -91,15 +100,17 @@ func runApply(args []string, stdout, stderr io.Writer) int {
 func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	var steps stepFlags
 	var allSafe, yes bool
+	var within time.Duration
 	fs := flag.NewFlagSet("apply", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fs.Var(&steps, "step", "apply this step id (repeatable); opt in and networking steps run only when named")
+	fs.Var(&steps, "step", "apply this step id (repeatable); opt in, networking and access-critical steps run only when named")
 	fs.BoolVar(&allSafe, "all-safe", false, "apply every safe step that is not opt in")
 	fs.BoolVar(&yes, "yes", false, "do not ask before applying (needed when stdin is not a terminal)")
+	fs.DurationVar(&within, "confirm-within", apply.DefaultConfirmWithin, fmt.Sprintf("access-critical steps: roll back unless confirmed within this time (%s to %s)", apply.MinConfirmWithin, apply.MaxConfirmWithin))
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: stackward apply [--step ID]... [--all-safe] [--yes] PLAN.json\n\nApply the selected steps of a plan written by stackward plan on this host.\nEvery file is checked against the plan first; FILE.orig is kept the first\ntime a file is replaced, every overwrite is backed up under\n%s/<run-id>/, and a run journal records it all.\nAccess-critical steps are refused. Needs root. No Landlock sandbox: it writes.\n\nFlags:\n", apply.BackupRoot)
+		fmt.Fprintf(stderr, "Usage: stackward apply [--step ID]... [--all-safe] [--confirm-within 5m] [--yes] PLAN.json\n\nApply the selected steps of a plan written by stackward plan on this host.\nEvery file is checked against the plan first; FILE.orig is kept the first\ntime a file is replaced, every overwrite is backed up under\n%s/<run-id>/, and a run journal records it all.\nAccess-critical steps (SSH, firewall, users) run only when named, in a run\nof their own, inside a transaction: a systemd timer rolls them back unless\nstackward confirm runs from a new SSH session before the deadline.\nNeeds root. No Landlock sandbox: it writes.\n\nFlags:\n", apply.BackupRoot)
 		fs.PrintDefaults()
-		fmt.Fprintf(stderr, "\nExit codes: 0 applied or nothing to do, 1 a step failed (undo printed), 2 refused or error (nothing changed).\n")
+		fmt.Fprintf(stderr, "\nExit codes: 0 applied (a transaction: applied, validated and waiting for confirm) or nothing to do,\n1 a step failed (undo printed) or a transaction rolled back at once, 2 refused or error (nothing changed).\n")
 	}
 	pos, err := parseInterleaved(fs, args)
 	if err != nil {
@@ -116,6 +127,9 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 		return fail("give exactly one plan file (stackward plan --out plan.json writes one)")
 	}
 	planFile := pos[0]
+	if err := apply.CheckConfirmWithin(within); err != nil {
+		return fail("%v", err)
+	}
 	if err := needRootOnLinux(env, "apply"); err != nil {
 		return fail("%v; nothing was changed", err)
 	}
@@ -159,6 +173,12 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if err != nil {
 		return fail("%v; nothing was changed", err)
 	}
+	if sel.AccessCritical() {
+		return applyTransaction(ctx, env, txnApply{
+			planFile: planFile, plan: p, sum: sum, sel: sel, prepared: prepared,
+			hostname: hostname, runID: runID, within: within, yes: yes,
+		}, stdout, stderr)
+	}
 	if err := apply.WritePreview(stdout, planFile, p, sel, prepared); err != nil {
 		return fail("%v", err)
 	}
@@ -199,14 +219,16 @@ func runUndo(args []string, stdout, stderr io.Writer) int {
 }
 
 func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
-	var runID string
-	var yes bool
+	var runID, txnID string
+	var yes, byTimer bool
 	fs := flag.NewFlagSet("undo", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&runID, "run", "", "the run id to undo, as apply printed it")
+	fs.StringVar(&txnID, "transaction", "", "roll back this open access-critical transaction now and stop its timer")
 	fs.BoolVar(&yes, "yes", false, "do not ask before undoing (needed when stdin is not a terminal)")
+	fs.BoolVar(&byTimer, "by-timer", false, "set only by the rollback timer: wait for the run lock, do nothing unless the transaction is still open, and leave the rollback to be acknowledged")
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: stackward undo --run RUN_ID [--yes]\n\nReverse an apply run from its journal: restore every file it changed from\nthe backup (or remove the files it created), then run the steps' undo\ncommands. A file that changed after the run is not touched. Needs root.\n\nFlags:\n")
+		fmt.Fprintf(stderr, "Usage: stackward undo --run RUN_ID [--yes]\n       stackward undo --transaction ID [--yes]\n\nReverse an apply run from its journal: restore every file it changed from\nthe backup (or remove the files it created), then run the steps' undo\ncommands. A file that changed after the run is not touched. --transaction\nrolls back an open access-critical transaction now; its rollback timer\nruns the same. Needs root.\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes: 0 undone, 1 failed part way, 2 refused or error (nothing changed).\n")
 	}
@@ -223,7 +245,14 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if fs.NArg() > 0 {
 		return fail("unexpected argument %q", fs.Arg(0))
 	}
-	if runID == "" {
+	switch {
+	case runID != "" && txnID != "":
+		return fail("give --run or --transaction, not both")
+	case txnID != "":
+		return undoTransaction(env, txnID, yes, byTimer, stdout, stderr)
+	case byTimer:
+		return fail("--by-timer goes with --transaction")
+	case runID == "":
 		return fail("give the run to undo with --run RUN_ID (apply prints it)")
 	}
 	if err := needRootOnLinux(env, "undo"); err != nil {
@@ -234,6 +263,13 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 		return fail("%v; nothing was changed", err)
 	}
 	defer func() { _ = release() }()
+	t, err := apply.LoadTxn(env.host)
+	if err != nil {
+		return fail("%v; nothing was changed", err)
+	}
+	if t != nil && t.ID == runID && t.Status == apply.TxnOpen {
+		return fail("run %s is an open transaction; roll it back with sudo stackward undo --transaction %s, which also stops its timer; nothing was changed", runID, runID)
+	}
 	j, err := apply.LoadJournal(env.host, runID)
 	if err != nil {
 		return fail("%v", err)

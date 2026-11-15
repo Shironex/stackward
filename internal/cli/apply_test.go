@@ -50,6 +50,9 @@ func newApplyTest(t *testing.T) *applyTest {
 			isTTY:    func() bool { return false },
 			now:      func() time.Time { return time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC) },
 			runID:    "20260301T120000Z-c11c11",
+			session:  func() apply.Session { return apply.Session{} },
+			exe:      func() (string, error) { return applytest.Exe, nil },
+			sleep:    func(time.Duration) {},
 		},
 	}
 }
