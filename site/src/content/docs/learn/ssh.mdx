@@ -132,9 +132,31 @@ The safest next step after this page is to stop exposing SSH to the whole
 internet at all. That is covered in
 [Tailscale and tunnels as the only way in](/stackward/learn/private-ingress/).
 
+## Smaller settings and the accounts behind the door
+
+The same `sshd -T` output also shows the settings the audit reads next:
+whether X11 and agent forwarding are off ([SSH-007](/stackward/checks/ssh-007/)),
+which host keys sshd uses and whether the private ones are readable by other
+users ([SSH-012](/stackward/checks/ssh-012/)), and which key exchange,
+cipher and MAC algorithms it offers ([SSH-015](/stackward/checks/ssh-015/)).
+The `sshd_config` manual lists the keywords and defaults, and the ssh-audit
+hardening guides name the algorithms that distributions tell you to remove.
+
+Behind the door are the accounts. One of the audit's checks is about
+`sudo`: the `sudoers` file must not be world writable (its default mode is
+0440), and `NOPASSWD` entries let a user run the listed commands without
+authenticating, so each one should be a decision
+([USR-004](/stackward/checks/usr-004/)). The other account checks cover extra
+accounts with uid 0 ([USR-001](/stackward/checks/usr-001/)), empty passwords
+([USR-002](/stackward/checks/usr-002/)), the default account a cloud image
+creates ([USR-003](/stackward/checks/usr-003/)), login accounts nobody uses
+([USR-006](/stackward/checks/usr-006/)) and whether you know how to get back
+in if keys fail ([USR-007](/stackward/checks/usr-007/)). Each check page
+says what it reads and how to verify it by hand.
+
 ## Checks that cover it
 
-<Checks ids={['SSH-001', 'SSH-002', 'SSH-003', 'SSH-004', 'SSH-005', 'SSH-006', 'SSH-008', 'SSH-009', 'SSH-010', 'SSH-011', 'SSH-013', 'SSH-014']} />
+<Checks ids={['SSH-001', 'SSH-002', 'SSH-003', 'SSH-004', 'SSH-005', 'SSH-006', 'SSH-007', 'SSH-008', 'SSH-009', 'SSH-010', 'SSH-011', 'SSH-012', 'SSH-013', 'SSH-014', 'SSH-015', 'USR-001', 'USR-002', 'USR-003', 'USR-004', 'USR-006', 'USR-007']} />
 
 ## Sources
 
@@ -143,3 +165,5 @@ internet at all. That is covered in
 - Ubuntu Discourse, [sshd now uses socket-based activation](https://discourse.ubuntu.com/t/sshd-now-uses-socket-based-activation-ubuntu-22-10-and-later/30189): socket activation since 22.10, and how 24.04 reads the port and address through a generator.
 - cloud-init docs, [set passwords module](https://docs.cloud-init.io/en/latest/reference/modules.html#set-passwords): `ssh_pwauth` and the sshd setting it manages.
 - Coolify docs, [non root user](https://coolify.io/docs/core/infrastructure/servers/non-root-user).
+- ssh-audit, [hardening guides](https://www.ssh-audit.com/hardening_guides.html): the key exchange, cipher and MAC algorithms distributions remove.
+- Sudo project, [sudoers(5)](https://www.sudo.ws/docs/man/sudoers.man/): the `NOPASSWD` tag, and the file must not be world writable (default mode 0440).

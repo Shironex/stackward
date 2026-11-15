@@ -137,9 +137,17 @@ fresh session; 0.1 only tells you where you stand.
 - **Apps that redirect to HTTPS themselves** can loop behind a tunnel that
   already terminates TLS. Turn the app's own redirect off.
 
+## Two more things the audit notes
+
+Whether a `cloudflared` connector runs at all decides which checks apply
+([CF-001](/stackward/checks/cf-001/)). Tailnet Lock, which makes nodes verify
+new node keys against signing keys you hold, is optional and adds key
+management, so [TS-005](/stackward/checks/ts-005/) only reports whether it is
+on.
+
 ## Checks that cover it
 
-<Checks ids={['TS-001', 'TS-002', 'TS-003', 'TS-004', 'CF-002', 'CF-003', 'NET-003', 'NET-005', 'PAAS-002']} />
+<Checks ids={['TS-001', 'TS-002', 'TS-003', 'TS-004', 'CF-002', 'CF-003', 'NET-003', 'NET-005', 'PAAS-002', 'CF-001', 'TS-005']} />
 
 ## Sources
 
@@ -148,3 +156,4 @@ fresh session; 0.1 only tells you where you stand.
 - Tailscale docs, [Funnel](https://tailscale.com/docs/features/tailscale-funnel): routes internet traffic to a local service.
 - Tailscale docs, [CLI reference](https://tailscale.com/docs/reference/tailscale-cli) and [tailscale funnel](https://tailscale.com/docs/reference/tailscale-cli/funnel): `status --json`, `funnel status`.
 - Docker docs, [port publishing](https://docs.docker.com/engine/network/port-publishing/): binding a published port to `127.0.0.1`.
+- Tailscale docs, [Tailnet Lock](https://tailscale.com/kb/1226/tailnet-lock): nodes verify new node keys with signing keys you hold.

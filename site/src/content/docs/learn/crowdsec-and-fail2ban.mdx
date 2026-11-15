@@ -114,9 +114,18 @@ Banning is a second layer. A port that is not reachable cannot be brute
 forced; see [the only way in](/stackward/learn/private-ingress/).
 </Aside>
 
+## Where the local API and the firewall bouncer listen
+
+Two checks cover the plumbing. The local API should listen on loopback or the
+Docker bridge, not a wildcard address
+([CS-006](/stackward/checks/cs-006/)). And a firewall bouncer that hooks only
+the `INPUT` chain never sees traffic to published containers; see
+[the firewall page](/stackward/learn/firewall-and-docker/) for why, and
+[CS-007](/stackward/checks/cs-007/) for what the audit reads.
+
 ## Checks that cover it
 
-<Checks ids={['CS-001', 'CS-002', 'CS-003', 'CS-004', 'CS-005', 'CS-008', 'CS-010', 'CS-011']} />
+<Checks ids={['CS-001', 'CS-002', 'CS-003', 'CS-004', 'CS-005', 'CS-006', 'CS-007', 'CS-008', 'CS-010', 'CS-011']} />
 
 ## Sources
 
