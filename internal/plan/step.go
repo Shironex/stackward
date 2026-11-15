@@ -206,10 +206,17 @@ type Generator struct {
 	// (lowercase key, value): the transaction refuses to keep the change
 	// unless `sshd -T` shows every one. It reads the step, never the host.
 	SSHD func(s Step) map[string]string
+	// Access, for an access-critical step, says which ways in the step
+	// closes or narrows besides its sshd settings: public SSH, accounts,
+	// keys. The lockout guard (ProveAccess) proves from it and from SSHD
+	// that a second way in survives the step. An access-critical step
+	// with neither hook is assumed to narrow everything, so it always
+	// needs that proof. It reads the step, never the host.
+	Access func(s Step) Access
 }
 
-// Veto lets a policy refuse a planned step before it reaches the plan (the
-// never touched list of issue #27). A non empty reason refuses the step.
+// Veto lets a policy refuse a planned step before it reaches the plan
+// (NeverTouchedVeto, LockoutVeto). A non empty reason refuses the step.
 type Veto func(s Step) (reason string)
 
 var stepID = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
