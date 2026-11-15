@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-91 checks in the catalog.
+96 checks in the catalog.
 
 ## System (SYS)
 
@@ -90,6 +90,16 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [TS-003](TS-003.md) | high | Tailscale Funnel and Serve expose only what is intended |
 | [TS-004](TS-004.md) | moderate | Firewall rules that mention tailscale0 have a running tailnet behind them |
 | [TS-005](TS-005.md) | info | Tailnet Lock state |
+
+## Cloudflare Tunnel (CF)
+
+| Id | Severity | Check |
+|---|---|---|
+| [CF-001](CF-001.md) | info | Cloudflare Tunnel presence |
+| [CF-002](CF-002.md) | moderate | The tunnel runs more than one connector |
+| [CF-003](CF-003.md) | high | The proxy is not reachable on a public address while ingress is the tunnel |
+| [CF-004](CF-004.md) | moderate | The tunnel token is not a command line argument |
+| [CF-005](CF-005.md) | high | The origin IP does not answer on 80/443 from outside (probe) |
 
 ## Updates (UPD)
 

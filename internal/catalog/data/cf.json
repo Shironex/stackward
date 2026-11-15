@@ -1,0 +1,49 @@
+{
+  "group": "CF",
+  "checks": [
+    {
+      "id": "CF-001",
+      "title": "Cloudflare Tunnel presence",
+      "severity": "info",
+      "rationale": "Whether a cloudflared connector runs decides which ingress profile fits the host (tunnel or not) and which other checks apply. Connectors are found as processes, so containerised connectors count without the Docker API.",
+      "verify": "pgrep -a cloudflared; systemctl status cloudflared",
+      "fix": "Nothing to fix; this records the tunnel for profile inference"
+    },
+    {
+      "id": "CF-002",
+      "title": "The tunnel runs more than one connector",
+      "severity": "moderate",
+      "rationale": "One cloudflared replica is a single point of failure: when it restarts or crashes every hostname behind the tunnel is down. On a host whose only ingress is the tunnel, zero running connectors means the sites are down now.",
+      "verify": "pgrep -c cloudflared; cloudflared tunnel info <name>",
+      "fix": "Run a second replica of the same tunnel (a second container or service with the same token or credentials)",
+      "breaks": "Nothing; replicas of one tunnel share the load.",
+      "docs": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/tunnel-availability/"
+    },
+    {
+      "id": "CF-003",
+      "title": "The proxy is not reachable on a public address while ingress is the tunnel",
+      "severity": "high",
+      "rationale": "When the origin proxy also answers on a wildcard or public 80/443, anyone who finds the origin IP can bypass the tunnel and with it Cloudflare's WAF, Access policies and rate limits. Docker published ports skip UFW, so a 0.0.0.0:443 publish is open even under a default deny.",
+      "verify": "ss -tlnp | grep -E ':(80|443) '; from another machine: curl -kv https://<origin-ip>/",
+      "fix": "Publish the proxy on 127.0.0.1 only (127.0.0.1:443:443) and let cloudflared reach it locally or over a Docker network",
+      "breaks": "Anything that reached the origin directly (health checks, other CDNs, Let's Encrypt HTTP challenges) stops working; switch certificates to DNS challenges first."
+    },
+    {
+      "id": "CF-004",
+      "title": "The tunnel token is not a command line argument",
+      "severity": "moderate",
+      "rationale": "A token passed as a command line flag is visible to every local user in ps, in the systemd unit file, and in docker inspect output, which ends up in logs, bug reports and support chats. Anyone with the token can run a connector for your tunnel. stackward only records that the flag is present, never the value.",
+      "verify": "ps -o args= -C cloudflared | grep -c -- --token",
+      "fix": "Pass the token as TUNNEL_TOKEN from a root only env file (or a credentials file with a config.yml), and never print docker inspect without a format filter",
+      "breaks": "Nothing, as long as the new environment file is in place before the restart."
+    },
+    {
+      "id": "CF-005",
+      "title": "The origin IP does not answer on 80/443 from outside (probe)",
+      "severity": "high",
+      "rationale": "Only an outside view proves an origin bypass: the host cannot see its provider firewall. `stackward probe` connects to the origin address from another machine; an answer on 80/443 while the tunnel is the ingress means the WAF can be skipped.",
+      "verify": "stackward probe <origin-ip> from a machine outside the provider network",
+      "fix": "See CF-003: bind the proxy to loopback and close 80/443 in the provider firewall"
+    }
+  ]
+}
