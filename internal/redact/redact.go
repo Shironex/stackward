@@ -81,9 +81,10 @@ func String(s string) string {
 }
 
 // benignValues are values a secret named key commonly holds that are not
-// secrets: sshd and config switches, and empties.
+// secrets: sshd and config switches, and empties. "all" is sudoers'
+// NOPASSWD: ALL, which the account steps write.
 var benignValues = map[string]bool{
-	"": true, "yes": true, "no": true, "true": true, "false": true, "on": true, "off": true,
+	"": true, "yes": true, "no": true, "true": true, "false": true, "on": true, "off": true, "all": true,
 	"none": true, "null": true, "nil": true, "0": true, "1": true, "any": true, "unset": true,
 	"prohibit-password": true, "without-password": true, "forced-commands-only": true,
 	Mask: true,
