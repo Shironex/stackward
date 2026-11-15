@@ -1,0 +1,96 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "20.04",
+    "version_codename": "focal",
+    "pretty_name": "Ubuntu 20.04.6 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-49-generic",
+    "installed": [
+      "6.8.0-49-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "journal": {
+    "storage": "auto",
+    "system_max_use": "",
+    "persistent_dir": false,
+    "persistent": false,
+    "disk_usage_checked": true,
+    "disk_usage_bytes": 314572800,
+    "proxy_logs": [
+      {
+        "path": "/var/log/caddy/access.log",
+        "size_bytes": 3221225472,
+        "rotated": false
+      }
+    ],
+    "agents": []
+  },
+  "clock": {
+    "ntp_synchronized": false,
+    "ntp_enabled": false,
+    "can_ntp": true,
+    "timezone": "Etc/UTC"
+  },
+  "disk": {
+    "mounts": [
+      {
+        "path": "/",
+        "mount": "/",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 19200000,
+        "used_percent": 96
+      },
+      {
+        "path": "/var",
+        "mount": "/var",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 17600000,
+        "used_percent": 88
+      },
+      {
+        "path": "/var/lib/docker",
+        "mount": "/var/lib/docker",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 10000000,
+        "used_percent": 50
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "clock",
+      "status": "ok"
+    },
+    {
+      "name": "disk",
+      "status": "ok"
+    },
+    {
+      "name": "journal",
+      "status": "ok"
+    },
+    {
+      "name": "os",
+      "status": "ok"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "22.04",
+    "version_codename": "jammy",
+    "pretty_name": "Ubuntu 22.04.5 LTS"
+  },
+  "updates": {
+    "apt": true,
+    "unattended_installed": true,
+    "periodic_unattended": "0",
+    "periodic_update_lists": "1",
+    "config_source": "apt-config",
+    "timer_enabled": false,
+    "timer_active": true,
+    "allowed_origins": [
+      "${distro_id}:${distro_codename}"
+    ],
+    "automatic_reboot": false,
+    "last_run": "2026-02-20T06:10:00Z",
+    "lists_updated": "2026-02-20T06:05:00Z",
+    "pending_checked": true,
+    "pending_total": 9,
+    "pending_security": 3,
+    "pending_security_packages": [
+      "libssl3t64",
+      "openssh-server",
+      "sudo"
+    ]
+  },
+  "reboot": {
+    "required": true,
+    "since": "2026-02-10T08:00:00Z",
+    "packages": [
+      "linux-image-generic"
+    ]
+  },
+  "kernel": {
+    "release": "6.8.0-49-generic",
+    "installed": [
+      "6.8.0-49-generic"
+    ]
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "updates",
+      "status": "ok"
+    }
+  ]
+}

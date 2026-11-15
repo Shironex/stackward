@@ -1,0 +1,153 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "users": {
+    "accounts": [
+      {
+        "name": "root",
+        "uid": 0,
+        "gid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "L"
+      },
+      {
+        "name": "toor",
+        "uid": 0,
+        "gid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P"
+      },
+      {
+        "name": "ubuntu",
+        "uid": 1001,
+        "gid": 1001,
+        "home": "/home/ubuntu",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "NP",
+        "never_logged_in": true,
+        "authorized_keys": true
+      },
+      {
+        "name": "alice",
+        "uid": 1002,
+        "gid": 1002,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P",
+        "last_login": "2026-02-20T09:00:00Z"
+      },
+      {
+        "name": "bob",
+        "uid": 1003,
+        "gid": 1003,
+        "home": "/home/bob",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P",
+        "last_login": "2025-10-01T09:00:00Z"
+      },
+      {
+        "name": "carol",
+        "uid": 1004,
+        "gid": 1004,
+        "home": "/home/carol",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P",
+        "never_logged_in": true
+      }
+    ],
+    "groups": [
+      {
+        "name": "sudo",
+        "gid": 27,
+        "members": [
+          "alice"
+        ]
+      },
+      {
+        "name": "docker",
+        "gid": 998,
+        "members": [
+          "bob",
+          "alice"
+        ]
+      }
+    ],
+    "sudoers": [
+      {
+        "path": "/etc/sudoers",
+        "perm": 288,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": false,
+        "readable": true,
+        "principals": [
+          "root",
+          "%sudo"
+        ]
+      },
+      {
+        "path": "/etc/sudoers.d/90-cloud-init-users",
+        "perm": 288,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": false,
+        "readable": true,
+        "principals": [
+          "ubuntu"
+        ],
+        "nopasswd": [
+          {
+            "who": "ubuntu",
+            "line": 2
+          }
+        ]
+      },
+      {
+        "path": "/etc/sudoers.d/deploy",
+        "perm": 438,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": true,
+        "readable": true,
+        "principals": [
+          "deploy"
+        ]
+      }
+    ],
+    "password_status_checked": true,
+    "lastlog_checked": true
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "users",
+      "status": "ok"
+    }
+  ]
+}

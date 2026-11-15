@@ -1,0 +1,73 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "web1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "sysctl": {
+    "values": {
+      "net.ipv4.ip_forward": "0",
+      "net.ipv4.conf.all.rp_filter": "1",
+      "net.ipv4.conf.default.rp_filter": "2",
+      "net.ipv4.conf.all.accept_redirects": "1",
+      "net.ipv4.conf.default.accept_redirects": "0",
+      "net.ipv4.conf.all.send_redirects": "0",
+      "net.ipv4.conf.all.accept_source_route": "0",
+      "net.ipv4.conf.default.accept_source_route": "0",
+      "net.ipv4.tcp_syncookies": "1",
+      "net.ipv4.icmp_echo_ignore_broadcasts": "1",
+      "net.ipv4.conf.all.log_martians": "1",
+      "net.ipv6.conf.all.accept_redirects": "0",
+      "net.ipv6.conf.default.accept_redirects": "0",
+      "net.ipv6.conf.all.accept_source_route": "0",
+      "net.ipv6.conf.all.accept_ra": "0",
+      "net.ipv6.conf.default.accept_ra": "1",
+      "kernel.kptr_restrict": "0",
+      "kernel.dmesg_restrict": "1",
+      "kernel.unprivileged_bpf_disabled": "2",
+      "kernel.yama.ptrace_scope": "1",
+      "fs.protected_hardlinks": "1",
+      "fs.protected_symlinks": "1",
+      "fs.protected_fifos": "2",
+      "fs.protected_regular": "2"
+    },
+    "docker_present": true,
+    "tailscale_present": true,
+    "global_ipv6_dynamic": true,
+    "configured": {
+      "net.ipv4.ip_forward": {
+        "value": "0",
+        "file": "/etc/sysctl.d/99-hardening.conf"
+      },
+      "net.ipv6.conf.all.accept_ra": {
+        "value": "0",
+        "file": "/etc/sysctl.d/99-hardening.conf"
+      }
+    },
+    "ufw": {
+      "net.ipv4.conf.all.log_martians": "0"
+    }
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "sysctl",
+      "status": "ok"
+    }
+  ]
+}
