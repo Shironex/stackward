@@ -36,12 +36,18 @@ type Firewall struct {
 // UFW is the Uncomplicated Firewall.
 type UFW struct {
 	Installed bool `json:"installed"`
-	// Source is "status" (ufw status verbose, root) or "files" (only the
-	// configuration files could be read; they say what loads at boot, not
-	// what is loaded now).
+	// Source is "live" (root: the rules files, with the listed ruleset
+	// proving whether UFW is loaded now), "files" (only the configuration
+	// files could be read; they say what loads at boot, not what is loaded
+	// now) or "status" (facts files from builds that ran `ufw status
+	// verbose`; it means the same as "live").
 	Source string `json:"source,omitempty"`
-	// Status is "active", "inactive" or "" when unknown.
+	// Status is "active", "inactive" or "" when unknown. With Source
+	// "live" it is the loaded state, whatever ufw.conf says.
 	Status string `json:"status,omitempty"`
+	// Enabled is ENABLED from /etc/ufw/ufw.conf ("yes", "no" or ""): what
+	// UFW does at boot.
+	Enabled string `json:"enabled,omitempty"`
 	// DefaultIncoming and DefaultRouted are "deny", "reject", "allow" or
 	// "" when unknown.
 	DefaultIncoming string `json:"default_incoming,omitempty"`
@@ -75,6 +81,10 @@ type UFWRule struct {
 	// App is the application profile name, when the rule uses one.
 	App string `json:"app,omitempty"`
 }
+
+// Live reports whether Status is the loaded state of the host (root read
+// the live ruleset) rather than what the files say about boot.
+func (u *UFW) Live() bool { return u != nil && (u.Source == "live" || u.Source == "status") }
 
 // FromAnywhere reports whether the rule accepts any source on any
 // interface.
@@ -119,6 +129,9 @@ type NFTables struct {
 	Tables []NFTTable `json:"tables,omitempty"`
 	// Chains are the base chains (those with a hook).
 	Chains []NFTChain `json:"chains,omitempty"`
+	// UFWChains is true when the ruleset holds UFW's ufw-user-input chain
+	// (iptables-nft hosts), which exists only while UFW is loaded.
+	UFWChains bool `json:"ufw_chains,omitempty"`
 }
 
 // NFTTable is one nftables table.
@@ -194,6 +207,9 @@ const (
 	dockerUserChain  = "DOCKER-USER"
 	dockerNFTTable   = "docker-bridges"
 	ufwForwardTarget = "ufw-user-forward"
+	// ufwUserInputChain exists only while UFW is loaded (ufw enable
+	// creates it, ufw disable removes it).
+	ufwUserInputChain = "ufw-user-input"
 )
 
 type firewallCollector struct{}
@@ -203,9 +219,9 @@ func init() { Register(firewallCollector{}) }
 func (firewallCollector) Name() string    { return "firewall" }
 func (firewallCollector) NeedsRoot() bool { return false }
 
-// Collect runs (all read only):
+// Collect runs (all read only, none of them writes a file; see the command
+// table in docs/safety.md):
 //
-//	ufw status verbose     (root)
 //	nft -j list ruleset    (root)
 //	iptables -V
 //	iptables -S            (root, filter table)
@@ -213,6 +229,12 @@ func (firewallCollector) NeedsRoot() bool { return false }
 //
 // and reads /etc/ufw/ufw.conf, /etc/default/ufw, /etc/ufw/user.rules,
 // /etc/ufw/user6.rules and /etc/ufw/after.rules where readable.
+//
+// It never runs `ufw status`: ufw opens /run/ufw.lock for writing even to
+// print the status, so it fails under the no writes sandbox. The status
+// command itself prints the rules of user.rules and checks that the ufw
+// chains are loaded; the collector does the same from the files and the
+// listed ruleset.
 func (firewallCollector) Collect(ctx context.Context, sys System, out *Facts) error {
 	root := sys.Identity().Root
 	fw := &Firewall{}
@@ -223,10 +245,6 @@ func (firewallCollector) Collect(ctx context.Context, sys System, out *Facts) er
 		}
 	}
 
-	ufw, err := collectUFW(ctx, sys, root)
-	add(err)
-	fw.UFW = ufw
-
 	nft, err := collectNFT(ctx, sys, root)
 	add(err)
 	fw.NFT = nft
@@ -234,6 +252,9 @@ func (firewallCollector) Collect(ctx context.Context, sys System, out *Facts) er
 	ipt, err := collectIptables(ctx, sys, root)
 	add(err)
 	fw.Iptables = ipt
+
+	ufw := collectUFW(sys, ipt, nft)
+	fw.UFW = ufw
 
 	fw.Firewalld = collectFirewalld(ctx, sys)
 
@@ -245,13 +266,13 @@ func (firewallCollector) Collect(ctx context.Context, sys System, out *Facts) er
 	return errors.Join(errs...)
 }
 
-func collectUFW(ctx context.Context, sys System, root bool) (*UFW, error) {
+func collectUFW(sys System, ipt *Iptables, nft *NFTables) *UFW {
 	u := &UFW{}
 	_, lookErr := sys.LookPath("ufw")
 	conf, confErr := sys.ReadFile(ufwConfPath)
 	u.Installed = lookErr == nil || confErr == nil
 	if !u.Installed {
-		return u, nil
+		return u
 	}
 	if def, err := sys.ReadFile(ufwDefaultPath); err == nil {
 		kv := parseShellVars(def)
@@ -259,41 +280,13 @@ func collectUFW(ctx context.Context, sys System, root bool) (*UFW, error) {
 		u.DefaultIncoming = policyWord(kv["DEFAULT_INPUT_POLICY"])
 		u.DefaultRouted = policyWord(kv["DEFAULT_FORWARD_POLICY"])
 	}
-
-	var statusErr error
-	if root && lookErr == nil {
-		res, err := sys.Run(ctx, "ufw", "status", "verbose")
-		switch {
-		case err != nil:
-			statusErr = err
-		case res.ExitCode != 0:
-			statusErr = fmt.Errorf("ufw status exited %d: %s", res.ExitCode, firstLine(res.Stderr))
-		default:
-			st := ParseUFWStatus(res.Stdout)
-			u.Source, u.Status = "status", st.Status
-			if st.DefaultIncoming != "" {
-				u.DefaultIncoming = st.DefaultIncoming
-			}
-			if st.DefaultRouted != "" {
-				u.DefaultRouted = st.DefaultRouted
-			}
-			// An inactive UFW prints no rules; that says nothing about
-			// what is configured, so leave RulesKnown false.
-			u.Rules, u.RulesKnown = st.Rules, st.Status == "active"
-			return u, nil
-		}
-	}
-
-	// Files fallback: what loads at boot, not proof of what is loaded.
-	u.Source = "files"
 	if confErr == nil {
-		switch strings.ToLower(parseShellVars(conf)["ENABLED"]) {
-		case "yes":
-			u.Status = "active"
-		case "no":
-			u.Status = "inactive"
+		switch e := strings.ToLower(parseShellVars(conf)["ENABLED"]); e {
+		case "yes", "no":
+			u.Enabled = e
 		}
 	}
+
 	var rules []UFWRule
 	readAny := false
 	for _, p := range []string{ufwUserRules, ufwUser6Rules} {
@@ -305,7 +298,46 @@ func collectUFW(ctx context.Context, sys System, root bool) (*UFW, error) {
 		rules = append(rules, ParseUFWUserRules(b, p == ufwUser6Rules)...)
 	}
 	u.Rules, u.RulesKnown = rules, readAny
-	return u, statusErr
+
+	loaded, known := ufwLoaded(ipt, nft)
+	if known {
+		// The live ruleset says whether UFW filters now; the files say
+		// which rules it loaded (ufw writes user.rules and loads it in
+		// one step, and `ufw status` prints the same file).
+		u.Source = "live"
+		u.Status = "inactive"
+		if loaded {
+			u.Status = "active"
+			if u.DefaultIncoming == "" && ipt != nil && ipt.Listed {
+				u.DefaultIncoming = policyWord(ipt.Policies["INPUT"])
+			}
+		}
+		return u
+	}
+
+	// Files only: what loads at boot, not proof of what is loaded.
+	u.Source = "files"
+	switch u.Enabled {
+	case "yes":
+		u.Status = "active"
+	case "no":
+		u.Status = "inactive"
+	}
+	return u
+}
+
+// ufwLoaded reports whether UFW's chains are in the live ruleset, from
+// iptables -S or, when that was not listed, from the nftables view
+// (iptables-nft puts UFW's chains in the ip filter table). known is false
+// when neither was listed (not root, or both commands failed).
+func ufwLoaded(ipt *Iptables, nft *NFTables) (loaded, known bool) {
+	if ipt != nil && ipt.Listed {
+		return ipt.HasChain(ufwUserInputChain), true
+	}
+	if nft != nil && nft.Listed {
+		return nft.UFWChains, true
+	}
+	return false, false
 }
 
 func policyWord(s string) string {
@@ -340,142 +372,6 @@ func parseShellVars(b []byte) map[string]string {
 		out[strings.TrimSpace(k)] = strings.Trim(v, `"'`)
 	}
 	return out
-}
-
-// UFWStatus is what `ufw status verbose` prints.
-type UFWStatus struct {
-	Status          string
-	DefaultIncoming string
-	DefaultRouted   string
-	Rules           []UFWRule
-}
-
-var (
-	ufwDefaultRE = regexp.MustCompile(`(\w+) \((incoming|outgoing|routed)\)`)
-	// ufw pads the To column to 26 characters plus one space, so a long
-	// destination is followed by a single space: find the action instead
-	// of splitting on runs of spaces.
-	ufwActionRE = regexp.MustCompile(`\s(ALLOW|DENY|REJECT|LIMIT)(?: (IN|OUT|FWD))?\s+`)
-)
-
-// ufwApps resolves the application profiles shipped with common packages.
-// Unknown names stay unresolved and match no port.
-var ufwApps = map[string]struct{ port, proto string }{
-	"OpenSSH":       {"22", "tcp"},
-	"Nginx Full":    {"80,443", "tcp"},
-	"Nginx HTTP":    {"80", "tcp"},
-	"Nginx HTTPS":   {"443", "tcp"},
-	"Apache":        {"80", "tcp"},
-	"Apache Full":   {"80,443", "tcp"},
-	"Apache Secure": {"443", "tcp"},
-	"WWW":           {"80", "tcp"},
-	"WWW Full":      {"80,443", "tcp"},
-	"WWW Secure":    {"443", "tcp"},
-}
-
-// ParseUFWStatus parses `ufw status verbose` (C locale).
-func ParseUFWStatus(b []byte) UFWStatus {
-	var st UFWStatus
-	inRules := false
-	sc := bufio.NewScanner(bytes.NewReader(b))
-	for sc.Scan() {
-		line := strings.TrimRight(sc.Text(), " \t")
-		switch {
-		case strings.HasPrefix(line, "Status:"):
-			st.Status = strings.TrimSpace(strings.TrimPrefix(line, "Status:"))
-		case strings.HasPrefix(line, "Default:"):
-			for _, m := range ufwDefaultRE.FindAllStringSubmatch(line, -1) {
-				switch m[2] {
-				case "incoming":
-					st.DefaultIncoming = policyWord(m[1])
-				case "routed":
-					st.DefaultRouted = policyWord(m[1])
-				}
-			}
-		case strings.HasPrefix(line, "--"):
-			inRules = true
-		case inRules && strings.TrimSpace(line) != "":
-			if r, ok := parseUFWStatusRule(line); ok {
-				st.Rules = append(st.Rules, r)
-			}
-		}
-	}
-	return st
-}
-
-func parseUFWStatusRule(line string) (UFWRule, bool) {
-	if i := strings.Index(line, " # "); i >= 0 {
-		line = line[:i] // comment
-	}
-	loc := ufwActionRE.FindStringSubmatchIndex(line)
-	if loc == nil {
-		return UFWRule{}, false
-	}
-	m := ufwActionRE.FindStringSubmatch(line)
-	to, from := strings.TrimSpace(line[:loc[0]]), strings.TrimSpace(line[loc[1]:])
-	if to == "" || from == "" {
-		return UFWRule{}, false
-	}
-	r := UFWRule{Action: strings.ToLower(m[1]), Direction: "in", Proto: "any"}
-	if m[2] != "" {
-		r.Direction = strings.ToLower(m[2])
-	}
-	if strings.Contains(to, "(v6)") || strings.Contains(from, "(v6)") {
-		r.V6 = true
-	}
-	to = strings.TrimSpace(strings.ReplaceAll(to, "(v6)", ""))
-	from = strings.TrimSpace(strings.ReplaceAll(from, "(v6)", ""))
-
-	// Interfaces: "22/tcp on tailscale0" for in rules; route rules print
-	// the inbound interface on the From side ("Anywhere on tailscale0").
-	if t, iface, ok := strings.Cut(to, " on "); ok {
-		to, r.Interface = strings.TrimSpace(t), strings.TrimSpace(iface)
-	}
-	if f, iface, ok := strings.Cut(from, " on "); ok {
-		from = strings.TrimSpace(f)
-		if r.Interface == "" {
-			r.Interface = strings.TrimSpace(iface)
-		}
-	}
-	if from != "Anywhere" {
-		r.From = from
-	}
-
-	// "To" is a port spec, an address, "address port/proto", "Anywhere",
-	// or an application profile name.
-	fields := strings.Fields(to)
-	switch {
-	case to == "Anywhere":
-	case len(fields) == 2 && looksLikePortSpec(fields[1]):
-		r.To = fields[0]
-		r.Port, r.Proto = splitPortProto(fields[1])
-	case looksLikePortSpec(to):
-		r.Port, r.Proto = splitPortProto(to)
-	case looksLikeAddress(to):
-		r.To = to
-	default:
-		r.App = to
-		if a, ok := ufwApps[to]; ok {
-			r.Port, r.Proto = a.port, a.proto
-		}
-	}
-	return r, true
-}
-
-var portSpecRE = regexp.MustCompile(`^[0-9]+([:,][0-9]+)*(/(tcp|udp))?$`)
-
-func looksLikePortSpec(s string) bool { return portSpecRE.MatchString(s) }
-
-func looksLikeAddress(s string) bool {
-	return strings.ContainsAny(s, ".:") && !strings.ContainsRune(s, ' ')
-}
-
-func splitPortProto(s string) (port, proto string) {
-	port, proto, found := strings.Cut(s, "/")
-	if !found {
-		proto = "any"
-	}
-	return port, proto
 }
 
 // ParseUFWUserRules parses the "### tuple ###" lines of /etc/ufw/user.rules
@@ -586,7 +482,13 @@ func ParseNFTJSON(b []byte) (*NFTables, error) {
 			var c struct {
 				Family, Table, Name, Hook, Policy string
 			}
-			if json.Unmarshal(obj["chain"], &c) == nil && c.Hook != "" {
+			if json.Unmarshal(obj["chain"], &c) != nil {
+				continue
+			}
+			if c.Name == ufwUserInputChain {
+				n.UFWChains = true
+			}
+			if c.Hook != "" {
 				idx[key{c.Family, c.Table, c.Name}] = len(n.Chains)
 				n.Chains = append(n.Chains, NFTChain{Family: c.Family, Table: c.Table, Name: c.Name, Hook: c.Hook, Policy: c.Policy})
 			}

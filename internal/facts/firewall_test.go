@@ -6,66 +6,6 @@ import (
 	"testing"
 )
 
-// ufwStatusCapture is `ufw status verbose` from a host with SSH on the
-// tailnet, one admin source, ufw-docker route rules and a leftover web rule.
-const ufwStatusCapture = `Status: active
-Logging: on (low)
-Default: deny (incoming), allow (outgoing), deny (routed)
-New profiles: skip
-
-To                         Action      From
---                         ------      ----
-22/tcp on tailscale0       ALLOW IN    Anywhere
-22/tcp                     ALLOW IN    198.51.100.7               # admin office
-80,443/tcp                 ALLOW IN    Anywhere
-OpenSSH                    LIMIT IN    192.0.2.0/24
-Anywhere on tailscale0     ALLOW IN    Anywhere
-203.0.113.10 9000/tcp      DENY IN     Anywhere
-Custom App                 ALLOW IN    Anywhere
-22/tcp (v6) on tailscale0  ALLOW IN    Anywhere (v6)
-80,443/tcp (v6)            ALLOW IN    Anywhere (v6)
-Anywhere (v6) on tailscale0 ALLOW IN    Anywhere (v6)
-
-8080/tcp                   ALLOW FWD   Anywhere on tailscale0
-3000:3005/tcp              ALLOW FWD   Anywhere on tailscale0
-`
-
-func TestParseUFWStatus(t *testing.T) {
-	st := ParseUFWStatus([]byte(ufwStatusCapture))
-	if st.Status != "active" || st.DefaultIncoming != "deny" || st.DefaultRouted != "deny" {
-		t.Fatalf("header: %+v", st)
-	}
-	want := []UFWRule{
-		{Action: "allow", Direction: "in", Port: "22", Proto: "tcp", Interface: "tailscale0"},
-		{Action: "allow", Direction: "in", Port: "22", Proto: "tcp", From: "198.51.100.7"},
-		{Action: "allow", Direction: "in", Port: "80,443", Proto: "tcp"},
-		{Action: "limit", Direction: "in", Port: "22", Proto: "tcp", From: "192.0.2.0/24", App: "OpenSSH"},
-		{Action: "allow", Direction: "in", Proto: "any", Interface: "tailscale0"},
-		{Action: "deny", Direction: "in", Port: "9000", Proto: "tcp", To: "203.0.113.10"},
-		{Action: "allow", Direction: "in", Proto: "any", App: "Custom App"},
-		{Action: "allow", Direction: "in", Port: "22", Proto: "tcp", Interface: "tailscale0", V6: true},
-		{Action: "allow", Direction: "in", Port: "80,443", Proto: "tcp", V6: true},
-		{Action: "allow", Direction: "in", Proto: "any", Interface: "tailscale0", V6: true},
-		{Action: "allow", Direction: "fwd", Port: "8080", Proto: "tcp", Interface: "tailscale0"},
-		{Action: "allow", Direction: "fwd", Port: "3000:3005", Proto: "tcp", Interface: "tailscale0"},
-	}
-	if len(st.Rules) != len(want) {
-		t.Fatalf("got %d rules, want %d: %+v", len(st.Rules), len(want), st.Rules)
-	}
-	for i := range want {
-		if !reflect.DeepEqual(st.Rules[i], want[i]) {
-			t.Errorf("rule %d = %+v\nwant     %+v", i, st.Rules[i], want[i])
-		}
-	}
-}
-
-func TestParseUFWStatusInactive(t *testing.T) {
-	st := ParseUFWStatus([]byte("Status: inactive\n"))
-	if st.Status != "inactive" || len(st.Rules) != 0 {
-		t.Errorf("%+v", st)
-	}
-}
-
 func TestUFWRuleMatchesPort(t *testing.T) {
 	cases := []struct {
 		r     UFWRule
@@ -174,6 +114,7 @@ const iptablesCapture = `-P INPUT DROP
 -N DOCKER-USER
 -N ufw-before-input
 -N ufw-user-forward
+-N ufw-user-input
 -N ufw-docker-logging-deny
 -A INPUT -j ufw-before-logging-input
 -A INPUT -j ufw-before-input
@@ -246,9 +187,12 @@ func TestFirewallCollectorRoot(t *testing.T) {
 		"/etc/ufw/ufw.conf":    "# /etc/ufw/ufw.conf\nENABLED=yes\nLOGLEVEL=low\n",
 		"/etc/default/ufw":     "IPV6=yes\nDEFAULT_INPUT_POLICY=\"DROP\"\nDEFAULT_FORWARD_POLICY=\"DROP\"\n",
 		"/etc/ufw/after.rules": ufwDockerAfterRules,
+		"/etc/ufw/user.rules":  userRulesCapture,
 	})
 	sys.host.Root = true
-	sys.cmds["ufw status verbose"] = CmdResult{Stdout: []byte(ufwStatusCapture)}
+	// ufw exists, but the collector must never run it (ufw status writes
+	// /run/ufw.lock, which the sandbox refuses).
+	sys.cmds["ufw"] = CmdResult{ExitCode: 1, Stderr: []byte("must not run")}
 	sys.cmds["nft -j list ruleset"] = CmdResult{Stdout: []byte(nftCapture)}
 	sys.cmds["iptables -V"] = CmdResult{Stdout: []byte("iptables v1.8.10 (nf_tables)\n")}
 	sys.cmds["iptables -S"] = CmdResult{Stdout: []byte(iptablesCapture)}
@@ -257,7 +201,7 @@ func TestFirewallCollectorRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw := out.Firewall
-	if fw.UFW.Source != "status" || fw.UFW.Status != "active" || !fw.UFW.RulesKnown || len(fw.UFW.Rules) != 12 || fw.UFW.IPv6 != "yes" {
+	if fw.UFW.Source != "live" || fw.UFW.Status != "active" || fw.UFW.Enabled != "yes" || !fw.UFW.RulesKnown || len(fw.UFW.Rules) != 7 || fw.UFW.IPv6 != "yes" {
 		t.Errorf("ufw: %+v", fw.UFW)
 	}
 	if fw.Iptables.Backend != "nf_tables" || !fw.Iptables.Listed {
@@ -289,7 +233,7 @@ func TestFirewallCollectorNonRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw := out.Firewall
-	want := &UFW{Installed: true, Source: "files", Status: "active", DefaultIncoming: "deny", IPv6: "no"}
+	want := &UFW{Installed: true, Source: "files", Status: "active", Enabled: "yes", DefaultIncoming: "deny", IPv6: "no"}
 	if !reflect.DeepEqual(fw.UFW, want) {
 		t.Errorf("ufw = %+v, want %+v", fw.UFW, want)
 	}
@@ -307,17 +251,56 @@ func TestFirewallCollectorNonRoot(t *testing.T) {
 	}
 }
 
-func TestFirewallCollectorStatusFailsFallsBack(t *testing.T) {
-	sys := newFakeSystem(map[string]string{"/etc/ufw/ufw.conf": "ENABLED=no\n"})
+// TestFirewallCollectorSandboxedRoot is the real run that broke: root,
+// UFW active, and every command that would write refused. The collector
+// must not depend on ufw at all and must end without an error.
+func TestFirewallCollectorSandboxedRoot(t *testing.T) {
+	sys := newFakeSystem(map[string]string{
+		"/etc/ufw/ufw.conf":   "ENABLED=yes\n",
+		"/etc/default/ufw":    "IPV6=yes\nDEFAULT_INPUT_POLICY=\"DROP\"\n",
+		"/etc/ufw/user.rules": userRulesCapture,
+	})
 	sys.host.Root = true
-	sys.cmds["ufw status verbose"] = CmdResult{Stderr: []byte("ERROR: problem running iptables\n"), ExitCode: 1}
+	sys.cmds["ufw status verbose"] = CmdResult{ExitCode: 1, Stderr: []byte("Traceback (most recent call last):\nPermissionError: [Errno 13] Permission denied: '/run/ufw.lock'\n")}
+	sys.cmds["nft -j list ruleset"] = CmdResult{Stdout: []byte(nftCapture)}
+	sys.cmds["iptables -V"] = CmdResult{Stdout: []byte("iptables v1.8.10 (nf_tables)\n")}
+	sys.cmds["iptables -S"] = CmdResult{Stdout: []byte(iptablesCapture)}
 	var out Facts
-	err := (firewallCollector{}).Collect(context.Background(), sys, &out)
-	if err == nil {
-		t.Error("want the ufw error reported")
+	if err := (firewallCollector{}).Collect(context.Background(), sys, &out); err != nil {
+		t.Fatalf("collector must not fail: %v", err)
 	}
-	if u := out.Firewall.UFW; u.Source != "files" || u.Status != "inactive" {
+	u := out.Firewall.UFW
+	if u.Source != "live" || u.Status != "active" || u.DefaultIncoming != "deny" || !u.RulesKnown || len(u.Rules) != 7 {
 		t.Errorf("ufw = %+v", u)
+	}
+}
+
+func TestFirewallCollectorLoadedState(t *testing.T) {
+	tests := []struct {
+		name, conf, iptables, nft string
+		wantSource, wantStatus    string
+	}{
+		{"enabled but not loaded", "ENABLED=yes\n", "-P INPUT ACCEPT\n", "", "live", "inactive"},
+		{"disabled and not loaded", "ENABLED=no\n", "-P INPUT ACCEPT\n", "", "live", "inactive"},
+		{"loaded seen through nft only", "ENABLED=yes\n", "", nftCapture, "live", "active"},
+		{"nothing listed", "ENABLED=no\n", "", "", "files", "inactive"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sys := newFakeSystem(map[string]string{"/etc/ufw/ufw.conf": tt.conf})
+			sys.host.Root = true
+			if tt.iptables != "" {
+				sys.cmds["iptables -S"] = CmdResult{Stdout: []byte(tt.iptables)}
+			}
+			if tt.nft != "" {
+				sys.cmds["nft -j list ruleset"] = CmdResult{Stdout: []byte(tt.nft)}
+			}
+			var out Facts
+			_ = (firewallCollector{}).Collect(context.Background(), sys, &out)
+			if u := out.Firewall.UFW; u.Source != tt.wantSource || u.Status != tt.wantStatus {
+				t.Errorf("ufw = %+v, want source %s status %s", u, tt.wantSource, tt.wantStatus)
+			}
+		})
 	}
 }
 
