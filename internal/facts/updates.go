@@ -105,8 +105,13 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	}
 
 	// `apt-get -s` simulates; NoLocking keeps it from taking the dpkg lock,
-	// so it also works without root and writes nothing.
-	if res, err := sys.Run(ctx, "apt-get", "-s", "-o", "Debug::NoLocking=true", "upgrade"); err != nil || res.ExitCode != 0 {
+	// so it also works without root. An empty pkgcache makes apt build the
+	// status part of its cache in memory instead of rewriting
+	// /var/cache/apt/pkgcache.bin after dpkg changed (apt.conf(5),
+	// Dir::Cache), which the no writes sandbox would refuse. srcpkgcache is
+	// kept: without it apt reparses every list and needs a temporary file
+	// for each signed InRelease, which the sandbox refuses too.
+	if res, err := sys.Run(ctx, "apt-get", aptSimulateArgs...); err != nil || res.ExitCode != 0 {
 		errs = append(errs, fmt.Errorf("apt-get -s upgrade: %w", cmdErr(err, res)))
 	} else {
 		u.PendingChecked = true
@@ -116,6 +121,9 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	out.Updates = u
 	return errors.Join(errs...)
 }
+
+// aptSimulateArgs is `apt-get -s upgrade` with no lock and no cache writes.
+var aptSimulateArgs = []string{"-s", "-o", "Debug::NoLocking=true", "-o", "Dir::Cache::pkgcache=", "upgrade"}
 
 func isTrue(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(s)) {
