@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Shironex/stackward/internal/facts"
+	"github.com/Shironex/stackward/internal/redact"
 )
 
 func bp(b bool) *bool { return &b }
@@ -501,5 +502,13 @@ func TestSysctlFixes(t *testing.T) {
 	// Strict rp_filter is only a finding with Docker or Tailscale.
 	if got := SysctlFixes(sysctlFacts(false, false, map[string]string{keyRPFilterAll: "1"}).Sysctl); len(got) != 0 {
 		t.Errorf("rp_filter fixed without Docker or Tailscale: %v", got)
+	}
+}
+
+func TestUSR007MessageSurvivesRedaction(t *testing.T) {
+	f := &facts.Facts{CollectedAt: now, Users: users(facts.Account{Name: "root", UID: 0, PasswordStatus: "P"})}
+	msg := checkRootPassword(Input{Facts: f})[0].Message
+	if got := redact.String(msg); got != msg || strings.Contains(msg, redact.Mask) {
+		t.Errorf("message changed by redaction: %q -> %q", msg, got)
 	}
 }
