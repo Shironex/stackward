@@ -49,7 +49,8 @@ From your laptop (not the server), try single TCP connections to a few ports.
 ```sh
 # Replace 198.51.100.20 with your server's public address.
 for port in 22 80 443 2375 3000 5432 6379 8000 8080; do
-  nc -z -w 3 198.51.100.20 "$port" && echo "open $port" || echo "closed $port"
+  nc -z -w 3 198.51.100.20 "$port" \
+    && echo "open $port" || echo "closed $port"
 done
 ```
 
@@ -57,8 +58,10 @@ On a tunnel setup, the raw address should answer nothing on 80 and 443, while
 the hostname should answer through Cloudflare:
 
 ```sh
-curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 https://198.51.100.20/ -k
-curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 https://app.example.com/
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  --max-time 5 https://198.51.100.20/ -k
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  --max-time 5 https://app.example.com/
 ```
 
 The first command should time out or be refused. The second should return a
@@ -72,7 +75,8 @@ family and forgotten for the other.
 macOS and Windows builds exist for the laptop side):
 
 ```sh
-stackward probe 203.0.113.10 --profile tunnel --hostname app.example.com
+stackward probe 203.0.113.10 \
+  --profile tunnel --hostname app.example.com
 ```
 
 - It takes one host name or one address. Ranges, CIDR blocks, lists and URLs

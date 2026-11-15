@@ -65,7 +65,8 @@ private key for each. And it logs into them, often as root.
 Which platform ports answer on all interfaces?
 
 ```sh
-sudo ss -tlnup | grep -E ':(3000|6001|6002|8000|8080|2377|7946|4789)\b'
+sudo ss -tlnup \
+  | grep -E ':(3000|6001|6002|8000|8080|2377|7946|4789)\b'
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
 ```
 
@@ -73,14 +74,16 @@ Databases with published ports (look for `0.0.0.0:5432`, `:3306`, `:6379`,
 `:27017`):
 
 ```sh
-docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}' | grep -Ei 'postgres|mysql|mariadb|mongo|redis|valkey|clickhouse'
+docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}' \
+  | grep -Ei 'postgres|mysql|mariadb|mongo|redis|valkey|clickhouse'
 ```
 
 Permissions on the platform's SSH key folder (Coolify keeps its data under
 `/data/coolify`):
 
 ```sh
-sudo find /data/coolify -maxdepth 2 -type d -name '*ssh*' -printf '%m %u:%g %p\n' 2>/dev/null
+sudo find /data/coolify -maxdepth 2 -type d -name '*ssh*' \
+  -printf '%m %u:%g %p\n' 2>/dev/null
 ```
 
 How does the platform log into this server? Look at root's authorized keys

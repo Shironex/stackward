@@ -46,13 +46,16 @@ List networks and their members:
 
 ```sh
 docker network ls
-docker network inspect --format '{{.Name}}: {{range .Containers}}{{.Name}} {{end}}' $(docker network ls -q)
+docker network inspect \
+  --format '{{.Name}}: {{range .Containers}}{{.Name}} {{end}}' \
+  $(docker network ls -q)
 ```
 
 Group containers by project label to see whether two projects share a network:
 
 ```sh
-docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Networks}}'
+docker ps \
+  --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Networks}}'
 ```
 
 The reverse proxy joining many networks is expected; that is its job. A

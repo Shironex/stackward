@@ -65,7 +65,9 @@ fail. Every name in the `docker` group is a root equivalent account.
 Which containers mount the socket? This prints names and mounts only:
 
 ```sh
-docker ps -q | xargs docker inspect --format '{{.Name}} {{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' | grep -E 'docker\.sock|:/var/run |:/run '
+docker ps -q | xargs docker inspect \
+  --format '{{.Name}} {{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
+  | grep -E 'docker\.sock|:/var/run |:/run '
 ```
 
 Mounting a parent directory such as `/var/run` or `/run` counts too: the socket

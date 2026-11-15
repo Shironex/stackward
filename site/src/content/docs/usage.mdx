@@ -57,7 +57,7 @@ way: root gives stackward more to read, not more to change.
 <Terminal
   command="sudo stackward audit"
   output={sample}
-  caption="A real text report from a build of main, run over the showcase-coolify-tunnel test fixture. An excerpt: only whole groups are left out, and the version is shortened. The fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run."
+  caption="A real text report from a build of main, run over the showcase-coolify-tunnel test fixture. An excerpt: only whole groups are left out, and the version is shortened. The fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run. Long lines wrap under their message column."
 />
 
 The header comes first. Read it before the findings:
@@ -153,7 +153,8 @@ from another machine, against a host you own, and shows what actually gets
 through. Its results are the PRB checks, in the same report format.
 
 ```sh
-stackward probe 203.0.113.10 --profile tunnel --hostname app.example.com
+stackward probe 203.0.113.10 \
+  --profile tunnel --hostname app.example.com
 ```
 
 What it sends, in full:
