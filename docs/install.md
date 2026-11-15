@@ -79,12 +79,25 @@ When cosign is missing it says so and tells you the signature was not checked.
 
 ## Debian and Ubuntu
 
+Download the package for your CPU, check it against `checksums.txt`, then
+install it with apt:
+
 ```sh
-sudo apt install ./stackward_${VERSION#v}_amd64.deb
+VERSION=v0.1.0
+ARCH=amd64       # or arm64 (dpkg --print-architecture)
+BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
+curl -fsSLO "$BASE/stackward_${VERSION#v}_$ARCH.deb"
+curl -fsSLO "$BASE/checksums.txt"
+grep " stackward_${VERSION#v}_$ARCH.deb\$" checksums.txt | sha256sum -c -
+sudo apt install "./stackward_${VERSION#v}_$ARCH.deb"
+stackward version
 ```
 
-Verify the `.deb` against `checksums.txt` first. An apt repository may come
-later; for now the package is a plain download.
+The leading `./` matters: without it apt looks for a package of that name in
+its repositories. To check the signature too, verify `checksums.txt` with
+cosign as shown above before you install. Remove it with
+`sudo apt remove stackward`. An apt repository may come later; for now the
+package is a plain download.
 
 ## Build it yourself
 
