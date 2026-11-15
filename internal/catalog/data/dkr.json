@@ -2,6 +2,17 @@
   "group": "DKR",
   "checks": [
     {
+      "id": "DKR-001",
+      "title": "Published container ports do not bypass the host firewall",
+      "severity": "critical",
+      "rationale": "Docker publishes a port with a DNAT rule and accepts it in the FORWARD chain, so UFW's input rules never see it: a port published on 0.0.0.0 or [::] is open to the internet even when ufw status says deny. Only the DOCKER-USER chain (which ufw-docker hooks into) or, on Docker's nftables backend, a forward hook chain can filter it. stackward joins each container's published bindings with the DOCKER-USER rules, ufw-docker and its route rules, and the interface addresses, and judges the web ports against the ingress profile: 80 and 443 are public by design on public-web and paas-panel hosts, and nothing should be public on tunnel or tailnet-only hosts.",
+      "verify": "docker ps --format '{{.Names}} {{.Ports}}'; sudo iptables -S DOCKER-USER; sudo ufw status verbose; then from another machine: stackward probe <public address>",
+      "fix": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+      "breaks": "Clients that reach the port over the public address lose access; move them to the tailnet, an SSH tunnel or the proxy first. A DOCKER-USER drop rule on the public interface also blocks every other published port that has no allow rule above it.",
+      "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/",
+      "needs_root": true
+    },
+    {
       "id": "DKR-002",
       "title": "Docker API is not on TCP without TLS",
       "severity": "critical",

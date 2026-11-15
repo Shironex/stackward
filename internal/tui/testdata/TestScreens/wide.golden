@@ -1,9 +1,9 @@
  stackward test · host sha256:11d10a4dba4e2a8b                                                     report expected.json 
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
- 102 checks, 135 results  6 fail  10 warn  87 unknown  0 info  30 pass  2 skip                           mostly unknown 
+ 103 checks, 140 results  6 fail  10 warn  88 unknown  0 info  34 pass  2 skip                           mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  103 of 135                                      │ DETAIL                                            1-25 of 44
-Docker DKR                                       16 of 48 │ DKR-002  Docker                                             
+FINDINGS  104 of 140                                      │ DETAIL                                            1-25 of 44
+Docker DKR                                       17 of 53 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
   FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
   FAIL    DKR-020  coolify-proxy · Containers do not run… │                                                             
@@ -20,13 +20,13 @@ Docker DKR                                       16 of 48 │ DKR-002  Docker
   WARN    DKR-031  Container logs rotate                  │   TCP (conventionally 2375) without tlsverify lets anyone   
   WARN    DKR-032  tunnel · Infrastructure containers ru… │   who reaches the port start a privileged container that    
   WARN    DKR-034  Docker Engine is supported upstream    │   mounts the host filesystem. Scanners look for 2375 all    
-System SYS                                              5 │   day. Even a loopback listener gives every local user and  
-  UNKNOWN SYS-001  Distribution is one stackward is test… │   every host network container root. stackward reads the    
-  UNKNOWN SYS-002  No reboot pending                      │   hosts in daemon.json and the effective ExecStart of       
-  UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
-  UNKNOWN SYS-004  Clock is synchronized                  │   from the shared listener facts (ss or /proc, no root      
-  UNKNOWN SYS-005  Disks have free space                  │   needed). This check can fail without access to the Docker 
-SSH                                                    16 │   socket.                                                   
-  UNKNOWN SSH-001  Password authentication is off         │                                                             
+  UNKNOWN DKR-001  coolify-proxy · Published container p… │   day. Even a loopback listener gives every local user and  
+System SYS                                              5 │   every host network container root. stackward reads the    
+  UNKNOWN SYS-001  Distribution is one stackward is test… │   hosts in daemon.json and the effective ExecStart of       
+  UNKNOWN SYS-002  No reboot pending                      │   docker.service, and the listening sockets on 2375 and 2376
+  UNKNOWN SYS-003  Running kernel is the newest installed │   from the shared listener facts (ss or /proc, no root      
+  UNKNOWN SYS-004  Clock is synchronized                  │   needed). This check can fail without access to the Docker 
+  UNKNOWN SYS-005  Disks have free space                  │   socket.                                                   
+SSH                                                    16 │                                                             
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            

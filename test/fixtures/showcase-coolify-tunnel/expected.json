@@ -17,9 +17,9 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 102,
-    "results": 140,
-    "checked": 108,
+    "checks": 103,
+    "results": 145,
+    "checked": 113,
     "unknown": 25,
     "skipped": 7,
     "root": true,
@@ -83,11 +83,11 @@
     ]
   },
   "summary": {
-    "fail": 3,
+    "fail": 4,
     "warn": 3,
     "unknown": 25,
     "info": 9,
-    "pass": 93,
+    "pass": 97,
     "skip": 7
   },
   "results": [
@@ -782,6 +782,122 @@
       },
       "fix": {
         "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:app/db",
+      "message": "app-db-1 publishes no port",
+      "evidence": {
+        "container": "app-db-1",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "unknown",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:app/web",
+      "message": "app-web-1 publishes no port",
+      "evidence": {
+        "container": "app-web-1",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "unknown",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "container:coolify/coolify",
+      "message": "coolify is reachable from anywhere past the host firewall: 0.0.0.0:8000-\u003e8080/tcp: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports",
+      "evidence": {
+        "container": "coolify",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [
+          "0.0.0.0:8000-\u003e8080/tcp"
+        ],
+        "profile": "unknown",
+        "published": [
+          "0.0.0.0:8000-\u003e8080/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:edge/proxy",
+      "message": "proxy publishes on loopback, tailnet or private addresses only",
+      "evidence": {
+        "container": "proxy",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "unknown",
+        "published": [
+          "127.0.0.1:8443-\u003e443/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:edge/tunnel",
+      "message": "tunnel publishes no port",
+      "evidence": {
+        "container": "tunnel",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "unknown",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
       }
     },
     {
