@@ -8,7 +8,7 @@
 
 ## Why it matters
 
-When a tunnel is meant to be the only way in, a proxy published on 0.0.0.0 lets anyone who finds the origin IP skip the tunnel and with it the WAF, access policies and rate limits. Docker publishes past UFW, so a firewall rule is not proof the port is closed. On a public web host, ports beyond 80 and 443 (such as the Traefik dashboard on 8080) should never be published.
+When a tunnel is meant to be the only way in, a proxy published on 0.0.0.0 lets anyone who finds the origin IP skip the tunnel and with it the WAF, access policies and rate limits. Docker publishes past UFW, so a firewall rule is not proof the port is closed. On a public web host, ports beyond 80 and 443 (such as the Traefik dashboard on 8080) should never be published. A panel host whose proxy is public on 80 and 443 is inferred as paas-panel, even with a tunnel beside it: the proxy serves the panel's certificates and every app it deploys. Then the proxy passes, or is info when a tunnel runs too, as a reminder to publish it on 127.0.0.1 and pass --profile tunnel if the tunnel is meant to be the only way in.
 
 ## Verify by hand
 

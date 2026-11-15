@@ -145,6 +145,9 @@ type Signals struct {
 	// Tailnet: Tailscale is running (tailnet facts, a tailscaled socket, or
 	// an address in 100.64.0.0/10 on tailscale0).
 	Tailnet bool
+	// Panel: the host runs a PaaS control panel (Coolify or Dokploy in the
+	// panel role on disk, or the panel's container).
+	Panel bool
 }
 
 // Detect reads the signals from facts. ok is false when the listeners were
@@ -176,7 +179,37 @@ func Detect(f *facts.Facts) (s Signals, ok bool) {
 	if running, known := tailnetState(f); known {
 		s.Tailnet = running
 	}
+	s.Panel = PanelHost(f)
 	return s, true
+}
+
+// PanelHost reports whether the facts show a PaaS control panel on this
+// host: a platform in the panel role in the PaaS facts, or a running panel
+// container (coollabsio/coolify, dokploy/dokploy) in the Docker facts.
+func PanelHost(f *facts.Facts) bool {
+	if f == nil {
+		return false
+	}
+	if f.PaaS != nil {
+		for _, p := range f.PaaS.Platforms {
+			if p.Role == facts.RolePanel {
+				return true
+			}
+		}
+	}
+	if f.Docker == nil || f.Docker.API != "ok" {
+		return false
+	}
+	for _, c := range f.Docker.Containers {
+		repo, _, _ := strings.Cut(strings.ToLower(c.Image), "@")
+		if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
+			repo = repo[:i]
+		}
+		if c.Running && (strings.HasSuffix(repo, "coollabsio/coolify") || strings.HasSuffix(repo, "dokploy/dokploy")) {
+			return true
+		}
+	}
+	return false
 }
 
 // blockedByFirewall reports whether an active UFW with a deny default and
@@ -202,9 +235,9 @@ func blockedByFirewall(fw *facts.Firewall, l facts.Listener) bool {
 	return true
 }
 
-// Infer guesses the profile from facts. It never returns PaaSPanel (that
-// needs PaaS facts and stays a --profile choice).
+// Infer guesses the profile from facts.
 //
+//	panel and public web ports   -> paas-panel (a tunnel may run as well)
 //	tunnel and public web ports  -> mixed
 //	public web ports             -> public-web
 //	tunnel                       -> tunnel
@@ -216,6 +249,12 @@ func Infer(f *facts.Facts) Name {
 		return Unknown
 	}
 	switch {
+	case s.Panel && s.PublicWeb:
+		// The panel's proxy owns 80 and 443 by design (certificates,
+		// every app it deploys); a tunnel beside it is an extra way in,
+		// not proof that the public ports are a bypass. PAAS-002 still
+		// points out the tunnel.
+		return PaaSPanel
 	case s.Tunnel && s.PublicWeb:
 		return Mixed
 	case s.PublicWeb:

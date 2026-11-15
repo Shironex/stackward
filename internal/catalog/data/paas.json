@@ -14,7 +14,7 @@
       "id": "PAAS-002",
       "title": "Platform proxy is not published on all interfaces behind a tunnel",
       "severity": "high",
-      "rationale": "When a tunnel is meant to be the only way in, a proxy published on 0.0.0.0 lets anyone who finds the origin IP skip the tunnel and with it the WAF, access policies and rate limits. Docker publishes past UFW, so a firewall rule is not proof the port is closed. On a public web host, ports beyond 80 and 443 (such as the Traefik dashboard on 8080) should never be published.",
+      "rationale": "When a tunnel is meant to be the only way in, a proxy published on 0.0.0.0 lets anyone who finds the origin IP skip the tunnel and with it the WAF, access policies and rate limits. Docker publishes past UFW, so a firewall rule is not proof the port is closed. On a public web host, ports beyond 80 and 443 (such as the Traefik dashboard on 8080) should never be published. A panel host whose proxy is public on 80 and 443 is inferred as paas-panel, even with a tunnel beside it: the proxy serves the panel's certificates and every app it deploys. Then the proxy passes, or is info when a tunnel runs too, as a reminder to publish it on 127.0.0.1 and pass --profile tunnel if the tunnel is meant to be the only way in.",
       "verify": "docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'proxy|traefik|caddy'; ss -tlnp 'sport = :443'",
       "fix": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure.",
       "breaks": "Anything reaching the proxy directly by IP stops working; check the tunnel serves every hostname first."

@@ -187,6 +187,7 @@ func TestPaaSProxyExposure(t *testing.T) {
 		{"dashboard on public-web", append(append([]paasPort{}, web...), dash), profile.PublicWeb, Warn},
 		{"web with unknown profile", web, profile.Unknown, Unknown},
 		{"tailnet bind on tunnel", []paasPort{{HostIP: "100.100.1.2", HostPort: 443, ContainerPort: 443}}, profile.Tunnel, Pass},
+		{"web on paas-panel", web, profile.PaaSPanel, Pass},
 	}
 	for _, c := range cases {
 		withPaaSViews(t, proxy(c.ports...), nil, paasFilterUnknown)
@@ -194,6 +195,14 @@ func TestPaaSProxyExposure(t *testing.T) {
 		if len(rs) != 1 || rs[0].Level != c.want || rs[0].Subject != "container:coolify-proxy" {
 			t.Errorf("%s: %s %q", c.name, paasLevels(rs), rs[0].Message)
 		}
+	}
+	// A panel host with a tunnel beside the public proxy: info that names
+	// the tunnel, not a pass and not a warning.
+	withPaaSViews(t, proxy(web...), nil, paasFilterUnknown)
+	f := paasCoolifyFacts()
+	f.Docker = &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Name: "tunnel", Image: "cloudflare/cloudflared:2026.10.0", Running: true}}}
+	if rs := checkPaaSProxyExposure(Input{Facts: f, Profile: profile.PaaSPanel}); rs[0].Level != Info || !strings.Contains(rs[0].Message, "tunnel") {
+		t.Errorf("panel with tunnel: %s %q", rs[0].Level, rs[0].Message)
 	}
 	withPaaSViews(t, []paasContainer{{Name: "app"}}, nil, paasFilterUnknown)
 	if got := paasLevels(checkPaaSProxyExposure(Input{Facts: paasCoolifyFacts()})); got != "=skip" {
