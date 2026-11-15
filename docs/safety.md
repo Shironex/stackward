@@ -20,6 +20,49 @@ first, read the report header (`sandbox: landlock`), and look at the
 `Run` calls in the collector code: they are the only way stackward starts
 another program.
 
+## Commands stackward runs
+
+Every program the audit starts is listed here, with what it touches. None
+of them writes a file, which matters twice: it is the read only promise, and
+under the Landlock sandbox (no file writes, no TCP on ABI 4+) a command that
+tries to write fails, its collector ends `partial`, and the checks that need
+it say `unknown`. CI runs the real binary as root with the sandbox on and
+fails when a collector reports a command that exited non zero under it.
+`TestCommandTableListsEveryCommand` fails when a collector runs a command
+this table does not list.
+
+| Command | Collector | Writes? | Notes |
+|---|---|---|---|
+| `nft -j list ruleset` | firewall | no | netlink read only (root) |
+| `iptables -V` | firewall | no | prints the version |
+| `iptables -S` | firewall | no | iptables-nft (Ubuntu 22.04+, Debian 11+) takes no lock. iptables-legacy opens `/run/xtables.lock` to take a shared flock: that works under the sandbox while the file exists (Docker and UFW create it at boot) and fails if nothing created it since boot |
+| `firewall-cmd --state` | firewall | no | D-Bus query |
+| `ss -Htulnp`, `ss -Htln` | listeners, ssh | no | sock_diag netlink and `/proc` |
+| `ip -j addr show` | listeners | no | netlink |
+| `sshd -T` | ssh | no | parses the config and host keys; checks `/run/sshd` exists, does not create it |
+| `systemctl show`, `systemctl is-active`, `systemctl is-enabled` | ssh, updates, tailscale, cloudflared | no | D-Bus queries to systemd |
+| `timedatectl show` | clock | no | D-Bus query |
+| `df -P -k` | disk | no | statfs |
+| `journalctl --disk-usage` | journal | no | reads the journal directory sizes |
+| `passwd -S -a` | users | no | reads `/etc/shadow` (root); the status option takes no lock |
+| `lastlog` | users | no | reads `/var/log/lastlog` |
+| `dpkg-query -W` | updates | no | reads the dpkg database without its lock |
+| `apt-get -s -o Debug::NoLocking=true -o Dir::Cache::pkgcache= upgrade` | updates | no | simulation without the dpkg lock; the empty pkgcache builds the status cache in memory instead of rewriting `/var/cache/apt/pkgcache.bin`. It reuses `srcpkgcache.bin`; when that is stale (the lists changed and nothing rebuilt it), apt reparses the lists and needs a temporary file per signed InRelease, which the sandbox refuses, so the collector ends partial and says so until the next `apt update` or `apt-cache gencaches` |
+| `apt-config dump` | updates | no | prints the configuration |
+| `tailscale status --json`, `tailscale serve status --json`, `tailscale lock status --json`, `tailscale debug prefs` | tailscale | no | local API over the tailscaled Unix socket |
+| `cscli version`, `cscli bouncers list -o json`, `cscli config show --key ...`, `cscli <kind> list -o json` | crowdsec | no | reads the config, the hub index and the local database. A SQLite database that cannot be opened for writing is opened read only. A PostgreSQL or MySQL database over TCP is refused by the sandbox on Landlock ABI 4+ (run with `--no-sandbox` there) |
+| `fail2ban-client status` | fail2ban | no | asks the server over its Unix socket |
+
+stackward never runs `ufw`: even `ufw status` opens `/run/ufw.lock` for
+writing, so it dies under the sandbox. The firewall collector reads
+`/etc/ufw/ufw.conf`, `/etc/default/ufw` and `/etc/ufw/user.rules` (and
+`user6.rules`), which is what `ufw status` prints, and takes the loaded
+state from the listed ruleset (UFW's `ufw-user-input` chain exists only while
+UFW is loaded).
+
+Docker is read through its Unix socket with GET requests only; no `docker`
+command is run.
+
 ## Version 0.2: plan and apply (planned)
 
 Everything below is a design, not something you can run today. It is written
