@@ -113,9 +113,10 @@ released), and so does the access-critical transaction below: an
 access-critical step runs only inside it. No step of this version is
 access-critical yet (the first ones, for accounts and sshd, are
 [#28](https://github.com/Shironex/stackward/issues/28)); the transaction is
-tested with steps that exist only in test builds. The lockout guard below is
-still a design ([#27](https://github.com/Shironex/stackward/issues/27)). Both
-are written down before any real step changes SSH, the firewall or users.
+tested with steps that exist only in test builds. The
+[lockout guard](#lockout-guard) and the [never touched list](#never-touched)
+below exist too, tested the same way. All of it is in place before any real
+step changes SSH, the firewall or users.
 
 Fixing a finding on a remote machine is riskier than finding it. A wrong SSH
 or firewall change can lock you out, and a hardening profile can break
@@ -197,11 +198,10 @@ details.
   plain commands.
 - **No sandbox.** The Landlock sandbox forbids writes, so apply and undo do
   not apply it; their header says so.
-- **Never touched.** No step can reach the kernel setting `ip_forward`,
-  Docker daemon firewall settings, files managed by your platform or the
-  provider firewall: no generator produces such a change and apply refuses
-  anything a generator would not produce. The explicit list, checked at
-  plan time, is [#27](https://github.com/Shironex/stackward/issues/27).
+- **Never touched.** No step may change anything on the
+  [never touched list](#never-touched): plan refuses such a step (listed as
+  skipped, `refused`, with the reason) and apply and undo refuse it again,
+  so a hand edited plan cannot slip one in.
 
 #### Commands apply runs
 
@@ -230,6 +230,13 @@ below):
 | `systemctl enable stackward-boot-rollback-ID.service` | after the unit file is written, before the steps: links the boot unit into `sysinit.target.wants` |
 | `systemctl daemon-reload` | after the boot unit and its link are removed (confirm, every rollback, the boot unit itself) |
 
+Before a step that closes or narrows a way in, the
+[lockout guard](#lockout-guard) reads this host's state again with the
+audit's own collectors (`ssh`, `users`, `tailscale`, `listeners`,
+`firewall`): the read only commands of the [audit table](#commands-stackward-runs)
+above, nothing else. Apply runs them without the Landlock sandbox, because
+apply writes, but they only read.
+
 The transaction writes one file outside the steps, the backups, the
 journal and its own state: the boot unit
 `/etc/systemd/system/stackward-boot-rollback-ID.service` (0644, root),
@@ -248,7 +255,9 @@ has the details; in order:
    steps: the web or serial console of your hosting provider is the way in
    when SSH is gone.
 2. **Refusals that change nothing.** Another transaction is open, or a
-   rollback that fired has not been acknowledged; `systemd-run` is missing;
+   rollback that fired has not been acknowledged; the
+   [lockout guard](#lockout-guard) cannot prove a second way in from the
+   live host; `systemd-run` is missing;
    `sshd -t` already fails; nothing listens on sshd's port; the copy of
    stackward the timer would run does not start as a systemd service (a
    `noexec` mount, for example).
@@ -290,8 +299,10 @@ has the details; in order:
    timer and exits 1; you watched it, so it needs no acknowledgement.
 7. **Wait for `stackward confirm ID`**, which must run from a **new** SSH
    session: the same session is refused, because a session that survived the
-   change proves nothing about a fresh login. `--console` is the one way
-   around that rule, for the provider console. Confirm removes the boot
+   change proves nothing about a fresh login. When a step closed public
+   SSH, the new session must also come over the way the lockout guard
+   proved (from the tailnet, or from the allowed source). `--console` is
+   the one way around both rules, for the provider console. Confirm removes the boot
    unit, stops the timer and marks the transaction confirmed.
 8. **No confirm before the deadline**: the timer restores the snapshot (the
    same undo as `stackward undo`), reloads what the steps reloaded, and marks
@@ -331,8 +342,8 @@ The limits, honestly:
   and the check rests on the sshd process and `SSH_CONNECTION`.
 - The check proves that a new SSH session reached a shell and `sudo`, not
   that every way in works (another user, another key, another address). It
-  is a strong signal, not a proof of every path; the lockout guard (#27)
-  adds the checks on the second way in.
+  is a strong signal, not a proof of every path; the
+  [lockout guard](#lockout-guard) adds the checks on the second way in.
 - The boot rollback runs only if the host boots normally into a target
   that pulls in `sysinit.target` (the default and rescue targets do; an
   emergency shell does not), with `/var` mounted. If it cannot run, the
@@ -348,11 +359,113 @@ The limits, honestly:
 
 ### Lockout guard
 
-stackward will refuse to close public SSH unless another way in is proven:
-Tailscale is running with key expiry off and the confirming session arrived
-over the tailnet, or an explicit allowed source exists and the confirming
-session came from it. Before any access step it already reminds you of your
-provider console, because that is the recovery path of last resort.
+Before a step may close or narrow a way in, stackward proves that a second
+way in survives it. A step narrows a way in when it sets who may log in,
+how or where (password, keyboard-interactive or public key
+authentication, root login, `AuthenticationMethods`, `AuthorizedKeysFile`,
+`MaxAuthTries`, the port, the listen addresses, `AllowUsers`,
+`AllowGroups`, `DenyUsers`, `DenyGroups`, PAM), closes public SSH (a
+firewall rule that drops public 22, sshd only on private addresses),
+disables an account or removes an account's keys. What a step does to
+access comes from the step's own code, never from the plan file. An
+access-critical step that does not say what it does is treated as
+narrowing everything.
+
+The proofs:
+
+| The step | The second way in that must survive it |
+|---|---|
+| keeps public SSH open (password auth off, root login off, AllowUsers, a new port, ...) | a non-root account with sudo and a usable authorized key logs in with that key under the sshd configuration the step leaves behind: AllowUsers and AllowGroups, DenyUsers and DenyGroups, `PubkeyAuthentication`, `AuthenticationMethods` (some list a key alone satisfies), `AuthorizedKeysFile` and every Match block, evaluated for that account and the session's source address. A new port must be let in by UFW from anywhere |
+| closes public SSH | the same account logs in over the tailnet: Tailscale is `Running`, the node's key expiry is off, sshd listens on a wildcard or tailnet address, and a firewall rule lets the tailnet reach sshd (on `tailscale0` or from `100.64.0.0/10`), or the step adds one. Or: the step still lets a network reach sshd, the session that plans or applies comes from it, and the account logs in from there |
+| disables an account or removes its keys | another account passes the first row; the account that applies is never disabled |
+
+From this follow the three rules: public SSH never closes without the
+tailnet path (or the allowed source) proven; the last admin key is never
+removed; password authentication is never turned off for the only user
+without a key.
+
+A sudo right counts when sudoers names the account, `ALL`, or `%GROUP`
+for one of its groups. A key counts when it sits in a file sshd would read
+for that account and current OpenSSH still accepts it (no DSA, no RSA
+under 1024 bits).
+
+When and from what:
+
+1. **At plan time**, from the audit's facts and the planning session's
+   source address (live plans only). A step without a proof is not
+   planned: it is listed as skipped, kind `refused`, with the missing
+   piece, for example `no second way in exists: it needs a non-root sudo
+   user with an authorized key (alice: no usable authorized key (it would
+   log in with a password only))`.
+2. **At apply time, again**, from facts read from the live host right
+   before the transaction opens (the plan's facts may be hours old) and the
+   applying session. A failed proof refuses the run before anything
+   changes, with the same kind of reason.
+3. **At confirm time**, the new session stays the final proof. When the
+   step closed public SSH, the transaction records the networks the guard
+   proved (`confirm_from` in the state) and `stackward confirm` refuses a
+   session whose client address is not in one of them: a confirm over
+   public SSH proves nothing about the tailnet. `--console` is not
+   checked.
+
+The guard fails closed: a setting it cannot read (no root, so no `sshd
+-T`), a sudoers file it cannot read, a Match block with an unreadable
+include, or a source it does not know counts against the proof. A Match
+block whose criteria it cannot decide (an unknown source address, `Host`,
+`LocalAddress`, `RDomain`) is tried both ways, and the login must work
+either way.
+
+The limits, honestly:
+
+- It proves from facts, not by logging in. The confirm from a new session
+  is what proves a login works; the guard makes sure there is something to
+  log in with before anything changes.
+- It does not evaluate `AuthorizedKeysCommand`, sudo aliases
+  (`User_Alias`), `#uid` sudoers principals, key options in
+  `authorized_keys` (`from=`, `restrict`) or Tailscale ACLs. Keys from a
+  command and sudo rights through an alias do not count.
+- `AuthenticationMethods` that need a second factor next to the key
+  (`publickey,keyboard-interactive`) fail the proof, even when the second
+  factor works.
+- Hostnames in `AllowUsers user@host` and in Match `Address` are not
+  resolved; they count as not matching (allow) or possibly matching
+  (deny).
+- Firewalls other than UFW are not analysed rule by rule: when one drops
+  incoming traffic, a new port or a tailnet rule cannot be proven.
+- Tailscale SSH (`tailscale set --ssh`) does not count as a way in: its
+  access is decided by tailnet ACLs, which stackward cannot read.
+
+### Never touched
+
+No step may change these, whatever it fixes. Plan judges every step by its
+targets: the targets it declares (`touches`), every file it edits, and
+every program its commands run with their arguments (an undo counts only
+for the files it names, because it only reverses its own step). A step
+that reaches an entry is refused at plan time (skipped, kind `refused`,
+with the entry and the reason) and again by apply and undo, so dropping a
+target from a hand edited plan does not help. The list is fixed in the code
+(`internal/plan/nevertouched.go`) and a test keeps this table in step with
+it.
+
+| Entry | What | Why |
+|---|---|---|
+| `network-config` | the provider's network configuration: `/etc/netplan`, `/etc/network/interfaces`, cloud-init's network config, `/etc/systemd/network`, `netplan` | a wrong address, route or renderer takes the host off the network at the next apply or boot, and only the provider console can bring it back |
+| `tailscale` | Tailscale's state and the settings the tailnet ACLs see: `/var/lib/tailscale`, `/etc/default/tailscaled`, `tailscaled`, any `tailscale` command | the tailnet is the second way in the lockout guard proves; a logout, a new node key or a changed tag can cut it silently |
+| `cloudflared` | cloudflared's configuration and tunnel credentials (`/etc/cloudflared`, `~/.cloudflared`) | the tunnel is a tunnel host's public ingress, and its credentials are secrets stackward never reads |
+| `paas-data` | the data directories of Coolify (`/data/coolify`) and Dokploy (`/etc/dokploy`), their SSH keys included | the platform owns and rewrites them; its SSH keys are how it reaches this and every other managed server |
+| `docker-data` | Docker's data root (`/var/lib/docker`, `/var/lib/containerd`, `data-root`) | it holds every image, container and volume |
+| `docker-firewall` | Docker daemon firewall settings (`iptables`, `ip6tables`, `ip-forward`, `ip-masq`, `firewall-backend`) | Docker programs the NAT and forwarding rules its containers and the `DOCKER-USER` chain need |
+| `ip-forward` | kernel forwarding (`net.ipv4.ip_forward`, every `forwarding` setting) | Docker and Tailscale routing need it; hardening profiles that turn it off break both |
+| `provider-firewall` | the provider's network firewall | it sits outside the host, stackward cannot see it, and it still holds when the host firewall is wrong |
+| `boot` | `/boot` and the bootloader (GRUB configuration, kernel command line, initramfs, EFI entries) | a host that does not boot can only be repaired from rescue mode |
+| `root-password` | root's password, and `/etc/shadow`, `/etc/passwd`, `/etc/group` edited by hand | root's password is the console login of last resort; account files are changed only through the account tools |
+| `root-keys` | root's `authorized_keys` | platforms and recovery tooling log in as root with a key; root login is turned off in sshd instead |
+| `pam` | PAM (`/etc/pam.d`, `/etc/pam.conf`, `/etc/security`) | one wrong line refuses every login, the console included, or lets anyone in |
+| `admin-sudo` | sudo rights of existing accounts: `/etc/sudoers` itself, revoking anyone's sudo, deleting accounts | removing the current admin's sudo leaves nobody to undo the change; stackward only adds sudoers drop-ins and locks accounts |
+
+A step that later needs an exception (the planned timer that resets the
+permissions of platform `.env` files is one) gets a narrow, listed
+exception of its own, never a wider list entry.
 
 ### What will still go wrong
 

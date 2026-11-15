@@ -76,6 +76,13 @@ Apply refuses, with the reason and without changing anything, when:
   step does not own, new content it would not write, a command, validate
   command or undo command it would not run (see below);
 - an edit's content was redacted in the plan;
+- a step reaches the [never touched list](safety.md#never-touched): a
+  target in its `touches`, a file it edits or a program and argument it
+  runs. Plan never writes such a step, so this catches a plan edited
+  afterwards;
+- an access-critical step closes or narrows a way in and the
+  [lockout guard](safety.md#lockout-guard) cannot prove a second way in
+  from the live host (see [the transaction](#the-access-critical-transaction));
 - another apply or undo is running: every run takes an exclusive lock first
   (see [One run at a time](#one-run-at-a-time));
 - a restart from an earlier run is still pending and you do not confirm
@@ -178,26 +185,35 @@ and the exact commands to undo by hand.
 A step that touches SSH, the firewall or users is `access-critical` in its
 own code. No step of this version is; the first ones come with
 [#28](https://github.com/Shironex/stackward/issues/28). The transaction is
-tested now with two steps that exist only in test builds (see
+tested now with steps that exist only in test builds (see
 [Tests](#tests)). When the selection holds access-critical steps, apply:
 
 1. prints the **provider console reminder**, then the preview;
 2. refuses, changing nothing, when the state file says a transaction is
    open, or rolled back without an acknowledgement (see the states below);
-3. runs the **preflight**, which only reads: `systemd-run --version`;
+   then reads the **session** that applies (see [confirm](#confirm));
+3. runs the **lockout guard** when a step closes or narrows a way in: it
+   reads this host again with the audit's `ssh`, `users`, `tailscale`,
+   `listeners` and `firewall` collectors (read only) and proves, for each
+   such step, a second way in that survives it (a non-root sudo user whose
+   key sshd still accepts after the step, from the applying session's
+   address; over the tailnet or from an allowed source when the step
+   closes public SSH). It prints the way it proved, or refuses with the
+   missing piece. The rules are in [safety.md](safety.md#lockout-guard);
+4. runs the **preflight**, which only reads: `systemd-run --version`;
    `sshd -t` must pass now (otherwise a failure after the change could not
    be blamed on the change); `sshd -T` gives sshd's ports and `ss -Htln`
    must show something listening on at least one of them;
-4. asks `[y/N]` (or needs `--yes`), then records the **session** that
-   applies (see [confirm](#confirm));
-5. copies the running binary to
+5. asks `[y/N]` (or needs `--yes`);
+6. copies the running binary to
    `/var/lib/stackward/transactions/<run-id>/stackward` (directory and file
    0700, owned by root) and runs that copy once as a systemd service
    (`systemd-run --wait ... version`), so a copy that systemd cannot start
    is found now;
-6. writes `/var/lib/stackward/transaction.json` (0600,
+7. writes `/var/lib/stackward/transaction.json` (0600,
    [schema/transaction.v1.json](../schema/transaction.v1.json)) with status
-   `open` and the deadline, then **arms the timer**:
+   `open`, the deadline, the applying session and, when a step closed
+   public SSH, the networks the confirm must come from (`confirm_from`), then **arms the timer**:
    `systemd-run --unit=stackward-rollback-<run-id> --on-active=<seconds>s
    --timer-property=AccuracySec=1s --timer-property=RemainAfterElapse=no
    --collect` with the copy and `undo --transaction <run-id> --yes
@@ -206,14 +222,14 @@ tested now with two steps that exist only in test builds (see
    (0644) and runs `systemctl enable` on it (see [the boot
    rollback](#the-boot-rollback)). If arming or the boot unit fails, the
    transaction is `aborted`, both are removed and nothing changed;
-7. applies the steps exactly as any apply does (backups, `FILE.orig`, the
+8. applies the steps exactly as any apply does (backups, `FILE.orig`, the
    journal, which now carries a `transaction` object);
-8. **validates**: `sshd -t`; `sshd -T` shows every setting the steps mean to
+9. **validates**: `sshd -t`; `sshd -T` shows every setting the steps mean to
    leave (each step's generator states them, as `sshd -T` prints them); `ss
    -Htln` shows something on every port in `sshd -T` and every port that was
    listened on before (unless a step sets the port). The commands and their
    output go into the journal as `check` commands;
-9. on a failed step or a failed check, **rolls back at once** (the same
+10. on a failed step or a failed check, **rolls back at once** (the same
    undo as `stackward undo`), removes the boot unit, stops the timer, and
    exits 1. Otherwise it prints how to confirm and exits 0 with the timer
    armed and the boot unit enabled.
@@ -267,9 +283,13 @@ them), and confirm compares its own:
 - any fact both sessions have that is equal: refused as the same session;
 - applied outside SSH: any SSH session is new;
 - otherwise at least one fact both have must differ; sessions that share no
-  fact are refused.
+  fact are refused;
+- when the transaction has `confirm_from` (a step closed public SSH), the
+  session's client address (`SSH_CONNECTION`) must be inside one of those
+  networks: the tailnet, or the allowed source the lockout guard proved. A
+  new session over public SSH proves nothing about the way that stays.
 
-`--console` skips the comparison. It is the path for the provider console,
+`--console` skips the comparison and the address check. It is the path for the provider console,
 where there is no SSH session to compare. The limits of the comparison
 (tmux, `ControlMaster`, containers without `pam_loginuid`) are in
 [safety.md](safety.md#access-critical-changes-rollback-timer-and-second-session-confirm).
@@ -394,6 +414,11 @@ transaction, `applytest.System` fakes `systemd-run`, `systemctl`, `sshd -t`,
 `sshd -T` and `ss`, the session facts are injected, and a test "fires" the
 timer by running the command it was given, with no session, and "boots" by
 running the `ExecStart` of the boot unit it wrote under the test root. The
+lockout guard's live facts are injected too (`applytest.GuardFacts`), and
+the test-only steps `txn-test-keys-only` (password authentication off) and
+`txn-test-close-public` (stands for a firewall step that closes public
+SSH) show it refusing a step without a second way in and requiring the
+confirm over the tailnet. The
 `apply` [live host scenario](testing.md#live-host-scenarios) runs the real
 binary as root on a disposable GitHub runner VM: plan, apply, apply again,
 undo. The `transaction` scenario runs a real timer there with the test-only
