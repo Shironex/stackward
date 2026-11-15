@@ -33,6 +33,10 @@ go test -race ./...
 go test ./test/ -update    # after an intended report change; review the diff
 ```
 
+The live host scenarios under `test/scenarios/` run the real binary on a
+GitHub runner; [docs/testing.md](docs/testing.md) explains them and how to run
+one in a throwaway VM.
+
 ## Check pages
 
 `docs/checks/` is generated from the check catalog. After adding or editing a
