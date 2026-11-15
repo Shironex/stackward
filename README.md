@@ -41,7 +41,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 `unknown`, never as a pass.
 
 > [!NOTE]
-> **v0.1 is the first release line (newest: v0.1.1).** The checks below are tested against saved
+> **v0.1 is the first release line (newest: v0.1.2).** The checks below are tested against saved
 > facts and on real Ubuntu hosts. v0.1 is read only: it reports and changes
 > nothing. `plan` and `apply` come in v0.2. Read the report before acting on
 > it, and see the [known limits](CHANGELOG.md).
@@ -97,7 +97,7 @@ What it reads, what it never does and what it does not cover:
 
 ## Install
 
-The newest release is [`v0.1.1`](https://github.com/Shironex/stackward/releases/latest).
+The newest release is [`v0.1.2`](https://github.com/Shironex/stackward/releases/latest).
 Every release holds Linux archives for amd64 and arm64,
 archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
@@ -123,7 +123,7 @@ installed) before it installs anything. Options, `update` and `uninstall`:
 To do every step by hand instead, download, check and run:
 
 ```sh
-VERSION=v0.1.1
+VERSION=v0.1.2
 ARCH=amd64   # or arm64
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
