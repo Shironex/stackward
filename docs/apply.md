@@ -32,7 +32,7 @@ sudo stackward undo --run 20260301T120000Z-1a2b3c
 | `--yes` | do not ask; needed when stdin is not a terminal |
 | `--confirm-within D` | access-critical steps: the deadline of the rollback timer (default `5m`, from `30s` to `30m`) |
 | `--run RUN_ID` | (undo) the run to reverse, as apply printed it |
-| `--transaction ID` | (undo) roll back an open transaction now and stop its timer |
+| `--transaction ID` | (undo) roll back an open transaction now, stop its timer and remove its boot unit |
 | `--console` | (confirm) confirm from the provider console: skip the new SSH session check |
 | `--ack-rollback ID` | (confirm) acknowledge a rollback, so access-critical steps may run again |
 
@@ -201,8 +201,11 @@ tested now with two steps that exist only in test builds (see
    `systemd-run --unit=stackward-rollback-<run-id> --on-active=<seconds>s
    --timer-property=AccuracySec=1s --timer-property=RemainAfterElapse=no
    --collect` with the copy and `undo --transaction <run-id> --yes
-   --by-timer`, and checks that the `.timer` is active. If arming fails, the
-   transaction is `aborted` and nothing changed;
+   --by-timer`, and checks that the `.timer` is active. Then it writes the
+   **boot unit** `/etc/systemd/system/stackward-boot-rollback-<run-id>.service`
+   (0644) and runs `systemctl enable` on it (see [the boot
+   rollback](#the-boot-rollback)). If arming or the boot unit fails, the
+   transaction is `aborted`, both are removed and nothing changed;
 7. applies the steps exactly as any apply does (backups, `FILE.orig`, the
    journal, which now carries a `transaction` object);
 8. **validates**: `sshd -t`; `sshd -T` shows every setting the steps mean to
@@ -211,8 +214,9 @@ tested now with two steps that exist only in test builds (see
    listened on before (unless a step sets the port). The commands and their
    output go into the journal as `check` commands;
 9. on a failed step or a failed check, **rolls back at once** (the same
-   undo as `stackward undo`), then stops the timer, and exits 1. Otherwise it
-   prints how to confirm and exits 0 with the timer armed.
+   undo as `stackward undo`), removes the boot unit, stops the timer, and
+   exits 1. Otherwise it prints how to confirm and exits 0 with the timer
+   armed and the boot unit enabled.
 
 Why a copy of the binary and not a shell script with the restore commands:
 the rollback is the same code as `stackward undo` (it authorizes every step
@@ -230,22 +234,27 @@ acknowledgement).
 |---|---|---|
 | `open` | applied and validated; the timer fires at `deadline` | refused (one at a time) |
 | `confirmed` | `stackward confirm` kept it | allowed |
-| `rolled-back` | undone: by the timer (`cause: timer`), a failed check (`validation`), a failed step (`apply-failed`) or `undo --transaction` (`manual`) | refused after a timer rollback until `confirm --ack-rollback`; the others are acknowledged when they happen, because you watched them |
+| `rolled-back` | undone: by the timer (`cause: timer`), at boot (`boot`), a failed check (`validation`), a failed step (`apply-failed`) or `undo --transaction` (`manual`) | refused after a timer or boot rollback until `confirm --ack-rollback`; the others are acknowledged when they happen, because you watched them |
 | `rollback-failed` | the undo itself failed part way (a file changed in the window, a reload failed) | refused until `confirm --ack-rollback`; check the files by hand |
 | `aborted` | the timer could not be armed; nothing changed | allowed |
 
-An `open` transaction whose deadline passed (the timer is gone after a
-reboot, or it gave up waiting for the lock) refuses every access step and
+An `open` transaction whose deadline passed (the timer gave up waiting for
+the lock, or the boot rollback could not run) refuses every access step and
 every confirm, and says to run `sudo stackward undo --transaction ID`.
+Access steps are also refused while a boot unit
+(`stackward-boot-rollback-*.service`, or its link in
+`sysinit.target.wants`) is left over without an open transaction of its
+own; the refusal prints the `rm` and `systemctl daemon-reload` that remove
+it.
 
 ### Confirm
 
 `sudo stackward confirm ID` keeps the change: it refuses when the deadline
-has passed, compares the sessions, stops both transient units
-(`systemctl stop`, then `systemctl is-active` must not say active), and
-only then marks the transaction `confirmed` in the state and the journal.
-If the timer cannot be stopped, nothing is marked and the rollback still
-happens.
+has passed, compares the sessions, removes the boot unit, stops both
+transient units (`systemctl stop`, then `systemctl is-active` must not say
+active), and only then marks the transaction `confirmed` in the state and
+the journal. If the boot unit cannot be removed or the timer cannot be
+stopped, nothing is marked and the rollback still happens.
 
 It must run from a **new SSH session**. The session that applied recorded
 its audit session id (`/proc/self/sessionid`), its sshd session process
@@ -272,12 +281,59 @@ where there is no SSH session to compare. The limits of the comparison
 
 The timer runs `undo --transaction ID --yes --by-timer` as root, with no
 session. It waits for the run lock, does nothing unless the transaction is
-still `open` (a confirm that came first wins), checks the host, then undoes
-the run from its journal: files restored or removed, the steps' undo
+still `open` (a confirm that came first wins), then undoes the run from its
+journal (it does not check the hostname: see
+[safety.md](safety.md#access-critical-changes-rollback-timer-and-second-session-confirm);
+it records the hostname hash it saw and any mismatch in the state): files restored or removed, the steps' undo
 commands run (the reload). The state says `rolled-back` with `cause: timer`
 and stays unacknowledged. `sudo stackward undo --transaction ID` does the
 same by hand, at once, and stops the timer. `stackward undo --run` refuses
-a run that is an open transaction.
+a run that is an open transaction. Every rollback removes the boot unit.
+
+### The boot rollback
+
+A reboot drops the transient timer. The boot unit covers that case (its
+comment header and `Documentation=` line left out here):
+
+```ini
+[Unit]
+Description=stackward: roll back transaction ID at boot unless it was confirmed
+DefaultDependencies=no
+After=local-fs.target systemd-journald.socket
+Before=ssh.service sshd.service ssh.socket sshd.socket shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=/var/lib/stackward/transaction.json
+ConditionPathExists=/var/lib/stackward/transactions/ID/stackward
+
+[Service]
+Type=oneshot
+ExecStart=/var/lib/stackward/transactions/ID/stackward undo --transaction ID --yes --by-boot
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=sysinit.target
+```
+
+It is written from one template (`internal/apply/bootunit.service.tmpl`,
+pinned by a golden test and checked with `systemd-analyze verify` in the
+`transaction` scenario). `DefaultDependencies=no` is needed: the default
+dependencies order a service after `basic.target`, which comes after
+`sockets.target` and so after `ssh.socket`, and `Before=ssh.socket` would
+be an ordering cycle. It is enabled with `systemctl enable`, which makes
+the `sysinit.target.wants` link from the unit's own `[Install]` section and
+reloads systemd, rather than by writing a symlink by hand.
+
+At boot it runs `undo --transaction ID --yes --by-boot`, which behaves like
+`--by-timer`: it waits for the run lock, does nothing unless the
+transaction is still `open`, rolls back with `cause: boot` and leaves the
+rollback to be acknowledged. Whatever it finds, it then removes its own
+unit file and link and runs `systemctl daemon-reload`. Confirm and every
+other rollback remove it the same way.
+
+Do not start the boot unit by hand on a running host to roll back: it is
+ordered before `ssh.service`, so the step's own `systemctl
+try-reload-or-restart ssh.service` would wait for the unit that runs it.
+Use `sudo stackward undo --transaction ID`.
 
 ## The run journal
 
@@ -308,7 +364,10 @@ undo commands run (the restarts, `sysctl -w` of the old running values).
 `FILE.orig` copies stay. It refuses, changing nothing, when:
 
 - not root, not Linux, or the run id is not one apply gave;
-- the journal is for another host or the run was already undone;
+- the journal is for another host (or this host has no hostname) or the run
+  was already undone; after a rename, set the old hostname back with
+  `hostnamectl set-hostname` and run undo again. The rollback timer and the
+  boot unit skip this check;
 - a step in the journal is not one its generator would produce (the same
   check as apply);
 - a file no longer holds what the run wrote, or a backup no longer holds
@@ -333,7 +392,8 @@ command runner (`internal/apply/applytest`), so `go test ./...` never writes
 outside its temporary directory or starts a program, even as root. For the
 transaction, `applytest.System` fakes `systemd-run`, `systemctl`, `sshd -t`,
 `sshd -T` and `ss`, the session facts are injected, and a test "fires" the
-timer by running the command it was given, with no session. The
+timer by running the command it was given, with no session, and "boots" by
+running the `ExecStart` of the boot unit it wrote under the test root. The
 `apply` [live host scenario](testing.md#live-host-scenarios) runs the real
 binary as root on a disposable GitHub runner VM: plan, apply, apply again,
 undo. The `transaction` scenario runs a real timer there with the test-only
