@@ -192,41 +192,49 @@ func (crowdsecCollector) Collect(ctx context.Context, sys System, out *Facts) er
 	}
 
 	if c.Cscli {
-		if res, err := sys.Run(ctx, "cscli", "version"); err == nil {
-			c.Version = parseCscliVersion(append(append([]byte{}, res.Stdout...), res.Stderr...))
-		}
-		res, err := sys.Run(ctx, "cscli", "bouncers", "list", "-o", "json")
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("cscli bouncers list: %w", err))
-		case res.ExitCode != 0:
-			if sys.Identity().Root {
-				errs = append(errs, fmt.Errorf("cscli bouncers list exited %d: %s", res.ExitCode, firstLine(res.Stderr)))
-			}
-		default:
-			bs, perr := ParseCrowdSecBouncers(res.Stdout)
-			if perr != nil {
-				errs = append(errs, perr)
-			} else {
-				c.BouncersRead, c.Bouncers = true, bs
-			}
-		}
-		cols, colOK := cscliHubList(ctx, sys, "collections")
-		pars, parOK := cscliHubList(ctx, sys, "parsers")
-		if colOK && parOK {
-			c.HubRead, c.Collections, c.Parsers = true, cols, pars
-		}
-		if res, err := sys.Run(ctx, "cscli", "config", "show", "--key", "Config.API.Server.ListenURI"); err == nil && res.ExitCode == 0 {
-			v := strings.Trim(strings.TrimSpace(string(res.Stdout)), `"'`)
-			if v != "" && v != "<nil>" && !strings.ContainsAny(v, " \n") {
-				c.LAPIListen = v
-			}
-		}
+		errs = append(errs, readCscli(ctx, sys, c)...)
 	}
 
 	c.Acquisition, c.AcquisitionRead = readCrowdSecAcquisition(sys)
 	c.ParserFiles, c.ParserFilesRead = readCrowdSecParsers(sys)
 	return errors.Join(errs...)
+}
+
+// readCscli fills the fields the cscli binary answers: version, bouncers,
+// hub contents and the local API listen address.
+func readCscli(ctx context.Context, sys System, c *CrowdSec) []error {
+	var errs []error
+	if res, err := sys.Run(ctx, "cscli", "version"); err == nil {
+		c.Version = parseCscliVersion(append(append([]byte{}, res.Stdout...), res.Stderr...))
+	}
+	res, err := sys.Run(ctx, "cscli", "bouncers", "list", "-o", "json")
+	switch {
+	case err != nil:
+		errs = append(errs, fmt.Errorf("cscli bouncers list: %w", err))
+	case res.ExitCode != 0:
+		if sys.Identity().Root {
+			errs = append(errs, fmt.Errorf("cscli bouncers list exited %d: %s", res.ExitCode, firstLine(res.Stderr)))
+		}
+	default:
+		bs, perr := ParseCrowdSecBouncers(res.Stdout)
+		if perr != nil {
+			errs = append(errs, perr)
+		} else {
+			c.BouncersRead, c.Bouncers = true, bs
+		}
+	}
+	cols, colOK := cscliHubList(ctx, sys, "collections")
+	pars, parOK := cscliHubList(ctx, sys, "parsers")
+	if colOK && parOK {
+		c.HubRead, c.Collections, c.Parsers = true, cols, pars
+	}
+	if res, err := sys.Run(ctx, "cscli", "config", "show", "--key", "Config.API.Server.ListenURI"); err == nil && res.ExitCode == 0 {
+		v := strings.Trim(strings.TrimSpace(string(res.Stdout)), `"'`)
+		if v != "" && v != "<nil>" && !strings.ContainsAny(v, " \n") {
+			c.LAPIListen = v
+		}
+	}
+	return errs
 }
 
 var cscliVersionRE = regexp.MustCompile(`(?m)^version:\s*(\S+)`)
