@@ -10,8 +10,9 @@ import (
 )
 
 // NET checks read what the firewall and listeners collectors gather
-// (facts/firewall.go, facts/listeners.go). DKR-001 (published ports past
-// the firewall) needs Docker facts as well and lives with the DKR group.
+// (facts/firewall.go, facts/listeners.go); NET-007 also reads published
+// ports from the Docker facts. DKR-001 (published ports past the firewall)
+// lives with the DKR group.
 
 func init() {
 	Register(Check{ID: "NET-001", Run: checkFirewallActive})
@@ -518,7 +519,7 @@ func checkUFWDockerLoaded(in Input) []Result {
 	}
 	ev["tailscale0_route_rules"] = routes
 	running, known := tailnetState(f)
-	published := publishedViaProxy(f.Listeners)
+	published := publishedPorts(f)
 	ev["published_ports_seen"] = published
 	ev["tailnet"] = tailnetWord(running, known)
 	switch {
@@ -529,7 +530,45 @@ func checkUFWDockerLoaded(in Input) []Result {
 	case len(published) > 0:
 		return One(Warn, "ufw-docker is loaded and ports are published, but no route rule allows them on tailscale0: tailnet access to them is dropped", ev)
 	}
+	if d := f.Docker; d != nil && (!d.Installed || d.API == "ok") {
+		return One(Pass, "ufw-docker is loaded and no container publishes a port beyond loopback, so no tailscale0 route rules are needed", ev)
+	}
 	return One(Unknown, "ufw-docker is loaded with no tailscale0 route rules; whether ports are published needs the Docker facts", ev)
+}
+
+// publishedPorts lists published ports from docker-proxy listeners and,
+// when the Docker API was read, from the containers themselves (hosts
+// without the userland proxy have no listener for them).
+func publishedPorts(f *facts.Facts) []string {
+	out := publishedViaProxy(f.Listeners)
+	if out == nil {
+		out = []string{}
+	}
+	d := f.Docker
+	if d == nil || d.API != "ok" {
+		return out
+	}
+	seen := map[string]bool{}
+	for _, p := range out {
+		seen[p] = true
+	}
+	for _, c := range d.Containers {
+		for _, p := range c.Ports {
+			if facts.ClassifyAddress(p.HostIP) == facts.BindLoopback {
+				continue // not reachable over the tailnet either way
+			}
+			proto := p.Proto
+			if proto == "" {
+				proto = "tcp"
+			}
+			if k := portLabel(proto, p.HostPort); !seen[k] {
+				seen[k] = true
+				out = append(out, k)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // publishedViaProxy lists ports held by docker-proxy. Hosts that run
