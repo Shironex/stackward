@@ -37,6 +37,63 @@ The live host scenarios under `test/scenarios/` run the real binary on a
 GitHub runner; [docs/testing.md](docs/testing.md) explains them and how to run
 one in a throwaway VM.
 
+## Code limits and guardrails
+
+CI enforces these, so the code stays small enough to review and the safety
+promise stays checkable. Configuration is in `.golangci.yml`.
+
+| Limit | Value | Where |
+|---|---|---|
+| File length | 800 lines of code (comments and blank lines do not count) | revive `file-length-limit` |
+| Test file length | 1000 lines of code | `stackward-guard` (below) |
+| Function length | 100 lines or 70 statements | funlen |
+| Cognitive complexity | 35 | gocognit |
+| Nested `if` complexity | 6 | nestif |
+| Maintainability index | 20 | maintidx |
+| Duplicated code | 150 tokens | dupl |
+| Function arguments, results | 7, 4 | revive `argument-limit`, `function-result-limit` |
+
+Test files are exempt from the function and duplication limits; table
+tests are long by nature. **Soft target:** consider splitting a file past
+500 lines, along the seams of its checks or collector parts. CI does not
+enforce it.
+
+Package layering (depguard, from [docs/architecture.md](docs/architecture.md)):
+
+- `internal/checks` is pure: it must not import `cli`, `tui`, `report`,
+  `plan`, `apply`, `probe`, `audit`, `sandbox` or `net/http`.
+- `internal/facts` collectors must not import `checks`, `profile`,
+  `report`, `plan`, `apply`, `probe`, `audit`, `cli` or `tui`.
+- `internal/plan`, `internal/apply` and `internal/report` never import
+  `cli` or `tui` (plan also not `apply`; apply not `probe`; report not
+  `plan` or `apply`).
+- `internal/tui` only browses a `report.Report`: no `facts`, `plan` or
+  `apply`.
+- `redact`, `catalog`, `sandbox`, `schemacheck` and `version` import
+  nothing else from this module.
+- `os/exec` is imported only by `internal/apply` and
+  `internal/facts/system.go`.
+
+`stackward-guard` (`internal/lint/guard`) enforces the safety model in code:
+any call that writes to the filesystem, starts a program, uses the network
+or makes a raw system call must sit in a package listed in
+`internal/lint/guard/allowlist.go`, where every entry says why. Test files
+are skipped. A finding means the code does something a read only audit tool
+should not, so the fix is almost never a new allowlist entry; if one is
+really needed, justify it in the pull request. The same tool caps test
+files at 1000 lines of code.
+
+Run everything locally:
+
+```sh
+go run ./internal/lint/guard/cmd ./...    # stackward-guard
+golangci-lint run                         # v2, same version as CI
+```
+
+When a limit trips on old code that cannot be fixed in the same pull
+request, add a narrow path exclusion to `.golangci.yml` with a comment and a
+follow-up issue; never raise a limit to make code pass.
+
 ## Check pages
 
 `docs/checks/` is generated from the check catalog. After adding or editing a
