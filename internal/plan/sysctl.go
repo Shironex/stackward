@@ -41,6 +41,7 @@ func init() {
 		Plan:  planSysctlHardening,
 
 		Authorize: authorizeSysctlHardening,
+		Pin:       pinSysctlUndo,
 		Check:     checkSysctlHardening,
 	})
 }
@@ -245,6 +246,40 @@ func authorizeSysctlHardening(s Step) error {
 	}
 	if i != len(rest) {
 		return fmt.Errorf("undo: %d commands more than the step runs", len(rest)-i)
+	}
+	return nil
+}
+
+// pinSysctlUndo refuses an undo that restores a key to a value other than
+// the one the host holds now. The plan carries no facts, and a hand edited
+// plan could otherwise choose what undo sets a key to, so the value that
+// counts is the running one, the one the audit recorded. A value that
+// changed since the audit also refuses: plan again. Authorize has already
+// matched the undo commands to the drop-in, key for key.
+func pinSysctlUndo(r Reader, s Step) error {
+	fixes, err := parseSysctlDropin(s.Edits[0].New)
+	if err != nil {
+		return err
+	}
+	rest := s.Undo.Commands[1:]
+	i := 0
+	for _, f := range fixes {
+		if f.Key == sysctlBPFKey {
+			continue
+		}
+		val, _ := strconv.Atoi(strings.TrimPrefix(rest[i].Args[2], f.Key+"="))
+		i++
+		b, err := r.ReadFile("/proc/sys/" + strings.ReplaceAll(f.Key, ".", "/"))
+		if err != nil {
+			return fmt.Errorf("reading the running value of %s: %w", f.Key, err)
+		}
+		running, err := strconv.Atoi(strings.TrimSpace(string(b)))
+		if err != nil {
+			return fmt.Errorf("the running value of %s is not a number: %q", f.Key, strings.TrimSpace(string(b)))
+		}
+		if val != running {
+			return fmt.Errorf("undo restores %s to %d but it is %d on this host now; undo may only restore the running value, so plan again", f.Key, val, running)
+		}
 	}
 	return nil
 }

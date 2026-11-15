@@ -190,6 +190,10 @@ type Generator struct {
 	// from the old side, the drop-in from its keys) instead of trusting
 	// the plan file, so a hand edited plan cannot reach anything else.
 	Authorize func(s Step) error
+	// Pin, when set, refuses a step whose plan states a value that the
+	// host contradicts, for example an undo value that is not what the
+	// host holds now. Authorize only sees the plan; Pin reads the host.
+	Pin func(r Reader, s Step) error
 	// Check reads the host and reports whether the step's change is
 	// already in place, so a second apply does nothing. It must only read.
 	Check func(r Reader, s Step) (applied bool, why string, err error)
