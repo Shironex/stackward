@@ -1,0 +1,59 @@
+{
+  "group": "PRB",
+  "checks": [
+    {
+      "id": "PRB-001",
+      "title": "SSH is not reachable from the internet on a private ingress host",
+      "severity": "moderate",
+      "rationale": "This result comes from stackward probe, run from another machine: it shows what the internet sees after the provider firewall, the host firewall and Docker have all had their say, which is the view NET-009 says the host audit cannot have. On a host whose ingress is a tunnel or the tailnet, a public SSH port is attack surface nobody needs: it draws constant password and key guessing, and every OpenSSH vulnerability becomes reachable. Port 22 is always tried; extra ports added on the command line count when they answer with an SSH banner. The banner is printed because it names the OpenSSH version an attacker sees. With the auto profile there are no host facts to infer the profile from, so an open port is judged as if nothing should be public (warn). On a public web or panel profile an open SSH port is reported as info.",
+      "verify": "nc -vz -w 3 <host> 22   # from another machine; add -6 for IPv6",
+      "fix": "Make SSH work over the tailnet first, then close the public SSH rule in the host firewall and the provider firewall (see SSH and NET checks).",
+      "breaks": "Closing public SSH before a private path works locks you out; keep the provider console at hand."
+    },
+    {
+      "id": "PRB-002",
+      "title": "Web ports do not answer on the raw IP behind a tunnel",
+      "severity": "high",
+      "rationale": "When a tunnel is the only intended ingress, the origin answering on 80 or 443 by IP lets anyone who finds that IP skip the tunnel and with it the WAF, access policies and rate limits (an origin bypass). stackward probe connects to 80 and 443 on every resolved address and sends GET / with the Host header set to the IP, without following redirects. For this raw IP check only, TLS certificate verification is skipped, because an IP has no certificate name to match; the report says so. This is the outside half of CF-005 and CF-003: if the host audit shows a tunnel and this check fails, the origin is bypassable. On a public web or panel profile answering is expected and reported as info; with the auto profile it is a warning, since only you know whether the host sits behind a tunnel.",
+      "verify": "curl -sk -o /dev/null -w '%{http_code}\\n' --max-redirs 0 https://<origin-ip>/   # from another machine",
+      "fix": "Publish the proxy on 127.0.0.1 only and let the tunnel connector reach it locally, then drop the public 80 and 443 rules in the provider firewall.",
+      "breaks": "Anything reaching the proxy by IP stops working; check the tunnel serves every hostname first."
+    },
+    {
+      "id": "PRB-003",
+      "title": "Docker API ports are not reachable from the internet",
+      "severity": "critical",
+      "rationale": "The Docker API on 2375 (plain) or 2376 (TLS) gives whoever reaches it root on the host: they can start a privileged container that mounts the root filesystem. An open 2375 is scanned and abused within minutes of going public. The host side of this is DKR-002.",
+      "verify": "nc -vz -w 3 <host> 2375; nc -vz -w 3 <host> 2376   # from another machine",
+      "fix": "Remove the tcp:// listener from the Docker daemon (hosts in daemon.json, -H in the service unit) and reach Docker over SSH or the tailnet instead.",
+      "breaks": "Remote tools that talk to the TCP API (some CI runners, Portainer agents) stop working until moved to SSH or the tailnet."
+    },
+    {
+      "id": "PRB-004",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "severity": "high",
+      "rationale": "Ports 3000 (Dokploy, Grafana), 6001 and 6002 (Coolify realtime and terminal), 8000 (Coolify), 8080 and 8081 (Traefik dashboard, admin UIs), 9000 (Portainer), 9090 (Prometheus) and 3100 (Loki) serve control panels and telemetry. A panel grants control of every app it manages, a fresh install may let the first visitor create the admin account, and metrics endpoints leak internal names and versions. Docker published ports bypass UFW, so only an outside probe shows whether the provider firewall closes them. This is the outside half of PAAS-003 and the answer NET-009 asks for.",
+      "verify": "for p in 3000 6001 6002 8000 8080 8081 9000 9090 3100; do nc -vz -w 3 <host> $p; done   # from another machine",
+      "fix": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall.",
+      "breaks": "Losing the only path to a panel locks you out of it; keep a tailnet path working before closing the public one."
+    },
+    {
+      "id": "PRB-005",
+      "title": "Databases are not reachable from the internet",
+      "severity": "high",
+      "rationale": "PostgreSQL (5432), MySQL and MariaDB (3306), Redis (6379), MongoDB (27017) and Elasticsearch (9200) on a public port are found by scanners within hours and attacked with default or guessed credentials; Redis and Elasticsearch often answer without any. A platform's \"publicly available\" database toggle is the usual cause. The host side of this is PAAS-004 and the Docker published port checks.",
+      "verify": "for p in 5432 3306 6379 27017 9200; do nc -vz -w 3 <host> $p; done   # from another machine",
+      "fix": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel.",
+      "breaks": "Clients that connect to the database over the internet stop working; move them to the tailnet first."
+    },
+    {
+      "id": "PRB-006",
+      "title": "The app hostname answers over HTTPS without TLS or redirect anomalies",
+      "severity": "moderate",
+      "rationale": "Given an app hostname, stackward probe requests https://<hostname>/ with normal certificate verification and follows redirects on the same hostname only (at most 10). A redirect loop usually means the app redirects to HTTPS on its own while a tunnel or proxy in front already terminates TLS and talks plain HTTP to it. A redirect from HTTPS down to HTTP, a certificate that fails verification or expires within 14 days, and a 5xx answer are reported as warnings. Redirects to another host are recorded but not followed. Without a hostname this check is skipped.",
+      "verify": "curl -sv -o /dev/null --max-redirs 10 -L https://app.example.com/ 2>&1 | grep -E '^< (HTTP|location)|expire'",
+      "fix": "Behind a tunnel, turn off the app's own redirect to HTTPS (or trust the proxy's X-Forwarded-Proto) and let the tunnel enforce HTTPS; renew or fix the certificate when verification fails.",
+      "breaks": "Turning off the app redirect while the app is also reachable directly serves it over plain HTTP; close direct access first (PRB-002)."
+    }
+  ]
+}

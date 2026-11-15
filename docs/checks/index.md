@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-80 checks in the catalog.
+86 checks in the catalog.
 
 ## System (SYS)
 
@@ -140,3 +140,14 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 |---|---|---|
 | [BAK-001](BAK-001.md) | info | Platform database backups on the host |
 | [BAK-002](BAK-002.md) | info | Backup tools present |
+
+## Outside view (PRB)
+
+| Id | Severity | Check |
+|---|---|---|
+| [PRB-001](PRB-001.md) | moderate | SSH is not reachable from the internet on a private ingress host |
+| [PRB-002](PRB-002.md) | high | Web ports do not answer on the raw IP behind a tunnel |
+| [PRB-003](PRB-003.md) | critical | Docker API ports are not reachable from the internet |
+| [PRB-004](PRB-004.md) | high | Panels and dashboards are not reachable from the internet |
+| [PRB-005](PRB-005.md) | high | Databases are not reachable from the internet |
+| [PRB-006](PRB-006.md) | moderate | The app hostname answers over HTTPS without TLS or redirect anomalies |
