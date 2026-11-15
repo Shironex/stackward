@@ -1,0 +1,7 @@
+{"Id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Name":"/shop-web-1","Path":"node","Args":["server.js","--token=not-a-real-token"],
+ "State":{"Status":"running","Running":true},
+ "Config":{"User":"","Image":"ghcr.io/example/shop:1.2.0","Env":["DB_PASSWORD=not-a-real-password","POST=1"],"Cmd":["node","server.js","--token=not-a-real-token"],"Entrypoint":["docker-entrypoint.sh"],"Healthcheck":{"Test":["CMD","curl","-u","admin:not-a-real-password","http://localhost/health"]},
+  "Labels":{"com.docker.compose.project":"shop","com.docker.compose.service":"web","traefik.enable":"true","traefik.http.routers.shop.rule":"Host(`shop.example.com`)"}},
+ "HostConfig":{"Binds":["/etc:/host-etc"],"Privileged":false,"CapAdd":["NET_ADMIN"],"NetworkMode":"shop_default","PidMode":"","IpcMode":"private","UsernsMode":"","SecurityOpt":null},
+ "Mounts":[{"Type":"bind","Source":"/etc","Destination":"/host-etc","RW":true},{"Type":"volume","Name":"shop_uploads","Source":"/var/lib/docker/volumes/shop_uploads/_data","Destination":"/uploads","RW":true}],
+ "NetworkSettings":{"Networks":{"shop_default":{"IPAddress":"198.51.100.32"},"edge":{"IPAddress":"198.51.100.23"}},"Ports":{"3000/tcp":[{"HostIp":"127.0.0.1","HostPort":"3000"}]}}}

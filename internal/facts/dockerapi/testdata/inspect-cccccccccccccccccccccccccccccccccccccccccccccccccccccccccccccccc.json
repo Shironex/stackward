@@ -1,0 +1,7 @@
+{"Id":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Name":"/blog-db-1","Path":"docker-entrypoint.sh","Args":["postgres"],
+ "State":{"Status":"running","Running":true},
+ "Config":{"User":"postgres","Image":"postgres:16","Env":["POSTGRES_PASSWORD=not-a-real-password"],"Cmd":["postgres"],
+  "Labels":{"com.docker.compose.project":"blog","com.docker.compose.service":"db"}},
+ "HostConfig":{"Binds":null,"Privileged":false,"CapAdd":null,"NetworkMode":"edge","PidMode":"","IpcMode":"private","UsernsMode":"","SecurityOpt":null},
+ "Mounts":[{"Type":"volume","Name":"blog_pg","Source":"/var/lib/docker/volumes/blog_pg/_data","Destination":"/var/lib/postgresql/data","RW":true}],
+ "NetworkSettings":{"Networks":{"edge":{"IPAddress":"198.51.100.24"}},"Ports":{"5432/tcp":null}}}

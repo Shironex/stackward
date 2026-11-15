@@ -1,0 +1,8 @@
+[
+ {"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Names":["/coolify-proxy"],"Image":"traefik:v3.1","Command":"/entrypoint.sh traefik","State":"running"},
+ {"Id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Names":["/shop-web-1"],"Image":"ghcr.io/example/shop:1.2.0","Command":"node server.js --token=not-a-real-token","State":"running"},
+ {"Id":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Names":["/blog-db-1"],"Image":"postgres:16","Command":"docker-entrypoint.sh postgres","State":"running"},
+ {"Id":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Names":["/socket-proxy"],"Image":"tecnativa/docker-socket-proxy:0.3.0","Command":"haproxy","State":"running"},
+ {"Id":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","Names":["/tunnel"],"Image":"cloudflare/cloudflared:latest","Command":"cloudflared tunnel run --token not-a-real-token","State":"running"},
+ {"Id":"not-hex-id","Names":["/weird"],"Image":"busybox","Command":"sh","State":"exited"}
+]

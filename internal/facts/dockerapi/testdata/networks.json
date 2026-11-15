@@ -1,0 +1,6 @@
+[
+ {"Name":"bridge","Id":"1111111111111111111111111111111111111111111111111111111111111111","Scope":"local","Driver":"bridge","Internal":false},
+ {"Name":"host","Id":"2222222222222222222222222222222222222222222222222222222222222222","Scope":"local","Driver":"host","Internal":false},
+ {"Name":"edge","Id":"3333333333333333333333333333333333333333333333333333333333333333","Scope":"local","Driver":"bridge","Internal":false},
+ {"Name":"shop_default","Id":"4444444444444444444444444444444444444444444444444444444444444444","Scope":"local","Driver":"bridge","Internal":false}
+]
