@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-96 checks in the catalog.
+106 checks in the catalog.
 
 ## System (SYS)
 
@@ -100,6 +100,21 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [CF-003](CF-003.md) | high | The proxy is not reachable on a public address while ingress is the tunnel |
 | [CF-004](CF-004.md) | moderate | The tunnel token is not a command line argument |
 | [CF-005](CF-005.md) | high | The origin IP does not answer on 80/443 from outside (probe) |
+
+## CrowdSec and fail2ban (CS)
+
+| Id | Severity | Check |
+|---|---|---|
+| [CS-001](CS-001.md) | moderate | CrowdSec runs when installed |
+| [CS-002](CS-002.md) | high | A bouncer is registered and pulling decisions |
+| [CS-003](CS-003.md) | high | Behind a tunnel, an L7 bouncer enforces bans |
+| [CS-004](CS-004.md) | high | Private range whitelists do not swallow tunnel traffic |
+| [CS-005](CS-005.md) | moderate | The proxy access log is acquired |
+| [CS-006](CS-006.md) | moderate | The CrowdSec local API is not on a wildcard address |
+| [CS-007](CS-007.md) | moderate | The firewall bouncer also protects Docker published ports |
+| [CS-008](CS-008.md) | low | The proxy bouncer refreshes decisions often |
+| [CS-010](CS-010.md) | moderate | Public SSH has brute force protection on the right port |
+| [CS-011](CS-011.md) | low | fail2ban ignores the tailnet range when Tailscale is used |
 
 ## Updates (UPD)
 

@@ -1,0 +1,99 @@
+{
+  "group": "CS",
+  "checks": [
+    {
+      "id": "CS-001",
+      "title": "CrowdSec runs when installed",
+      "severity": "moderate",
+      "rationale": "An installed but stopped CrowdSec engine detects nothing and bans nothing, while its presence suggests the host is protected. When it is absent the result only points at it as an option.",
+      "verify": "systemctl status crowdsec; cscli version",
+      "fix": "Enable and start the service: systemctl enable crowdsec, then systemctl start crowdsec",
+      "docs": "https://docs.crowdsec.net/"
+    },
+    {
+      "id": "CS-002",
+      "title": "A bouncer is registered and pulling decisions",
+      "severity": "high",
+      "rationale": "CrowdSec only decides; bouncers enforce. With no bouncer every detection bans nothing. A bouncer whose last pull is older than five minutes has lost the local API (often after a Docker network change) and enforces stale or no decisions.",
+      "verify": "sudo cscli bouncers list",
+      "fix": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API",
+      "needs_root": true,
+      "docs": "https://docs.crowdsec.net/u/bouncers/intro"
+    },
+    {
+      "id": "CS-003",
+      "title": "Behind a tunnel, an L7 bouncer enforces bans",
+      "severity": "high",
+      "rationale": "Behind a Cloudflare Tunnel every request reaches the host from cloudflared, a local process or container. A firewall bouncer bans source addresses at the packet filter, so it never sees the real client and bans nothing that matters. Enforcement has to happen in the proxy (Traefik, Caddy, nginx bouncer) or at Cloudflare.",
+      "verify": "sudo cscli bouncers list",
+      "fix": "Use the proxy bouncer (or the Cloudflare bouncer) together with a parser that reads the real client address",
+      "needs_root": true
+    },
+    {
+      "id": "CS-004",
+      "title": "Private range whitelists do not swallow tunnel traffic",
+      "severity": "high",
+      "rationale": "The default crowdsecurity/whitelists parser whitelists 127.0.0.1, ::1, 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. Behind a tunnel the proxy logs cloudflared's loopback or Docker address as the client, so without a parser that takes the real address from Cf-Connecting-Ip every request is whitelisted and nothing is ever banned. A real IP parser whose filter is keyed to one gateway address breaks the day a new Compose network becomes the route.",
+      "verify": "sudo cscli parsers list; grep -ril cf-connecting-ip /etc/crowdsec/parsers",
+      "fix": "Add an s02-enrich parser that sets source_ip from Cf-Connecting-Ip when the logged source is in any of 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (use IpInRange, not one literal address)",
+      "breaks": "Requests start counting against real clients, so scenarios begin to fire; watch cscli decisions list for your own address the first day.",
+      "docs": "https://docs.crowdsec.net/docs/whitelist/intro"
+    },
+    {
+      "id": "CS-005",
+      "title": "The proxy access log is acquired",
+      "severity": "moderate",
+      "rationale": "CrowdSec only sees what its acquisition reads. On a web host the proxy access log is where scans and brute force show up; without it the HTTP scenarios never fire. The log format (JSON for Traefik) has to match the parser and is not checked here.",
+      "verify": "cat /etc/crowdsec/acquis.yaml /etc/crowdsec/acquis.d/*.yaml; sudo cscli metrics",
+      "fix": "Enable the proxy access log (JSON for Traefik) and add an acquisition entry with labels type set to the proxy (traefik, caddy, nginx)",
+      "breaks": "Nothing; the engine reads more logs and uses a little more CPU."
+    },
+    {
+      "id": "CS-006",
+      "title": "The CrowdSec local API is not on a wildcard address",
+      "severity": "moderate",
+      "rationale": "The local API takes bouncer and agent connections. On 0.0.0.0 or [::] it is reachable from wherever the firewall lets traffic in, and its port is a well known target. It needs to listen only where its bouncers are: loopback or the Docker bridge.",
+      "verify": "sudo cscli config show --key Config.API.Server.ListenURI; ss -tlnp | grep crowdsec",
+      "fix": "Set api.server.listen_uri to 127.0.0.1:8080 (or the Docker bridge address) and allow that port from Docker ranges only",
+      "breaks": "Bouncers in containers that reached the API on the host's public address must use the bridge address instead."
+    },
+    {
+      "id": "CS-007",
+      "title": "The firewall bouncer also protects Docker published ports",
+      "severity": "moderate",
+      "rationale": "Docker published ports are forwarded, not delivered to INPUT, so a firewall bouncer hooked only into INPUT never filters traffic to containers. Without a tunnel, published containers are exactly what scanners hit. The bouncer must also hook DOCKER-USER (iptables) or the forward hook (nftables). This is read from the live rules, not the bouncer config (which holds the API key).",
+      "verify": "sudo iptables -S DOCKER-USER | grep -i crowdsec; sudo nft list tables | grep crowdsec",
+      "fix": "Add DOCKER-USER to iptables_chains (or forward to nftables_hooks) in the firewall bouncer config, then restart the bouncer",
+      "breaks": "Banned addresses also lose access to containers, which is the point.",
+      "needs_root": true
+    },
+    {
+      "id": "CS-008",
+      "title": "The proxy bouncer refreshes decisions often",
+      "severity": "low",
+      "rationale": "A proxy bouncer in stream mode only learns new bans when it pulls. With a long interval a fast scanner finishes before its ban arrives. The interval is set in the bouncer config, which also holds the API key and is not read; a last pull older than 60 seconds is the evidence used instead.",
+      "verify": "sudo cscli bouncers list (compare last pull with the current time); updateIntervalSeconds in the bouncer middleware config",
+      "fix": "Use stream mode with an update interval of 10 to 15 seconds",
+      "breaks": "Slightly more requests to the local API.",
+      "needs_root": true
+    },
+    {
+      "id": "CS-010",
+      "title": "Public SSH has brute force protection on the right port",
+      "severity": "moderate",
+      "rationale": "SSH open to anywhere draws constant password guessing. A fail2ban sshd jail or the CrowdSec sshd collection bans repeat offenders. A jail watching port 22 while sshd listens elsewhere bans on the wrong port and protects nothing.",
+      "verify": "sudo fail2ban-client status sshd; sudo cscli collections list | grep sshd; ss -tlnp | grep sshd",
+      "fix": "Enable an sshd jail with port set to the real sshd port, or install the crowdsecurity/sshd collection",
+      "needs_root": true
+    },
+    {
+      "id": "CS-011",
+      "title": "fail2ban ignores the tailnet range when Tailscale is used",
+      "severity": "low",
+      "rationale": "Without 100.64.0.0/10 in ignoreip, a few mistyped logins from a tailnet peer ban that peer, which can cut off your only private path to the host.",
+      "verify": "grep -r ignoreip /etc/fail2ban/jail.local /etc/fail2ban/jail.d",
+      "fix": "Add 100.64.0.0/10 (and fd7a:115c:a1e0::/48) to ignoreip in jail.local [DEFAULT]",
+      "breaks": "A compromised tailnet peer is no longer banned by fail2ban; tailnet ACLs are the control for that."
+    }
+  ]
+}

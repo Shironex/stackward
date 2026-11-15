@@ -1,8 +1,8 @@
  stackward test · host sha256:82c1a34869ebe223 · Ubuntu 24.04.1 LTS             
  profile unknown (inferred) · sandbox unavailable · root no (use sudo)          
- 90 results  0 fail  0 warn  85 unknown  0 info  4 pass  1 skip  mostly unknown 
+ 100 results  0 fail  0 warn  95 unknown  0 info  4 pass  1 skip                
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  85 of 90                     │ DETAIL                       1-17 of 34
+FINDINGS  95 of 100                    │ DETAIL                       1-17 of 34
 System SYS                      4 of 5 │ SYS-002  System                        
 › UNKNOWN SYS-002  No reboot pending   │ No reboot pending                      
   UNKNOWN SYS-003  Running kernel is … │ UNKNOWN · moderate severity            
