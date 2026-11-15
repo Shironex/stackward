@@ -9,7 +9,7 @@
 
   <p>
     <a href="https://github.com/Shironex/stackward/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Shironex/stackward/ci.yml?branch=main&style=flat&label=ci" alt="CI status"></a>
-    <a href="https://github.com/Shironex/stackward/releases/latest"><img src="https://img.shields.io/github/v/release/Shironex/stackward?style=flat&color=246b5b&include_prereleases&label=release" alt="Latest release"></a>
+    <a href="https://github.com/Shironex/stackward/releases/latest"><img src="https://img.shields.io/github/v/release/Shironex/stackward?style=flat&color=246b5b&label=release" alt="Latest release"></a>
     <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/Shironex/stackward?style=flat&color=246b5b" alt="Go version from go.mod"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-246b5b?style=flat" alt="Apache-2.0 license"></a>
     <a href="https://shironex.github.io/stackward/"><img src="https://img.shields.io/badge/docs-shironex.github.io%2Fstackward-102b2b?style=flat" alt="Documentation site"></a>
@@ -40,11 +40,11 @@ exposed, and what is misconfigured. Every finding has a stable check id, the
 evidence it saw and the fix, and anything it could not inspect is reported as
 `unknown`, never as a pass.
 
-> [!WARNING]
-> **Pre-release.** The checks below exist and are tested against saved facts
-> and on real Ubuntu hosts. The first release candidate, `v0.1.0-rc.1`, is a
-> pre-release: the output may still change. Read the report before acting on
-> it.
+> [!NOTE]
+> **v0.1.0 is the first release.** The checks below are tested against saved
+> facts and on real Ubuntu hosts. v0.1 is read only: it reports and changes
+> nothing. `plan` and `apply` come in v0.2. Read the report before acting on
+> it, and see the [known limits](CHANGELOG.md).
 
 ## A run, start to finish
 
@@ -97,17 +97,16 @@ What it reads, what it never does and what it does not cover:
 
 ## Install
 
-The newest release is `v0.1.0-rc.1`, a pre-release, so GitHub shows no
-"latest" release yet. Every release holds Linux archives for amd64 and arm64,
+The newest release is [`v0.1.0`](https://github.com/Shironex/stackward/releases/latest).
+Every release holds Linux archives for amd64 and arm64,
 archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
-provenance, and `get.sh`. Name the tag explicitly; once a stable release
-exists, replace it with that tag.
+provenance, and `get.sh`.
 
 Download, check and run:
 
 ```sh
-VERSION=v0.1.0-rc.1   # a pre-release; use a stable tag once there is one
+VERSION=v0.1.0
 ARCH=amd64   # or arm64
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -135,9 +134,10 @@ check when cosign is installed. It never runs the binary and never uses
 sudo; read it first:
 
 ```sh
-curl -fsSLO https://github.com/Shironex/stackward/releases/download/v0.1.0-rc.1/get.sh
+curl -fsSLO https://github.com/Shironex/stackward/releases/latest/download/get.sh
 less get.sh
-sh get.sh -v v0.1.0-rc.1 -d "$HOME/.local/bin"
+sh get.sh -d "$HOME/.local/bin"
+# a specific release: sh get.sh -v v0.1.0 -d "$HOME/.local/bin"
 ```
 
 Or build from source with Go 1.26 or later. Keep `CGO_ENABLED=0`:

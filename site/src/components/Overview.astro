@@ -69,8 +69,8 @@ const levels = [
 
   <section class="home-status" aria-label="Project status">
     <p>
-      <strong>Pre-release.</strong>{' '}
-      {`The audit, the outside view probe, the terminal browser and Markdown reports are built, with ${catalog.count} checks in ${liveGroups} groups, covering Tailscale, Cloudflare Tunnel, CrowdSec and fail2ban as well as SSH, the firewall, Docker and the host. The first release candidate, v0.1.0-rc.1, is a pre-release you can download and verify, or build from source.`}
+      <strong>First release.</strong>{' '}
+      {`The audit, the outside view probe, the terminal browser and Markdown reports are built, with ${catalog.count} checks in ${liveGroups} groups, covering Tailscale, Cloudflare Tunnel, CrowdSec and fail2ban as well as SSH, the firewall, Docker and the host. v0.1.0 is the first release and is read only: it reports and changes nothing. Planning and applying fixes is next, in v0.2. You can download and verify it, or build from source.`}
       {building.length > 0 ? ` Groups with no checks yet: ${listOf(building)}.` : ''} Expect rough edges and do not rely on it alone. <a href={url('install')}>Install and verify</a>, or <a href={url('checks')}>see every check</a>.
     </p>
   </section>

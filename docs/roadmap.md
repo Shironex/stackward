@@ -2,7 +2,7 @@
 
 This is the public plan for stackward. Each milestone below is a GitHub milestone, and each item links to its issue. Dates are not promised; the order inside a milestone is the order of work, and the first item of v0.3 is waivers.
 
-Version 0.1 is in pre-release (`v0.1.0-rc.1`): the read only audit, `probe`, `explain`, the TUI and signed releases.
+Version 0.1 is released (`v0.1.0`, 2026-11-15): the read only audit, `probe`, `explain`, the TUI and signed releases.
 
 ## v0.2: Harden with plan and apply
 
