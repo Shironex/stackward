@@ -250,8 +250,9 @@ same report format as `audit`.
 
 `stackward tui` runs the same audit as `stackward audit` (same flags, same
 sandbox, same read only promise) and opens a findings browser: results by
-group, worst first, with the full explanation, fix and verify steps of the
-selected check beside them. `--report report.json` browses a saved
+group, worst first. A row shows what was found (the result message), and
+the detail pane beside it shows the rule that was checked, the evidence and
+the full explanation, fix and verify steps of the selected check. `--report report.json` browses a saved
 `--json` report instead, `--facts facts.json` a saved facts file.
 
 Keys: arrows or `j`/`k` move, `tab` switches between the list and the
