@@ -1,0 +1,273 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:82c1a34869ebe223",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "unknown",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 1,
+        "warn": 5,
+        "unknown": 75,
+        "info": 1,
+        "pass": 15,
+        "skip": 9
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 2,
+    "safe": 0,
+    "networking": 0,
+    "access_critical": 2,
+    "opt_in": 0,
+    "restarts": [
+      "ssh"
+    ],
+    "skipped": 5
+  },
+  "steps": [
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "risk": "access-critical",
+      "opt_in": false,
+      "restarts": [],
+      "touches": [
+        "account:ops",
+        "file:/etc/sudoers.d/90-stackward-ops",
+        "file:/home/ops",
+        "authorized-keys:ops"
+      ],
+      "edits": [
+        {
+          "path": "/etc/sudoers.d/90-stackward-ops",
+          "action": "create",
+          "mode": "0440",
+          "old": "",
+          "new": "# Written by stackward: plan step admin-user, the admin account.\n# NOPASSWD because the account has no password; stackward never sets one.\n# Remove this file to take the rights away.\nops ALL=(ALL:ALL) NOPASSWD: ALL\n",
+          "new_sha256": "2cd9ac191c8beaf87d956c6314fc307f38a133f140aa5f565d89e1d8b0227e20",
+          "diff": "--- /dev/null\n+++ b/etc/sudoers.d/90-stackward-ops\n@@ -0,0 +1,4 @@\n+# Written by stackward: plan step admin-user, the admin account.\n+# NOPASSWD because the account has no password; stackward never sets one.\n+# Remove this file to take the rights away.\n+ops ALL=(ALL:ALL) NOPASSWD: ALL\n",
+          "validate": [
+            "visudo",
+            "-c",
+            "-f"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "useradd",
+            "--create-home",
+            "--home-dir",
+            "/home/ops",
+            "--user-group",
+            "--shell",
+            "/bin/bash",
+            "ops"
+          ],
+          "why": "create the account with a home and its own group; its password stays locked"
+        },
+        {
+          "args": [
+            "install",
+            "-d",
+            "-m",
+            "0700",
+            "-o",
+            "ops",
+            "-g",
+            "ops",
+            "/home/ops/.ssh"
+          ],
+          "why": "create ~/.ssh, owned by the account, mode 0700"
+        },
+        {
+          "args": [
+            "install",
+            "-m",
+            "0600",
+            "-o",
+            "ops",
+            "-g",
+            "ops",
+            "/home/ubuntu/.ssh/authorized_keys",
+            "/home/ops/.ssh/authorized_keys"
+          ],
+          "why": "copy the authorized keys of ubuntu on the host, so no key passes through the plan"
+        }
+      ],
+      "undo": {
+        "description": "Remove the sudoers drop-in and delete the account ops with its home and group (userdel --remove). Anything saved in that home is deleted with it.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/sudoers.d/90-stackward-ops"
+            ],
+            "why": "remove the sudoers drop-in"
+          },
+          {
+            "args": [
+              "userdel",
+              "--remove",
+              "ops"
+            ],
+            "why": "delete the account, its home and its group"
+          }
+        ]
+      },
+      "notes": [
+        "ops gets sudo without a password (NOPASSWD), like the cloud image's default account; USR-004 lists it. Set a password and drop NOPASSWD later if you prefer.",
+        "Prove it before you confirm: open a new SSH session as ops with the key of ubuntu and run sudo stackward confirm from there.",
+        "lock-default-user is planned once a session of this account applies it."
+      ]
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-003",
+        "SSH-005"
+      ],
+      "risk": "access-critical",
+      "opt_in": false,
+      "restarts": [
+        "ssh"
+      ],
+      "touches": [
+        "file:/etc/ssh/sshd_config.d/00-stackward-hardening.conf",
+        "service:ssh"
+      ],
+      "edits": [
+        {
+          "path": "/etc/ssh/sshd_config.d/00-stackward-hardening.conf",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.\n# Named to sort first: sshd keeps the first value it reads. Remove this\n# file and reload ssh.service to undo.\nPasswordAuthentication no\nPermitRootLogin no\nMaxAuthTries 3\n",
+          "new_sha256": "c9a38f60ebbc4e5fdac333386546ac39b633823505d09f19d241e029fe8667aa",
+          "diff": "--- /dev/null\n+++ b/etc/ssh/sshd_config.d/00-stackward-hardening.conf\n@@ -0,0 +1,6 @@\n+# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.\n+# Named to sort first: sshd keeps the first value it reads. Remove this\n+# file and reload ssh.service to undo.\n+PasswordAuthentication no\n+PermitRootLogin no\n+MaxAuthTries 3\n",
+          "validate": [
+            "sshd",
+            "-t",
+            "-f"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "try-reload-or-restart",
+            "ssh.service"
+          ],
+          "why": "load the new settings; running sessions stay open"
+        }
+      ],
+      "undo": {
+        "description": "Remove the drop-in and reload ssh.service; the earlier values return for new logins.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/ssh/sshd_config.d/00-stackward-hardening.conf"
+            ],
+            "why": "remove the drop-in"
+          },
+          {
+            "args": [
+              "systemctl",
+              "try-reload-or-restart",
+              "ssh.service"
+            ],
+            "why": "load the earlier settings"
+          }
+        ]
+      },
+      "notes": [
+        "sshd runs under socket activation (ssh.socket); the drop-in sets no port or listen address, so reloading ssh.service is enough and ssh.socket is left alone.",
+        "Existing SSH sessions stay open. Before you confirm, log in again in a new session with your key: that is the proof the change works.",
+        "Ubuntu 22.04 and later and Debian 12 and later; older OpenSSH reads KbdInteractiveAuthentication differently."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "unknown",
+      "reason": "LOG-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-031 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "passing",
+      "reason": "no platform (Coolify, Dokploy) was found; a PaaS account is only for one"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "USR-003 already passes or does not apply"
+    }
+  ]
+}

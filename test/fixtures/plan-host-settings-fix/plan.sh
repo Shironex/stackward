@@ -120,6 +120,15 @@ STACKWARD_EOF
 	systemctl restart docker
 }
 
+# Not planned:
+# admin-user (unknown): the accounts were not audited
+# paas-user (unknown): the accounts were not audited
+# sshd-hardening (unknown): SSH-001 is unknown, SSH-002 is unknown, SSH-003
+# is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan
+# until the audit can inspect it
+# lock-default-user (unknown): USR-003 is unknown; nothing to plan until the
+# audit can inspect it
+
 step_journald_cap
 step_sysctl_hardening
 # step_docker_log_rotation  # opt in: networking, restarts docker

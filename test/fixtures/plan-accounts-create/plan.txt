@@ -1,0 +1,62 @@
+stackward plan: nothing on this host was changed
+host:      sha256:82c1a34869ebe223  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 5 not planned
+restarts:  ssh
+
+1. admin-user  [access-critical]  fixes SSH-003, USR-003
+   Create an admin account with sudo and the keys of an existing account
+   create   /etc/sudoers.d/90-stackward-ops (0440)
+            checked first with: visudo -c -f <new file>
+            --- /dev/null
+            +++ b/etc/sudoers.d/90-stackward-ops
+            @@ -0,0 +1,4 @@
+            +# Written by stackward: plan step admin-user, the admin account.
+            +# NOPASSWD because the account has no password; stackward never sets one.
+            +# Remove this file to take the rights away.
+            +ops ALL=(ALL:ALL) NOPASSWD: ALL
+   run      useradd --create-home --home-dir /home/ops --user-group --shell /bin/bash ops
+            # create the account with a home and its own group; its password stays locked
+   run      install -d -m 0700 -o ops -g ops /home/ops/.ssh
+            # create ~/.ssh, owned by the account, mode 0700
+   run      install -m 0600 -o ops -g ops /home/ubuntu/.ssh/authorized_keys /home/ops/.ssh/authorized_keys
+            # copy the authorized keys of ubuntu on the host, so no key passes through the plan
+   note     ops gets sudo without a password (NOPASSWD), like the cloud image's default account; USR-004 lists it. Set a password and drop NOPASSWD later if you prefer.
+   note     Prove it before you confirm: open a new SSH session as ops with the key of ubuntu and run sudo stackward confirm from there.
+   note     lock-default-user is planned once a session of this account applies it.
+   undo     Remove the sudoers drop-in and delete the account ops with its home and group (userdel --remove). Anything saved in that home is deleted with it.
+            rm -f /etc/sudoers.d/90-stackward-ops
+            userdel --remove ops
+
+2. sshd-hardening  [access-critical]  fixes SSH-001, SSH-003, SSH-005
+   Allow key logins only, refuse root and limit auth tries with an early sshd drop-in
+   create   /etc/ssh/sshd_config.d/00-stackward-hardening.conf (0644)
+            checked first with: sshd -t -f <new file>
+            --- /dev/null
+            +++ b/etc/ssh/sshd_config.d/00-stackward-hardening.conf
+            @@ -0,0 +1,6 @@
+            +# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.
+            +# Named to sort first: sshd keeps the first value it reads. Remove this
+            +# file and reload ssh.service to undo.
+            +PasswordAuthentication no
+            +PermitRootLogin no
+            +MaxAuthTries 3
+   run      systemctl try-reload-or-restart ssh.service
+            # load the new settings; running sessions stay open
+   restarts ssh
+   note     sshd runs under socket activation (ssh.socket); the drop-in sets no port or listen address, so reloading ssh.service is enough and ssh.socket is left alone.
+   note     Existing SSH sessions stay open. Before you confirm, log in again in a new session with your key: that is the proof the change works.
+   note     Ubuntu 22.04 and later and Debian 12 and later; older OpenSSH reads KbdInteractiveAuthentication differently.
+   undo     Remove the drop-in and reload ssh.service; the earlier values return for new logins.
+            rm -f /etc/ssh/sshd_config.d/00-stackward-hardening.conf
+            systemctl try-reload-or-restart ssh.service
+
+Not planned:
+  journald-cap         unknown  LOG-001 is unknown; nothing to plan until the audit can inspect it
+  sysctl-hardening     unknown  KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it
+  docker-log-rotation  unknown  DKR-031 is unknown; nothing to plan until the audit can inspect it
+  paas-user            passing  no platform (Coolify, Dokploy) was found; a PaaS account is only for one
+  lock-default-user    passing  USR-003 already passes or does not apply
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

@@ -50,5 +50,12 @@ STACKWARD_EOF
 # journald-cap (passing): LOG-001 already passes or does not apply
 # sysctl-hardening (unknown): KRN-002 is unknown, KRN-003 is unknown and
 # KRN-004 is unknown; nothing to plan until the audit can inspect it
+# admin-user (unknown): the accounts were not audited
+# paas-user (unknown): the accounts were not audited
+# sshd-hardening (unknown): SSH-001 is unknown, SSH-002 is unknown, SSH-003
+# is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan
+# until the audit can inspect it
+# lock-default-user (unknown): USR-003 is unknown; nothing to plan until the
+# audit can inspect it
 
 # step_docker_log_rotation  # opt in: networking, restarts docker
