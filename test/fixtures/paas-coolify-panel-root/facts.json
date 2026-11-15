@@ -201,7 +201,133 @@
     },
     "backup_tools": []
   },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 8000,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6001,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6002,
+        "processes": [
+          "docker-proxy"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "interface": "lo",
+        "address": "127.0.0.1",
+        "prefix": 8,
+        "scope": "host"
+      },
+      {
+        "interface": "eth0",
+        "address": "203.0.113.30",
+        "prefix": 24,
+        "scope": "global"
+      }
+    ],
+    "addresses_source": "ip"
+  },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "22",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "80",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "443",
+          "proto": "tcp"
+        }
+      ]
+    },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
   "collectors": [
+    {
+      "name": "firewall",
+      "status": "ok"
+    },
+    {
+      "name": "listeners",
+      "status": "ok"
+    },
     {
       "name": "os",
       "status": "ok"

@@ -154,7 +154,151 @@
       "restic"
     ]
   },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "*",
+        "port": 2377,
+        "processes": [
+          "dockerd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "*",
+        "port": 7946,
+        "processes": [
+          "dockerd"
+        ]
+      },
+      {
+        "proto": "udp",
+        "address": "*",
+        "port": 7946,
+        "processes": [
+          "dockerd"
+        ]
+      },
+      {
+        "proto": "udp",
+        "address": "0.0.0.0",
+        "port": 4789
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 3000,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "interface": "lo",
+        "address": "127.0.0.1",
+        "prefix": 8,
+        "scope": "host"
+      },
+      {
+        "interface": "eth0",
+        "address": "203.0.113.40",
+        "prefix": 24,
+        "scope": "global"
+      }
+    ],
+    "addresses_source": "ip"
+  },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "22",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "80",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "443",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "2377",
+          "proto": "tcp",
+          "from": "198.51.100.7"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "7946",
+          "proto": "any",
+          "from": "198.51.100.7"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "4789",
+          "proto": "udp",
+          "from": "198.51.100.7"
+        }
+      ]
+    },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
   "collectors": [
+    {
+      "name": "firewall",
+      "status": "ok"
+    },
+    {
+      "name": "listeners",
+      "status": "ok"
+    },
     {
       "name": "os",
       "status": "ok"
