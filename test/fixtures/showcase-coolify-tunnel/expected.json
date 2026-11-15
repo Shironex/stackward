@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 100,
-    "results": 138,
+    "checks": 102,
+    "results": 140,
     "checked": 108,
-    "unknown": 23,
+    "unknown": 25,
     "skipped": 7,
     "root": true,
     "sandbox": {
@@ -85,7 +85,7 @@
   "summary": {
     "fail": 3,
     "warn": 3,
-    "unknown": 23,
+    "unknown": 25,
     "info": 9,
     "pass": 93,
     "skip": 7
@@ -375,6 +375,26 @@
       }
     },
     {
+      "id": "SSH-011",
+      "group": "SSH",
+      "title": "sshd reachable from anywhere takes keys only and bans brute force",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "sshd is reachable from anywhere on tcp/22 and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read (run with sudo)",
+      "evidence": {
+        "brute_force_guard": "unknown",
+        "open_from_anywhere": "yes",
+        "password_login": "no",
+        "ssh_ports": [
+          22
+        ]
+      },
+      "fix": {
+        "hint": "Best: allow SSH only on tailscale0 or from one known source and close the public rule. Otherwise turn off PasswordAuthentication and KbdInteractiveAuthentication and enable an sshd jail on the real sshd port, or install the crowdsecurity/sshd collection with a firewall bouncer."
+      }
+    },
+    {
       "id": "SSH-012",
       "group": "SSH",
       "title": "Host keys are strong and private",
@@ -467,6 +487,23 @@
       "fix": {
         "hint": "Follow the ssh-audit hardening guide for the distribution: a drop-in with explicit KexAlgorithms, Ciphers and MACs lists.",
         "docs": "https://www.ssh-audit.com/hardening_guides.html"
+      }
+    },
+    {
+      "id": "SSH-016",
+      "group": "SSH",
+      "title": "Tailscale SSH and OpenSSH are not both serving",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pick one. If OpenSSH is the path, turn Tailscale SSH off with tailscale set and its ssh option set to false; if Tailscale SSH is the path, stop and disable the OpenSSH server once a Tailscale SSH login works.",
+        "docs": "https://tailscale.com/kb/1193/tailscale-ssh"
       }
     },
     {

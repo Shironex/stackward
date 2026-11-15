@@ -1,14 +1,14 @@
  stackward test · host sha256:82c1a34869ebe223 · Ubuntu 24.04.1 LTS             
  profile unknown (inferred) · sandbox unavailable · root no (use sudo)          
- 100 results  0 fail  0 warn  95 unknown  0 info  4 pass  1 skip                
+ 102 results  0 fail  0 warn  97 unknown  0 info  4 pass  1 skip                
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  95 of 100                    │ DETAIL                       1-17 of 34
+FINDINGS  97 of 102                    │ DETAIL                       1-17 of 34
 System SYS                      4 of 5 │ SYS-002  System                        
 › UNKNOWN SYS-002  No reboot pending   │ No reboot pending                      
   UNKNOWN SYS-003  Running kernel is … │ UNKNOWN · moderate severity            
   UNKNOWN SYS-004  Clock is synchroni… │                                        
   UNKNOWN SYS-005  Disks have free sp… │ not inspected: os collector recorded   
-SSH                                 14 │ nothing                                
+SSH                                 16 │ nothing                                
   UNKNOWN SSH-001  Password authentic… │                                        
   UNKNOWN SSH-002  Keyboard-interacti… │ EVIDENCE                               
   UNKNOWN SSH-003  Root cannot log in… │   collector         os                 
@@ -19,6 +19,6 @@ SSH                                 14 │ nothing
   UNKNOWN SSH-008  No early drop-in s… │   an update installed a new kernel or  
   UNKNOWN SSH-009  Effective SSH conf… │   core library that only takes effect  
   UNKNOWN SSH-010  sshd listens where… │   after a reboot. Until then the host  
-  UNKNOWN SSH-012  Host keys are stro… │   runs the old, vulnerable code even   
+  UNKNOWN SSH-011  sshd reachable fro… │   runs the old, vulnerable code even   
 ────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    

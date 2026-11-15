@@ -99,6 +99,16 @@
       "needs_root": true
     },
     {
+      "id": "SSH-011",
+      "title": "sshd reachable from anywhere takes keys only and bans brute force",
+      "severity": "high",
+      "rationale": "When the firewall lets anyone reach sshd, password guessing starts within minutes and never stops. With passwords on, one weak password on any account is a root shell away. With keys only the guessing cannot succeed, but it still fills the logs and costs CPU, and a jail (fail2ban sshd or the CrowdSec sshd collection) is the cheap second layer. The verdict joins the listeners, the firewall rules, the effective sshd config and the fail2ban and CrowdSec state.",
+      "verify": "ss -tlnp | grep sshd; sudo ufw status verbose; sudo sshd -T | grep -Ei '^(passwordauthentication|kbdinteractiveauthentication|authenticationmethods)'; sudo fail2ban-client status sshd; sudo cscli collections list | grep sshd",
+      "fix": "Best: allow SSH only on tailscale0 or from one known source and close the public rule. Otherwise turn off PasswordAuthentication and KbdInteractiveAuthentication and enable an sshd jail on the real sshd port, or install the crowdsecurity/sshd collection with a firewall bouncer.",
+      "breaks": "Closing the public rule cuts off anyone without the private path: prove a login over the tailnet first and keep the current session open while you test.",
+      "needs_root": true
+    },
+    {
       "id": "SSH-012",
       "title": "Host keys are strong and private",
       "severity": "moderate",
@@ -135,6 +145,16 @@
       "breaks": "Very old clients and libraries that only speak the removed algorithms can no longer connect.",
       "docs": "https://www.ssh-audit.com/hardening_guides.html",
       "needs_root": true
+    },
+    {
+      "id": "SSH-016",
+      "title": "Tailscale SSH and OpenSSH are not both serving",
+      "severity": "low",
+      "rationale": "Tailscale SSH authenticates with tailnet identity and ACLs, OpenSSH with keys and sshd_config. Running both gives two login paths with different rules, different logs and different ways to lock someone out, and hardening one does nothing for the other.",
+      "verify": "tailscale debug prefs | grep RunSSH; systemctl status ssh",
+      "fix": "Pick one. If OpenSSH is the path, turn Tailscale SSH off with tailscale set and its ssh option set to false; if Tailscale SSH is the path, stop and disable the OpenSSH server once a Tailscale SSH login works.",
+      "breaks": "Turning off the path you are logged in through ends that session: open a login over the other path first.",
+      "docs": "https://tailscale.com/kb/1193/tailscale-ssh"
     }
   ]
 }

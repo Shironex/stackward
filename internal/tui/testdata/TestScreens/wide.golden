@@ -1,8 +1,8 @@
  stackward test · host sha256:11d10a4dba4e2a8b                                                     report expected.json 
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
- 133 results  6 fail  10 warn  85 unknown  0 info  30 pass  2 skip                                       mostly unknown 
+ 135 results  6 fail  10 warn  87 unknown  0 info  30 pass  2 skip                                       mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  101 of 133                                      │ DETAIL                                            1-25 of 43
+FINDINGS  103 of 135                                      │ DETAIL                                            1-25 of 43
 Docker DKR                                       16 of 48 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
   FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
@@ -26,7 +26,7 @@ System SYS                                              5 │   day. Even a loop
   UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
   UNKNOWN SYS-004  Clock is synchronized                  │   in /proc/net/tcp. This check can fail without access to   
   UNKNOWN SYS-005  Disks have free space                  │   the Docker socket.                                        
-SSH                                                    14 │                                                             
+SSH                                                    16 │                                                             
   UNKNOWN SSH-001  Password authentication is off         │ FIX  y copies it                                            
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            

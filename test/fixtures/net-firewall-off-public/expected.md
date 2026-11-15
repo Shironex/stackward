@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 8 checked, 92 unknown, 4 skipped (100 checks), root: yes
+- **Coverage:** 8 checked, 94 unknown, 4 skipped (102 checks), root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 92 |
+| unknown | 94 |
 | info | 3 |
 | pass | 0 |
 | skip | 4 |
@@ -112,7 +112,7 @@
 
 ## Not inspected
 
-<details><summary>92 checks not inspected</summary>
+<details><summary>94 checks not inspected</summary>
 
 **SYS: System**
 
@@ -138,10 +138,12 @@
 | [SSH-008](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-008.md) | No early drop-in shadows a later hardening setting | `host` | not inspected: the ssh collector did not run |
 | [SSH-009](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-009.md) | Effective SSH configuration fully confirmed | `host` | not inspected: the ssh collector did not run |
 | [SSH-010](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-010.md) | sshd listens where it is configured to | `host` | not inspected: the ssh collector did not run |
+| [SSH-011](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-011.md) | sshd reachable from anywhere takes keys only and bans brute force | `host` | not inspected: the ssh collector did not run |
 | [SSH-012](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-012.md) | Host keys are strong and private | `host` | not inspected: the ssh collector did not run |
 | [SSH-013](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-013.md) | Home, \~/.ssh and authorized\_keys are not writable by others | `host` | not inspected: the ssh collector did not run |
 | [SSH-014](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-014.md) | Authorized keys are strong and not stale | `host` | not inspected: the ssh collector did not run |
 | [SSH-015](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-015.md) | No weak key exchange, cipher or MAC algorithms | `host` | not inspected: the ssh collector did not run |
+| [SSH-016](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-016.md) | Tailscale SSH and OpenSSH are not both serving | `host` | not inspected: the tailscale collector did not run |
 
 **USR: Users and privilege**
 

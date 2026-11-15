@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-106 checks in the catalog.
+108 checks in the catalog.
 
 ## System (SYS)
 
@@ -30,10 +30,12 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [SSH-008](SSH-008.md) | moderate | No early drop-in shadows a later hardening setting |
 | [SSH-009](SSH-009.md) | info | Effective SSH configuration fully confirmed |
 | [SSH-010](SSH-010.md) | high | sshd listens where it is configured to |
+| [SSH-011](SSH-011.md) | high | sshd reachable from anywhere takes keys only and bans brute force |
 | [SSH-012](SSH-012.md) | moderate | Host keys are strong and private |
 | [SSH-013](SSH-013.md) | high | Home, ~/.ssh and authorized_keys are not writable by others |
 | [SSH-014](SSH-014.md) | moderate | Authorized keys are strong and not stale |
 | [SSH-015](SSH-015.md) | low | No weak key exchange, cipher or MAC algorithms |
+| [SSH-016](SSH-016.md) | low | Tailscale SSH and OpenSSH are not both serving |
 
 ## Users and privilege (USR)
 

@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no, run with sudo for full coverage
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 6 checked, 96 unknown, 0 skipped (100 checks), root: no
+- **Coverage:** 6 checked, 98 unknown, 0 skipped (102 checks), root: no
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 0 |
 | warn | 0 |
-| unknown | 96 |
+| unknown | 98 |
 | info | 0 |
 | pass | 6 |
 | skip | 0 |
@@ -25,7 +25,7 @@ No findings.
 
 Not running as root: run with sudo for full coverage.
 
-<details><summary>96 checks not inspected</summary>
+<details><summary>98 checks not inspected</summary>
 
 **SYS: System**
 
@@ -49,9 +49,11 @@ Not running as root: run with sudo for full coverage.
 | [SSH-008](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-008.md) | No early drop-in shadows a later hardening setting | `host` | could not check the drop-in order: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
 | [SSH-009](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-009.md) | Effective SSH configuration fully confirmed | `host` | configuration only partly read: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
 | [SSH-010](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-010.md) | sshd listens where it is configured to | `host` | ListenAddress and Port unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
+| [SSH-011](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-011.md) | sshd reachable from anywhere takes keys only and bans brute force | `host` | not inspected: the listeners collector did not run |
 | [SSH-013](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-013.md) | Home, \~/.ssh and authorized\_keys are not writable by others | `user:root` | could not inspect /root: permission denied; run with sudo for full coverage |
 | [SSH-014](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-014.md) | Authorized keys are strong and not stale | `user:root` | could not inspect /root: permission denied; run with sudo for full coverage |
 | [SSH-015](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-015.md) | No weak key exchange, cipher or MAC algorithms | `host` | algorithm lists unknown (kexalgorithms, ciphers, macs): could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
+| [SSH-016](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-016.md) | Tailscale SSH and OpenSSH are not both serving | `host` | not inspected: the tailscale collector did not run |
 
 **USR: Users and privilege**
 
