@@ -25,7 +25,7 @@
     <a href="SECURITY.md"><strong>Security</strong></a>
   </p>
 
-  <img src="assets/showcase/audit.webp" width="100%" alt="The end of a stackward audit report for a Coolify host behind a tunnel: info lines for logs and backups, a failure for an open platform SSH key folder, a failure for a panel port open to the world, one unknown, and the summary line: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip.">
+  <img src="assets/showcase/audit.webp" width="100%" alt="The start of a stackward audit report for a Coolify host behind a tunnel: the header, a summary box with 4 fail, 5 warn, 3 unknown, 17 info, 143 pass and 9 skip, the four fails most severe first and the commands to dig in, then the first two fails, an open container port and an open platform SSH key folder, each with its rule and fix.">
   <p><sub>Real output of <code>stackward audit</code> over the saved facts in <a href="test/fixtures/showcase-coolify-tunnel">test/fixtures/showcase-coolify-tunnel</a>, rendered by <a href="assets/showcase">assets/showcase</a>.</sub></p>
 </div>
 
@@ -49,7 +49,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 ## A run, start to finish
 
 <p align="center">
-  <img src="assets/showcase/audit-run.webp" width="100%" alt="An animation: stackward audit is typed and prints its report, ending in the summary line, then stackward explain PAAS-003 is typed and prints why an open panel port matters, how to verify it, the fix and what the fix can break.">
+  <img src="assets/showcase/audit-run.webp" width="100%" alt="An animation: stackward audit is typed and prints its report, from the summary box with the fails to the compact info list and the summary line, then stackward explain PAAS-003 is typed and prints why an open panel port matters, how to verify it, the fix and what the fix can break.">
 </p>
 
 ## What it checks
@@ -172,6 +172,8 @@ Every option, the `.deb` and reproducible builds:
 
 ```
 stackward audit [--json | --md] [--out FILE] [--fail-on fail|warn|never] [--all]
+stackward audit [--info] [--group] [--plain]
+                                      text layout: info in full, by check group, no colors
 stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
@@ -191,12 +193,21 @@ stackward version
 ### Audit this host
 
 ```sh
-sudo stackward audit                       # text report, findings only
-sudo stackward audit --all                 # list passing and skipped results too
+sudo stackward audit                       # text report: summary, then fail, warn, unknown, info
+sudo stackward audit --all                 # list passing and skipped results and every info too
+sudo stackward audit --group               # results by check group instead of by level
 sudo stackward audit --json --out report.json
 sudo stackward audit --md --out report.md
 stackward audit --profile tunnel           # auto, tunnel, public-web, tailnet-only or paas-panel
 ```
+
+The text report opens with a summary box: the counts, the fails most severe
+first and the commands to dig in. Each result leads with what was found, then
+its check id, severity and subject, the rule it was measured against and the
+fix, wrapped to the terminal width. Info results are one line each (`--info`
+lists them in full). Colors, Unicode marks and the box only go to a terminal:
+a pipe, an `--out` file or `--plain` gets plain ASCII, and `NO_COLOR` drops
+only the colors. `COLUMNS` sets the width (100 when it is unknown).
 
 `--profile` says how traffic is meant to reach the host, so a public 80/443
 rule can be judged: fine on a public web server, a finding behind a tunnel.

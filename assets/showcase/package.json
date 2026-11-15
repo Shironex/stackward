@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "build-bin": "node build-bin.mjs",
-    "capture": "node build-bin.mjs && showcase capture && showcase frame",
+    "capture": "node build-bin.mjs && showcase capture && node crop.mjs && showcase frame",
     "record": "node build-bin.mjs && showcase record",
-    "all": "node build-bin.mjs && showcase all"
+    "all": "node build-bin.mjs && showcase capture && node crop.mjs && showcase frame && showcase record"
   },
   "devDependencies": {
     "@fontsource/ibm-plex-mono": "5.3.0",
