@@ -1,0 +1,52 @@
+{
+  "group": "PAAS",
+  "checks": [
+    {
+      "id": "PAAS-001",
+      "title": "Self hosted platform detected",
+      "severity": "info",
+      "rationale": "Coolify and Dokploy change what a safe host looks like: they publish a reverse proxy and a panel, write app .env files on every deploy and keep the SSH keys of every server they manage. Knowing the platform and its role (panel or managed server) tells the other checks what to expect. Without Docker facts the role and version come from the disk only and may stay unknown.",
+      "verify": "ls -ld /data/coolify /etc/dokploy; docker ps --format '{{.Names}} {{.Image}}'",
+      "fix": "Nothing to fix; this records the platform for the other checks.",
+      "docs": "https://coolify.io/docs/start-with-self-hosted"
+    },
+    {
+      "id": "PAAS-002",
+      "title": "Platform proxy is not published on all interfaces behind a tunnel",
+      "severity": "high",
+      "rationale": "When a tunnel is meant to be the only way in, a proxy published on 0.0.0.0 lets anyone who finds the origin IP skip the tunnel and with it the WAF, access policies and rate limits. Docker publishes past UFW, so a firewall rule is not proof the port is closed. On a public web host, ports beyond 80 and 443 (such as the Traefik dashboard on 8080) should never be published.",
+      "verify": "docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'proxy|traefik|caddy'; ss -tlnp 'sport = :443'",
+      "fix": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure.",
+      "breaks": "Anything reaching the proxy directly by IP stops working; check the tunnel serves every hostname first."
+    },
+    {
+      "id": "PAAS-003",
+      "title": "Platform panel ports are not open to the world",
+      "severity": "high",
+      "rationale": "The Coolify panel (8000, plus 6001 and 6002 for realtime and terminal) and the Dokploy panel (3000) grant root on every managed server to whoever logs in, and an unclaimed fresh install lets the first visitor create the admin account. Published Docker ports bypass UFW, so a wildcard listener is reachable unless the Docker chain filters it.",
+      "verify": "ss -tlnp | grep -E ':(8000|6001|6002|3000) '",
+      "fix": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+      "breaks": "Losing the only path to the panel locks you out of it; keep a tailnet path working before closing the public one.",
+      "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+    },
+    {
+      "id": "PAAS-004",
+      "title": "No platform database is published publicly",
+      "severity": "critical",
+      "rationale": "Both platforms offer a \"publicly available\" switch on databases that publishes the port on every interface. Docker publishes past UFW, so the database is open to the internet and to password guessing and known exploits.",
+      "verify": "docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'postgres|mysql|maria|mongo|redis|valkey|clickhouse'",
+      "fix": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel.",
+      "breaks": "Clients that connect over the public port lose access until they use the private path."
+    },
+    {
+      "id": "PAAS-008",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "severity": "high",
+      "rationale": "Dokploy runs on Docker Swarm. The swarm management port 2377/tcp, node gossip on 7946/tcp and udp, and the VXLAN overlay on 4789/udp must only be reachable by other cluster nodes: an open management port or overlay lets outsiders talk to the cluster control plane or inject overlay traffic.",
+      "verify": "ss -tulnp | grep -E ':(2377|7946|4789) '; ufw status verbose",
+      "fix": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+      "breaks": "Blocking a real peer splits the swarm; list every node before narrowing the rules.",
+      "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+    }
+  ]
+}

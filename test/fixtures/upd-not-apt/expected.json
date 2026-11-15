@@ -16,10 +16,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 37,
-    "results": 37,
+    "checks": 42,
+    "results": 42,
     "checked": 0,
-    "unknown": 30,
+    "unknown": 35,
     "skipped": 7,
     "root": true,
     "sandbox": {
@@ -40,7 +40,7 @@
   "summary": {
     "fail": 0,
     "warn": 0,
-    "unknown": 30,
+    "unknown": 35,
     "info": 0,
     "pass": 0,
     "skip": 7
@@ -637,6 +637,89 @@
       },
       "fix": {
         "hint": "Create /var/log/journal (or set Storage=persistent in a drop-in) and restart systemd-journald."
+      }
+    },
+    {
+      "id": "PAAS-001",
+      "group": "PAAS",
+      "title": "Self hosted platform detected",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the platform for the other checks.",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "PAAS-002",
+      "group": "PAAS",
+      "title": "Platform proxy is not published on all interfaces behind a tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure."
+      }
+    },
+    {
+      "id": "PAAS-003",
+      "group": "PAAS",
+      "title": "Platform panel ports are not open to the world",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+        "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+      }
+    },
+    {
+      "id": "PAAS-004",
+      "group": "PAAS",
+      "title": "No platform database is published publicly",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
       }
     }
   ]
