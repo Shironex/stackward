@@ -1,0 +1,80 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:ce3272f20761ac2e",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "unknown",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 0,
+        "warn": 1,
+        "unknown": 77,
+        "info": 2,
+        "pass": 21,
+        "skip": 3
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 0,
+    "safe": 0,
+    "networking": 0,
+    "access_critical": 0,
+    "opt_in": 0,
+    "restarts": [],
+    "skipped": 3
+  },
+  "steps": [],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "passing",
+      "reason": "LOG-001 already passes or does not apply"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "passing",
+      "reason": "KRN-002, KRN-003 and KRN-004 already pass or do not apply"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "passing",
+      "reason": "DKR-031 already passes or does not apply"
+    }
+  ]
+}

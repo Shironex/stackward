@@ -1,0 +1,256 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:88fcffd365f6d89e",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "unknown",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 0,
+        "warn": 6,
+        "unknown": 77,
+        "info": 2,
+        "pass": 16,
+        "skip": 3
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 3,
+    "safe": 2,
+    "networking": 1,
+    "access_critical": 0,
+    "opt_in": 1,
+    "restarts": [
+      "systemd-journald",
+      "docker"
+    ],
+    "skipped": 0
+  },
+  "steps": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "risk": "safe",
+      "opt_in": false,
+      "restarts": [
+        "systemd-journald"
+      ],
+      "touches": [
+        "file:/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf",
+        "service:systemd-journald"
+      ],
+      "edits": [
+        {
+          "path": "/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step journald-cap, fixes LOG-001.\n# Caps the persistent journal. Remove this file and restart\n# systemd-journald to undo.\n[Journal]\nSystemMaxUse=1G\n",
+          "new_sha256": "c8afc1b405241ddca14eacfbb27bcc90c95a848bd914cace843a7dcb002277c7",
+          "diff": "--- /dev/null\n+++ b/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf\n@@ -0,0 +1,5 @@\n+# Written by stackward: plan step journald-cap, fixes LOG-001.\n+# Caps the persistent journal. Remove this file and restart\n+# systemd-journald to undo.\n+[Journal]\n+SystemMaxUse=1G\n"
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "restart",
+            "systemd-journald"
+          ],
+          "why": "load the new limit; journald vacuums older files down to it"
+        }
+      ],
+      "undo": {
+        "description": "Remove the drop-in and restart systemd-journald; the journal may then grow to the default limit again. Journal files already vacuumed are gone.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf"
+            ],
+            "why": "remove the drop-in"
+          },
+          {
+            "args": [
+              "systemctl",
+              "restart",
+              "systemd-journald"
+            ],
+            "why": "load the default limit"
+          }
+        ]
+      },
+      "notes": [
+        "Restarting systemd-journald drops no running service; journal files older than the 1G limit are deleted."
+      ]
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "risk": "safe",
+      "opt_in": false,
+      "restarts": [],
+      "touches": [
+        "file:/etc/sysctl.d/90-stackward-hardening.conf",
+        "sysctl:net.ipv4.conf.all.rp_filter",
+        "sysctl:net.ipv4.conf.all.accept_redirects",
+        "sysctl:kernel.kptr_restrict"
+      ],
+      "edits": [
+        {
+          "path": "/etc/sysctl.d/90-stackward-hardening.conf",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step sysctl-hardening, fixes KRN-002, KRN-003, KRN-004.\n# Hardening values only: net.ipv4.ip_forward and the other settings\n# Docker needs are never set here. Remove this file to undo at the\n# next boot.\nnet.ipv4.conf.all.rp_filter = 2\nnet.ipv4.conf.all.accept_redirects = 0\nkernel.kptr_restrict = 1\n",
+          "new_sha256": "447b4d1bb1dd03c6f5c467c40f041f594f47b1d2ba54ffed0151d3460a8a5194",
+          "diff": "--- /dev/null\n+++ b/etc/sysctl.d/90-stackward-hardening.conf\n@@ -0,0 +1,7 @@\n+# Written by stackward: plan step sysctl-hardening, fixes KRN-002, KRN-003, KRN-004.\n+# Hardening values only: net.ipv4.ip_forward and the other settings\n+# Docker needs are never set here. Remove this file to undo at the\n+# next boot.\n+net.ipv4.conf.all.rp_filter = 2\n+net.ipv4.conf.all.accept_redirects = 0\n+kernel.kptr_restrict = 1\n"
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "sysctl",
+            "-p",
+            "/etc/sysctl.d/90-stackward-hardening.conf"
+          ],
+          "why": "apply this drop-in now, and only this file, not the whole sysctl.d tree"
+        }
+      ],
+      "undo": {
+        "description": "Remove the drop-in so the old values return at the next boot, and set the old running values now.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/sysctl.d/90-stackward-hardening.conf"
+            ],
+            "why": "remove the drop-in"
+          },
+          {
+            "args": [
+              "sysctl",
+              "-w",
+              "net.ipv4.conf.all.rp_filter=1"
+            ],
+            "why": "restore the running value"
+          },
+          {
+            "args": [
+              "sysctl",
+              "-w",
+              "net.ipv4.conf.all.accept_redirects=1"
+            ],
+            "why": "restore the running value"
+          },
+          {
+            "args": [
+              "sysctl",
+              "-w",
+              "kernel.kptr_restrict=0"
+            ],
+            "why": "restore the running value"
+          }
+        ]
+      },
+      "notes": [
+        "/etc/sysctl.conf sets kernel.kptr_restrict = 0 and is read after this drop-in, so the old value returns at boot; change it there by hand.",
+        "/etc/ufw/sysctl.conf sets net.ipv4.conf.all.log_martians=0 (want 1) and ufw applies it again on every enable and reload; this step leaves that file alone."
+      ]
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "risk": "networking",
+      "opt_in": true,
+      "restarts": [
+        "docker"
+      ],
+      "touches": [
+        "file:/etc/docker/daemon.json",
+        "docker-daemon:log-driver",
+        "docker-daemon:log-opts",
+        "service:docker"
+      ],
+      "edits": [
+        {
+          "path": "/etc/docker/daemon.json",
+          "action": "replace",
+          "old": "{\n  \"live-restore\": true,\n  \"registry-mirrors\": [\n    \"https://mirror.example.com\"\n  ],\n  \"log-opts\": {\n    \"labels\": \"com.docker.compose.project\"\n  },\n  \"features\": {\n    \"buildkit\": true\n  }\n}\n",
+          "new": "{\n  \"live-restore\": true,\n  \"registry-mirrors\": [\n    \"https://mirror.example.com\"\n  ],\n  \"log-opts\": {\n    \"labels\": \"com.docker.compose.project\",\n    \"max-size\": \"10m\",\n    \"max-file\": \"3\"\n  },\n  \"features\": {\n    \"buildkit\": true\n  },\n  \"log-driver\": \"json-file\"\n}\n",
+          "old_sha256": "f08553a9c1791d0edb10e4630155d0bb7bdb499136061e3e691379dbe4bdd522",
+          "new_sha256": "3ffb700545105bc61766e95a83051368aaa63241be2de73809ba24e120185731",
+          "diff": "--- a/etc/docker/daemon.json\n+++ b/etc/docker/daemon.json\n@@ -4,9 +4,12 @@\n     \"https://mirror.example.com\"\n   ],\n   \"log-opts\": {\n-    \"labels\": \"com.docker.compose.project\"\n+    \"labels\": \"com.docker.compose.project\",\n+    \"max-size\": \"10m\",\n+    \"max-file\": \"3\"\n   },\n   \"features\": {\n     \"buildkit\": true\n-  }\n+  },\n+  \"log-driver\": \"json-file\"\n }\n",
+          "validate": [
+            "dockerd",
+            "--validate",
+            "--config-file"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "restart",
+            "docker"
+          ],
+          "why": "load the new log settings"
+        }
+      ],
+      "undo": {
+        "description": "Put the previous daemon.json back (its content is the old side of this step's diff; apply also keeps a copy under /var/backups/stackward/\u003crun-id\u003e/) and restart Docker.",
+        "commands": [
+          {
+            "args": [
+              "systemctl",
+              "restart",
+              "docker"
+            ],
+            "why": "load the previous configuration"
+          }
+        ]
+      },
+      "notes": [
+        "Restarting Docker stops and starts every container unless live-restore is on; containers without a restart policy stay stopped.",
+        "The limits apply to containers created after the restart; recreate running containers (for example docker compose up -d --force-recreate) to rotate their logs."
+      ]
+    }
+  ],
+  "skipped": []
+}

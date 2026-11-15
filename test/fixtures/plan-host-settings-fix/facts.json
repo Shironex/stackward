@@ -1,0 +1,121 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "app1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "sysctl": {
+    "values": {
+      "net.ipv4.ip_forward": "1",
+      "net.ipv4.conf.all.rp_filter": "1",
+      "net.ipv4.conf.default.rp_filter": "2",
+      "net.ipv4.conf.all.accept_redirects": "1",
+      "net.ipv4.conf.default.accept_redirects": "0",
+      "net.ipv4.conf.all.send_redirects": "0",
+      "net.ipv4.conf.all.accept_source_route": "0",
+      "net.ipv4.conf.default.accept_source_route": "0",
+      "net.ipv4.tcp_syncookies": "1",
+      "net.ipv4.icmp_echo_ignore_broadcasts": "1",
+      "net.ipv4.conf.all.log_martians": "1",
+      "net.ipv6.conf.all.accept_redirects": "0",
+      "net.ipv6.conf.default.accept_redirects": "0",
+      "net.ipv6.conf.all.accept_source_route": "0",
+      "net.ipv6.conf.all.accept_ra": "1",
+      "net.ipv6.conf.default.accept_ra": "1",
+      "kernel.kptr_restrict": "0",
+      "kernel.dmesg_restrict": "1",
+      "kernel.unprivileged_bpf_disabled": "2",
+      "kernel.yama.ptrace_scope": "1",
+      "fs.protected_hardlinks": "1",
+      "fs.protected_symlinks": "1",
+      "fs.protected_fifos": "2",
+      "fs.protected_regular": "2"
+    },
+    "docker_present": true,
+    "tailscale_present": false,
+    "global_ipv6_dynamic": false,
+    "configured": {
+      "net.ipv4.ip_forward": {
+        "value": "1",
+        "file": "/etc/sysctl.d/99-docker.conf"
+      },
+      "kernel.kptr_restrict": {
+        "value": "0",
+        "file": "/etc/sysctl.conf"
+      }
+    },
+    "ufw": {
+      "net.ipv4.conf.all.log_martians": "0"
+    }
+  },
+  "journal": {
+    "storage": "auto",
+    "persistent_dir": true,
+    "persistent": true,
+    "disk_usage_checked": true,
+    "disk_usage_bytes": 3221225472,
+    "proxy_logs": [],
+    "agents": []
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "27.5.1",
+      "api_version": "1.47",
+      "os": "linux",
+      "arch": "amd64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": true,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ],
+      "content": "{\n  \"live-restore\": true,\n  \"registry-mirrors\": [\n    \"https://mirror.example.com\"\n  ],\n  \"log-opts\": {\n    \"labels\": \"com.docker.compose.project\"\n  },\n  \"features\": {\n    \"buildkit\": true\n  }\n}\n"
+    },
+    "tcp_read": false,
+    "networks": []
+  },
+  "collectors": [
+    {
+      "name": "docker",
+      "status": "ok"
+    },
+    {
+      "name": "journal",
+      "status": "ok"
+    },
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "sysctl",
+      "status": "ok"
+    }
+  ]
+}

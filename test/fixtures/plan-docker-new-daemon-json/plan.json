@@ -1,0 +1,143 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:cc24e0cbf4b08870",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "unknown",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 0,
+        "warn": 3,
+        "unknown": 82,
+        "info": 2,
+        "pass": 13,
+        "skip": 4
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 1,
+    "safe": 0,
+    "networking": 1,
+    "access_critical": 0,
+    "opt_in": 1,
+    "restarts": [
+      "docker"
+    ],
+    "skipped": 2
+  },
+  "steps": [
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "risk": "networking",
+      "opt_in": true,
+      "restarts": [
+        "docker"
+      ],
+      "touches": [
+        "file:/etc/docker/daemon.json",
+        "docker-daemon:log-driver",
+        "docker-daemon:log-opts",
+        "service:docker"
+      ],
+      "edits": [
+        {
+          "path": "/etc/docker/daemon.json",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "{\n  \"log-driver\": \"json-file\",\n  \"log-opts\": {\n    \"max-size\": \"10m\",\n    \"max-file\": \"3\"\n  }\n}\n",
+          "new_sha256": "f2ed05c6f5934a15f12571139bdc225804f67b8c83561cc39868f7b2296d2697",
+          "diff": "--- /dev/null\n+++ b/etc/docker/daemon.json\n@@ -0,0 +1,7 @@\n+{\n+  \"log-driver\": \"json-file\",\n+  \"log-opts\": {\n+    \"max-size\": \"10m\",\n+    \"max-file\": \"3\"\n+  }\n+}\n",
+          "validate": [
+            "dockerd",
+            "--validate",
+            "--config-file"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "restart",
+            "docker"
+          ],
+          "why": "load the new log settings"
+        }
+      ],
+      "undo": {
+        "description": "Remove daemon.json, which did not exist before, and restart Docker.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/docker/daemon.json"
+            ],
+            "why": "remove the file this step created"
+          },
+          {
+            "args": [
+              "systemctl",
+              "restart",
+              "docker"
+            ],
+            "why": "load the default configuration"
+          }
+        ]
+      },
+      "notes": [
+        "Restarting Docker stops and starts every container unless live-restore is on; containers without a restart policy stay stopped.",
+        "The limits apply to containers created after the restart; recreate running containers (for example docker compose up -d --force-recreate) to rotate their logs."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "passing",
+      "reason": "LOG-001 already passes or does not apply"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    }
+  ]
+}
