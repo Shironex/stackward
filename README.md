@@ -1,15 +1,77 @@
-# stackward
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/readme-header-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/brand/readme-header-light.svg">
+    <img src="assets/brand/readme-header-light.svg" width="100%" alt="stackward. Audit your self-hosted stack. Read only by default. Unknown is never pass.">
+  </picture>
 
-stackward audits a self hosted Linux server the way it is actually run in
-practice: Docker, a PaaS such as Coolify or Dokploy, Traefik, a Cloudflare
-Tunnel or Tailscale in front, and CrowdSec or fail2ban on top. It answers
-"what is actually exposed and what is misconfigured" with a stable check id
-and evidence for every finding.
+  <p><strong>A read only security audit for the self hosted Linux server you actually run: Docker, a PaaS panel, a reverse proxy, a tunnel or a tailnet in front.</strong></p>
 
-**Status: pre-alpha.** The skeleton is in place (CLI, facts model, check
-registry, catalog, report format, sandbox, golden tests) with a handful of
-system checks. The SSH, firewall, Docker, Tailscale, tunnel, CrowdSec and PaaS
-checks are being built. Do not rely on it yet.
+  <p>
+    <a href="https://github.com/Shironex/stackward/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Shironex/stackward/ci.yml?branch=main&style=flat&label=ci" alt="CI status"></a>
+    <a href="https://github.com/Shironex/stackward/releases/latest"><img src="https://img.shields.io/github/v/release/Shironex/stackward?style=flat&color=246b5b&include_prereleases&label=release" alt="Latest release"></a>
+    <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/Shironex/stackward?style=flat&color=246b5b" alt="Go version from go.mod"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-246b5b?style=flat" alt="Apache-2.0 license"></a>
+    <a href="https://shironex.github.io/stackward/"><img src="https://img.shields.io/badge/docs-shironex.github.io%2Fstackward-102b2b?style=flat" alt="Documentation site"></a>
+  </p>
+
+  <p>
+    <a href="https://shironex.github.io/stackward/"><strong>Docs</strong></a>
+    &nbsp;·&nbsp;
+    <a href="docs/checks/index.md"><strong>Checks catalog</strong></a>
+    &nbsp;·&nbsp;
+    <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
+    &nbsp;·&nbsp;
+    <a href="SECURITY.md"><strong>Security</strong></a>
+  </p>
+
+  <img src="assets/showcase/audit.webp" width="100%" alt="The end of a stackward audit report for a Coolify host behind a tunnel: a Docker Engine warning, info lines for logs and backups, a failure for an open platform SSH key folder, a failure for a panel port open to the world, one unknown, and the summary line: 3 fail, 3 warn, 4 unknown, 9 info, 92 pass, 7 skip.">
+  <p><sub>Real output of <code>stackward audit</code> over the saved facts in <a href="test/fixtures/showcase-coolify-tunnel">test/fixtures/showcase-coolify-tunnel</a>, rendered by <a href="assets/showcase">assets/showcase</a>.</sub></p>
+</div>
+
+Most small servers are not a bare Linux box. They run Docker under Coolify or
+Dokploy, Traefik or Caddy in front, a Cloudflare Tunnel or Tailscale for the
+way in, and CrowdSec or fail2ban on top. Each layer changes what is really
+exposed: a published Docker port skips UFW, a panel port listens on every
+interface, a backup copy in the proxy folder is loaded as live config.
+
+stackward reads that whole stack and answers two questions: what is actually
+exposed, and what is misconfigured. Every finding has a stable check id, the
+evidence it saw and the fix, and anything it could not inspect is reported as
+`unknown`, never as a pass.
+
+> [!WARNING]
+> **Pre-alpha.** The checks below exist and are tested against saved facts,
+> but there is no release yet and the output may still change. Read the
+> report before acting on it.
+
+## A run, start to finish
+
+<p align="center">
+  <img src="assets/showcase/audit-run.webp" width="100%" alt="An animation: stackward audit is typed and prints its report, ending in the summary line, then stackward explain PAAS-003 is typed and prints why an open panel port matters, how to verify it, the fix and what the fix can break.">
+</p>
+
+## What it checks
+
+80 checks in 11 groups today, each with its own page in the
+[checks catalog](docs/checks/index.md):
+
+| Group | Checks | What it looks at |
+|---|---:|---|
+| `SYS` System | 5 | Tested distribution, pending reboot, running kernel, clock sync, disk space |
+| `SSH` SSH | 14 | The effective config from `sshd -T`: password and root login, drop-in order, where sshd listens, host and authorized keys, weak algorithms |
+| `USR` Users and privilege | 7 | Extra uid 0 accounts, empty passwords, the cloud default account, sudoers, docker group members, unused logins |
+| `NET` Firewall and exposure | 9 | UFW defaults and IPv6, every listening socket and who can reach it, `DOCKER-USER`, ufw-docker |
+| `DKR` Docker | 15 | API on TCP, socket mounts and socket proxies, sensitive mounts, root and privileged containers, capabilities, shared networks, log rotation, pinned images, engine support |
+| `UPD` Updates | 6 | Automatic security updates, the security pocket, pending security updates, release support, reboot policy |
+| `KRN` Kernel settings | 5 | Forwarding and reverse path filter where Docker runs, network and kernel hardening sysctls, IPv6 router advertisements |
+| `LOG` Logs and monitoring | 5 | Journal size cap and persistence, proxy log rotation, a metrics agent |
+| `SEC` Secrets on disk | 7 | Permissions, never contents: platform `.env` files, the platform SSH key folder, private keys, Docker client config, the proxy dynamic folder |
+| `PAAS` Coolify and Dokploy | 5 | Platform detection, proxy and panel ports, published platform databases, Swarm ports |
+| `BAK` Backups | 2 | Platform database backups on the host, backup tools present |
+
+Tailscale, Cloudflare Tunnel, CrowdSec and fail2ban checks, and an outside
+view from another machine, are being built.
 
 ## The read only promise
 
@@ -17,36 +79,70 @@ Version 0.1 only reads. stackward:
 
 - writes no file except the report you ask for with `--out`;
 - confines itself with a Landlock sandbox where the kernel supports it
-  (Linux 5.13+): no file writes, and no TCP connections on newer kernels.
-  The report header says whether the sandbox was applied;
+  (Linux 5.13+): no file writes, and no TCP connections on Linux 6.7+. The
+  report header says whether the sandbox was applied;
 - talks to Docker over its Unix socket with GET requests only;
 - never runs a command that changes state;
 - never reads the contents of secret files, only their permissions;
-- redacts secret shaped values from everything it prints or dumps;
+- redacts secret shaped values from everything it prints or dumps, and
+  hashes the hostname unless you pass `--show-hostname`;
 - sends nothing anywhere. No telemetry, ever.
 
-`unknown` results mean "could not inspect" and are never counted as a pass.
-Run without root for partial coverage; `sudo` gives full coverage.
-
 What it reads, what it never does and what it does not cover:
-[docs/threat-model.md](docs/threat-model.md). The plan for changing things
-safely in a later version: [docs/safety.md](docs/safety.md).
+[docs/threat-model.md](docs/threat-model.md).
 
-## Build from source
+## Install
 
-Requires Go 1.26 or later.
+There is no release yet. Once there is, every release holds Linux archives
+for amd64 and arm64, a `.deb`, an SPDX SBOM per archive, `checksums.txt`
+signed keylessly with cosign, GitHub build provenance, and `get.sh`.
+
+Download, check and run (replace the version with a real tag):
 
 ```sh
-git clone https://github.com/Shironex/stackward
-cd stackward
-CGO_ENABLED=0 go build -trimpath -o stackward ./cmd/stackward
-./stackward audit
-sudo ./stackward audit --json --out report.json
-./stackward explain SYS-002
+VERSION=v0.1.0
+ARCH=amd64   # or arm64
+BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
+curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
+curl -fsSLO "$BASE/checksums.txt"
+curl -fsSLO "$BASE/checksums.txt.sigstore.json"
+
+# the archive matches checksums.txt
+grep " stackward_${VERSION#v}_linux_$ARCH.tar.gz\$" checksums.txt | sha256sum -c -
+
+# checksums.txt was signed by this repository's release workflow
+cosign verify-blob --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/Shironex/stackward/.github/workflows/release.yml@refs/tags/$VERSION" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+
+# or: GitHub build provenance for the archive
+gh attestation verify "stackward_${VERSION#v}_linux_$ARCH.tar.gz" --repo Shironex/stackward
+
+tar -xzf "stackward_${VERSION#v}_linux_$ARCH.tar.gz" stackward
+sudo ./stackward audit
 ```
 
-Build with `CGO_ENABLED=0`: the Landlock sandbox needs a cgo free binary.
-Signed release binaries will follow.
+`get.sh` does the download and the SHA-256 check for you, and the cosign
+check when cosign is installed. It never runs the binary and never uses
+sudo; read it first:
+
+```sh
+curl -fsSLO https://github.com/Shironex/stackward/releases/latest/download/get.sh
+less get.sh
+sh get.sh -d "$HOME/.local/bin"
+```
+
+Until then, build from source with Go 1.26 or later. Keep `CGO_ENABLED=0`:
+the Landlock sandbox needs a cgo free binary.
+
+```sh
+git clone https://github.com/Shironex/stackward && cd stackward
+CGO_ENABLED=0 go build -trimpath -o stackward ./cmd/stackward
+```
+
+Every option, the `.deb` and reproducible builds:
+[docs/install.md](docs/install.md).
 
 ## Usage
 
@@ -61,12 +157,54 @@ stackward tui [--report FILE | --facts FILE]
 stackward version
 ```
 
-Exit codes: `0` no finding at or above `--fail-on` (default `fail`), `1`
-findings, `2` the tool itself failed.
+### Audit this host
 
-The JSON report follows [schema/report.v1.json](schema/report.v1.json).
+```sh
+sudo stackward audit                       # text report, findings only
+sudo stackward audit --all                 # list passing and skipped results too
+sudo stackward audit --json --out report.json
+sudo stackward audit --md --out report.md
+stackward audit --profile tunnel           # auto, tunnel, public-web, tailnet-only or paas-panel
+```
+
+`--profile` says how traffic is meant to reach the host, so a public 80/443
+rule can be judged: fine on a public web server, a finding behind a tunnel.
+`auto` infers it and reports `unknown` where it cannot tell.
+
+Exit codes: `0` no result at or above `--fail-on` (default `fail`), `1`
+findings, `2` the tool itself failed. `--fail-on warn` also counts warnings;
+`unknown` never trips it. The JSON report follows
+[schema/report.v1.json](schema/report.v1.json).
+
+### Explain a check
+
+<img src="assets/showcase/explain.webp" width="560" align="right" alt="stackward explain PAAS-003 in a terminal: why an open platform panel port matters, the ss command to verify it by hand, the fix, and that closing the only path to the panel locks you out.">
+
+`stackward explain <id>` prints why a check matters, how to verify it by
+hand, how to fix it and what the fix can break. `stackward explain` alone
+lists every check. The same text is in the
+[checks catalog](docs/checks/index.md).
+
+<br clear="right">
+
+### Save facts, replay them
+
+```sh
+sudo stackward audit --dump-facts > facts.json   # redacted, hostname hashed
+stackward audit --facts facts.json              # the same report, anywhere
+```
+
+Checks only see the collected facts, so a facts file reproduces a report
+exactly. That is how a bug report becomes a golden test, and how the
+pictures in this README are made. Read a dump before you share it: secret
+shaped values are masked, but you are the last reviewer.
+
+<!-- usage: stackward probe (outside view from another machine) goes here -->
 
 ### Browsing findings
+
+<img src="assets/showcase/tui.webp" width="100%" alt="stackward tui in a terminal: the findings list grouped by check group on the left with fail, warn and unknown results first, and PAAS-003, the Coolify panel port open to the world, selected with its evidence and explanation in the pane on the right.">
+<p align="center"><sub>The same saved facts, rendered on macOS, which has no Landlock: that is why the header says <code>sandbox unavailable</code>.</sub></p>
 
 `stackward tui` runs the same audit as `stackward audit` (same flags, same
 sandbox, same read only promise) and opens a findings browser: results by
@@ -85,27 +223,48 @@ at least 60x16 and is laid out for 80x24. `NO_COLOR` turns colors off.
 
 Every result is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a
 pass), `skip` (does not apply) or `info`. There is no score: read the counts
-and the coverage block, which says how many checks were unknown, whether root
+and the coverage line, which says how many results were unknown, whether root
 was available and whether the sandbox was applied. Fix the highest severity
 `fail` results first.
 
-Each check has a stable id. `stackward explain SYS-002` prints why it matters,
-how to verify it by hand, how to fix it and what the fix can break. The same
-text is in the [check pages](docs/checks/index.md).
+## Coverage and limits
 
-Share a report or a `--dump-facts` file in a bug report only after reading
-it. Secret shaped values are masked and the hostname is hashed by default,
-but you are the last reviewer.
+- **Root matters.** 45 of the 80 checks need root to read what they judge
+  (sshd's effective config, firewall rules, Docker, secret file
+  permissions). Without root they report `unknown` with the reason, and the
+  coverage line counts them. Run with `sudo` for full coverage.
+- **The provider firewall is invisible from inside.** Security groups and
+  cloud firewalls cannot be seen from the host; `NET-009` says so on every
+  run instead of guessing.
+- **A snapshot of configuration.** It does not scan your applications or
+  images for vulnerabilities, does not read your cloud or Cloudflare
+  account, and is not an intrusion detector.
+- **Tested on** Ubuntu 22.04 and later and Debian 12 and later. Other
+  distributions work, with more `unknown` results; `SYS-001` tells you.
 
-## Contributing and security
+A report with no findings means none of these checks found a problem in what
+could be inspected. It does not mean the server is secure.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/architecture.md](docs/architecture.md); the
-[threat model](docs/threat-model.md) explains the safety rules. Report vulnerabilities privately
-as described in [SECURITY.md](SECURITY.md).
+## Roadmap
 
-Report a wrong verdict or propose a check with the
-[issue forms](https://github.com/Shironex/stackward/issues/new/choose).
-Participation is covered by the [code of conduct](CODE_OF_CONDUCT.md).
+- **v0.1:** the read only audit: the checks above, plus Tailscale, Cloudflare
+  Tunnel, CrowdSec and fail2ban, an outside view, and signed releases.
+- **v0.2:** `stackward plan` and `stackward apply`. A plan file lists each
+  change with a diff, a risk class and how to undo it, and changes nothing.
+  Apply keeps backups and a journal; SSH, firewall and user changes run with
+  a rollback timer that only a new SSH session can confirm, and public SSH
+  is never closed without a proven second way in. The design is in
+  [docs/safety.md](docs/safety.md).
 
-Licensed under the [Apache License 2.0](LICENSE).
+## Contributing
+
+Bug reports, false positives and check requests are welcome through the
+[issue forms](https://github.com/Shironex/stackward/issues/new/choose). Before
+adding a collector or a check, read [CONTRIBUTING.md](CONTRIBUTING.md) and
+[docs/architecture.md](docs/architecture.md). Report vulnerabilities
+privately as described in [SECURITY.md](SECURITY.md). Participation is
+covered by the [code of conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[Apache License 2.0](LICENSE).
