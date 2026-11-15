@@ -128,20 +128,77 @@
   background: oklch(100% 0 0 / 0.16);
 }
 
-.terminal pre {
-  margin: 0;
+.t-screen {
   padding: 1rem 1.125rem 1.125rem;
-  overflow-x: auto;
-  font: 400 clamp(0.6875rem, 0.95vw, 0.8125rem) / 1.6 var(--sw-font-code);
+  font: 400 0.8125rem / 1.55 var(--sw-font-code);
   color: var(--sw-term-ink);
-  background: transparent;
-  border: 0;
-  white-space: pre;
-  tab-size: 2;
+  overflow-wrap: anywhere;
 }
 
-.terminal pre:focus-visible {
-  outline-offset: -3px;
+.t-screen :is(p, h3) {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  font: inherit;
+  letter-spacing: normal;
+}
+
+.t-screen h3 {
+  color: inherit;
+}
+
+.t-head {
+  display: grid;
+  grid-template-columns: 11ch minmax(0, 1fr);
+  margin-top: 0.75rem;
+}
+
+.t-group-block {
+  margin-top: 0.875rem;
+}
+
+.t-screen .t-group {
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.t-screen .t-group .t-dim {
+  font-weight: 400;
+}
+
+/* One finding: level and id columns, then a body column. Every wrapped line
+   of the title, the message and the fix stays in the body column. */
+.t-row {
+  display: grid;
+  grid-template-columns: 8ch 9ch minmax(0, 1fr);
+  margin-top: 0.5rem;
+}
+
+.t-group + .t-row,
+.t-group-block > .t-row:first-child {
+  margin-top: 0;
+}
+
+.t-screen .t-title {
+  color: var(--sw-term-ink);
+}
+
+.t-screen .t-msg {
+  color: var(--sw-term-dim);
+}
+
+.t-screen .t-fix {
+  color: var(--sw-term-ink);
+  padding-inline-start: 5ch;
+  text-indent: -5ch;
+}
+
+.t-screen .t-summary {
+  margin-top: 0.875rem;
+}
+
+.terminal-brief .t-screen {
+  padding-bottom: 1rem;
 }
 
 .terminal figcaption {
@@ -150,6 +207,13 @@
   line-height: 1.45;
   color: var(--sw-term-dim);
   border-top: 1px solid oklch(100% 0 0 / 0.07);
+}
+
+.home .terminal figcaption a,
+.terminal figcaption a {
+  color: var(--sw-term-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .t-prompt {
