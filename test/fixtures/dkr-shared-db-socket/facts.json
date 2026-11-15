@@ -1,0 +1,250 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-11-15T12:00:00Z",
+  "host": {
+    "hostname": "box.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "27.5.1",
+      "api_version": "1.47",
+      "os": "linux",
+      "arch": "amd64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2",
+      "security_options": [
+        "name=apparmor",
+        "name=seccomp,profile=builtin",
+        "name=cgroupns"
+      ]
+    },
+    "daemon": {
+      "config_found": false,
+      "hosts": [
+        {
+          "addr": "fd://",
+          "source": "/lib/systemd/system/docker.service"
+        },
+        {
+          "addr": "tcp://0.0.0.0:2375",
+          "source": "/lib/systemd/system/docker.service"
+        }
+      ],
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp": [
+      {
+        "port": 2375,
+        "bind": "any"
+      }
+    ],
+    "tcp_read": true,
+    "containers": [
+      {
+        "id": "cccccccccccc",
+        "name": "blog-db-1",
+        "project": "blog",
+        "service": "db",
+        "image": "postgres:16",
+        "running": true,
+        "user": "postgres",
+        "network_mode": "edge",
+        "ipc_mode": "private",
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "blog_pg",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "networks": [
+          "edge"
+        ],
+        "labels": {
+          "com.docker.compose.project": "blog",
+          "com.docker.compose.service": "db"
+        }
+      },
+      {
+        "id": "aaaaaaaaaaaa",
+        "name": "coolify-proxy",
+        "image": "traefik:v3.1",
+        "running": true,
+        "user": "",
+        "network_mode": "coolify",
+        "ipc_mode": "private",
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/var/run/docker.sock",
+            "target": "/var/run/docker.sock",
+            "read_only": true
+          },
+          {
+            "type": "bind",
+            "source": "/data/coolify/proxy",
+            "target": "/traefik"
+          }
+        ],
+        "networks": [
+          "coolify",
+          "edge"
+        ],
+        "ports": [
+          {
+            "container_port": 80,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 80
+          },
+          {
+            "container_port": 80,
+            "proto": "tcp",
+            "host_ip": "::",
+            "host_port": 80
+          },
+          {
+            "container_port": 443,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 443
+          }
+        ],
+        "labels": {
+          "coolify.managed": "true",
+          "coolify.proxy": "true",
+          "traefik.enable": "true"
+        }
+      },
+      {
+        "id": "bbbbbbbbbbbb",
+        "name": "shop-web-1",
+        "project": "shop",
+        "service": "web",
+        "image": "ghcr.io/example/shop:1.2.0",
+        "running": true,
+        "user": "",
+        "cap_add": [
+          "NET_ADMIN"
+        ],
+        "network_mode": "shop_default",
+        "ipc_mode": "private",
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/etc",
+            "target": "/host-etc"
+          },
+          {
+            "type": "volume",
+            "source": "shop_uploads",
+            "target": "/uploads"
+          }
+        ],
+        "networks": [
+          "edge",
+          "shop_default"
+        ],
+        "ports": [
+          {
+            "container_port": 3000,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 3000
+          }
+        ],
+        "proxy_routed": true,
+        "labels": {
+          "com.docker.compose.project": "shop",
+          "com.docker.compose.service": "web",
+          "traefik.enable": "true"
+        }
+      },
+      {
+        "id": "dddddddddddd",
+        "name": "socket-proxy",
+        "image": "tecnativa/docker-socket-proxy:0.3.0",
+        "running": true,
+        "user": "",
+        "network_mode": "bridge",
+        "ipc_mode": "private",
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/var/run/docker.sock",
+            "target": "/var/run/docker.sock",
+            "read_only": true
+          }
+        ],
+        "networks": [
+          "bridge"
+        ],
+        "flags": {
+          "CONTAINERS": "1",
+          "EXEC": "0",
+          "POST": "1"
+        }
+      },
+      {
+        "id": "eeeeeeeeeeee",
+        "name": "tunnel",
+        "image": "cloudflare/cloudflared:latest",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "host",
+        "ipc_mode": "private",
+        "networks": [
+          "host"
+        ]
+      }
+    ],
+    "networks": [
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "edge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      },
+      {
+        "name": "shop_default",
+        "driver": "bridge",
+        "scope": "local"
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "docker",
+      "status": "ok"
+    }
+  ]
+}
