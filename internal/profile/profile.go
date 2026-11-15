@@ -158,7 +158,7 @@ func Detect(f *facts.Facts) (s Signals, ok bool) {
 	}
 	l := f.Listeners
 	for _, sock := range l.Sockets {
-		if sock.Proto == "tcp" && webPorts[sock.Port] && sock.Class().Exposed() && !blockedByFirewall(f.Firewall, sock) {
+		if sock.Proto == "tcp" && webPorts[sock.Port] && sock.Class().Exposed() && !blockedByFirewall(f, sock) {
 			s.PublicWeb = true
 		}
 		if sock.HasProcess("cloudflared") {
@@ -214,10 +214,11 @@ func PanelHost(f *facts.Facts) bool {
 
 // blockedByFirewall reports whether an active UFW with a deny default and
 // no rule allowing the port from anywhere keeps the socket closed. Docker
-// published ports (docker-proxy) skip UFW's input rules, so they never
-// count as blocked here.
-func blockedByFirewall(fw *facts.Firewall, l facts.Listener) bool {
-	if fw == nil || fw.UFW == nil || l.HasProcess("docker-proxy") {
+// published ports skip UFW's input rules, so they never count as blocked
+// here.
+func blockedByFirewall(f *facts.Facts, l facts.Listener) bool {
+	fw := f.Firewall
+	if fw == nil || fw.UFW == nil || l.PublishedByContainer(f.Docker) {
 		return false
 	}
 	u := fw.UFW

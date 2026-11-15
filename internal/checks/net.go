@@ -429,7 +429,7 @@ func exposureResult(f *facts.Facts, l *facts.Listeners, g portGroup) Result {
 				procs = append(procs, p)
 			}
 		}
-		if s.HasProcess("docker-proxy") {
+		if s.PublishedByContainer(f.Docker) {
 			docker = true
 		}
 	}

@@ -37,7 +37,7 @@ this table does not list.
 | `iptables -V` | firewall | no | prints the version |
 | `iptables -S` | firewall | no | iptables-nft (Ubuntu 22.04+, Debian 11+) takes no lock. iptables-legacy opens `/run/xtables.lock` to take a shared flock: that works under the sandbox while the file exists (Docker and UFW create it at boot) and fails if nothing created it since boot |
 | `firewall-cmd --state` | firewall | no | D-Bus query |
-| `ss -Htulnp`, `ss -Htln` | listeners, ssh | no | sock_diag netlink and `/proc` |
+| `ss -Htulnp`, `ss -Htln` | listeners, ssh | no | sock_diag netlink and `/proc`. Under the sandbox ss names no owning process: Landlock scopes ptrace access, which reading another process's `/proc/<pid>/fd` needs. stackward then marks process names as not visible and recognises published container ports through the Docker API |
 | `ip -j addr show` | listeners | no | netlink |
 | `sshd -T` | ssh | no | parses the config and host keys; checks `/run/sshd` exists, does not create it |
 | `systemctl show`, `systemctl is-active`, `systemctl is-enabled` | ssh, updates, tailscale, cloudflared | no | D-Bus queries to systemd |
