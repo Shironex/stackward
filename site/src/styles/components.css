@@ -332,6 +332,21 @@
   max-width: 65ch;
 }
 
+.check-table .group-note {
+  margin: 0 0 0.75rem;
+  color: var(--sw-ink-2);
+  font-size: 0.9rem;
+}
+
+.check-note {
+  margin: 0 0 1.25rem;
+  padding: 0.6rem 0.9rem;
+  border-inline-start: 3px solid var(--sw-mint);
+  background: var(--sw-bg-2);
+  color: var(--sw-ink-2);
+  font-size: 0.9375rem;
+}
+
 .check-table .group-planned {
   font-size: 0.9375rem;
   line-height: 1.9;

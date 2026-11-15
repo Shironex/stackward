@@ -16,6 +16,12 @@ const byId = new Map(catalog.checks.map((c) => [c.id, c]));
         <h2 id={`group-${group.id}`}>
           <span class="group-id">{group.id}</span> {group.name}
         </h2>
+        {group.id === 'PRB' && (
+          <p class="group-note">
+            These checks come from <a href={url('usage#stackward-probe')}>stackward probe</a>, run from another machine. <code>stackward audit</code> on
+            the server never runs them.
+          </p>
+        )}
         <table>
           <thead>
             <tr>
@@ -54,7 +60,7 @@ const byId = new Map(catalog.checks.map((c) => [c.id, c]));
       <section aria-labelledby="group-coming">
         <h2 id="group-coming">Groups still being built</h2>
         <p>
-          These groups are declared in the catalog and have no checks yet. Their checks appear here as each part of v0.1 lands.
+          These groups are declared in the catalog and have no checks yet.
         </p>
         <p class="group-planned">
           {empty.map((g, i) => (
