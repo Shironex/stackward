@@ -13,7 +13,7 @@
     "kernel": "6.8.0-49-generic"
   },
   "profile": {
-    "name": "public-web",
+    "name": "paas-panel",
     "source": "inferred"
   },
   "coverage": {
@@ -715,9 +715,9 @@
       "level": "skip",
       "severity": "moderate",
       "subject": "host",
-      "message": "80/443 may be public on the public-web profile",
+      "message": "80/443 may be public on the paas-panel profile",
       "evidence": {
-        "profile": "public-web"
+        "profile": "paas-panel"
       },
       "fix": {
         "hint": "Delete the rule (ufw delete \u003cnumber\u003e); ingress is the tunnel"
@@ -1878,7 +1878,7 @@
       "level": "pass",
       "severity": "high",
       "subject": "host",
-      "message": "proxy publishes only 80 and 443, as the public-web profile expects",
+      "message": "proxy publishes only 80 and 443, as the paas-panel profile expects",
       "evidence": {
         "exposed": [
           "0.0.0.0:80-\u003e80/tcp",
@@ -1886,7 +1886,7 @@
           "0.0.0.0:443-\u003e443/tcp",
           "[::]:443-\u003e443/tcp"
         ],
-        "profile": "public-web",
+        "profile": "paas-panel",
         "published": [
           "0.0.0.0:80-\u003e80/tcp",
           "[::]:80-\u003e80/tcp",

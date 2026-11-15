@@ -29,7 +29,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/facts` | `Facts` model, `System`, `Collector`, registry, runner, collectors |
 | `internal/checks` | `Check`, `Result`, levels, registry, `Evaluate`, one file per group |
 | `internal/catalog` | embedded `data/<group>.json`, loader, group order |
-| `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (stub) |
+| `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (from listeners, firewall, tunnel, tailnet and PaaS panel facts) |
 | `internal/report` | `report.v1` types, `Build`, text and JSON renderers, exit codes |
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
 | `internal/redact` | secret masking for strings and decoded JSON |

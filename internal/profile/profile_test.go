@@ -137,6 +137,8 @@ func TestInferWithAccessFacts(t *testing.T) {
 		Connectors: []facts.CloudflaredConnector{{Container: true, ArgsRead: true, Mode: "named"}}}
 	noTunnel := &facts.Cloudflared{ProcessesRead: true, ProcessesVisible: true}
 	cloudflaredSock := []facts.Listener{sock("tcp", "127.0.0.1", 20241, "cloudflared")}
+	panel := &facts.PaaS{Platforms: []facts.Platform{{Name: facts.PlatformCoolify, Role: facts.RolePanel, DataRoot: facts.CoolifyRoot}}}
+	managed := &facts.PaaS{Platforms: []facts.Platform{{Name: facts.PlatformCoolify, Role: facts.RoleManaged, DataRoot: facts.CoolifyRoot}}}
 	cases := []struct {
 		name string
 		f    *facts.Facts
@@ -154,6 +156,14 @@ func TestInferWithAccessFacts(t *testing.T) {
 		{"stopped cloudflared container", &facts.Facts{Listeners: &facts.Listeners{}, Cloudflared: noTunnel,
 			Docker: &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Image: "cloudflare/cloudflared", Running: false}}}}, Unknown},
 		{"connector beside public web", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "docker-proxy")}}, Cloudflared: connector}, Mixed},
+		// The real run: a Coolify panel host, its proxy public on 80/443,
+		// cloudflared tunnels beside it.
+		{"panel with public proxy and a tunnel", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{
+			sock("tcp", "0.0.0.0", 80, "docker-proxy"), sock("tcp", "0.0.0.0", 443, "docker-proxy")}}, Cloudflared: connector, PaaS: panel}, PaaSPanel},
+		{"panel container with public proxy", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "::", 443, "docker-proxy")}},
+			Docker: &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Image: "ghcr.io/coollabsio/coolify:4.0.0", Running: true}}}}, PaaSPanel},
+		{"panel behind the tunnel only", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "127.0.0.1", 443, "docker-proxy")}}, Cloudflared: connector, PaaS: panel}, Tunnel},
+		{"managed server is not a panel", &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "docker-proxy")}}, Cloudflared: connector, PaaS: managed}, Mixed},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

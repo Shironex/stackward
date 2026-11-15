@@ -400,14 +400,14 @@ func checkPaaSProxyExposure(in Input) []Result {
 		if lwhy != nil {
 			return []Result{*why}
 		}
-		return []Result{paasJudgeProxy(proxy, "host", in.Profile)}
+		return []Result{paasJudgeProxy(proxy, "host", in.Profile, paasTunnelRuns(f))}
 	}
 	var out []Result
 	for _, c := range containers {
 		if !isPaaSProxy(c) {
 			continue
 		}
-		out = append(out, paasJudgeProxy(c, "container:"+c.Name, in.Profile))
+		out = append(out, paasJudgeProxy(c, "container:"+c.Name, in.Profile, paasTunnelRuns(f)))
 	}
 	if len(out) == 0 {
 		return One(Skip, "no platform proxy container found", nil)
@@ -431,7 +431,14 @@ func paasProxyFromListeners(f *facts.Facts) (paasContainer, *Result) {
 	return c, nil
 }
 
-func paasJudgeProxy(c paasContainer, subject string, prof profile.Name) Result {
+// paasTunnelRuns reports whether a Cloudflare Tunnel connector is known to
+// run on the host.
+func paasTunnelRuns(f *facts.Facts) bool {
+	present, known := profile.TunnelState(f)
+	return present && known
+}
+
+func paasJudgeProxy(c paasContainer, subject string, prof profile.Name, tunnel bool) Result {
 	var published, exposedWeb, exposedOther []string
 	for _, p := range c.Ports {
 		published = append(published, paasPortLabel(p))
@@ -462,6 +469,12 @@ func paasJudgeProxy(c paasContainer, subject string, prof profile.Name) Result {
 		r.Message = fmt.Sprintf("proxy publishes ports beyond 80 and 443 on all interfaces: %s", strings.Join(exposedOther, ", "))
 	case prof == profile.PublicWeb:
 		r.Level, r.Message = Pass, "proxy publishes only 80 and 443, as the public-web profile expects"
+	case prof == profile.PaaSPanel && tunnel:
+		r.Level = Info
+		r.Message = fmt.Sprintf("proxy publishes only 80 and 443 (%s), as a panel host does; a tunnel runs as well, so if the tunnel is meant to be the only way in, publish the proxy on 127.0.0.1 and pass --profile tunnel",
+			strings.Join(exposedWeb, ", "))
+	case prof == profile.PaaSPanel:
+		r.Level, r.Message = Pass, "proxy publishes only 80 and 443, as the paas-panel profile expects"
 	case prof == profile.Mixed:
 		r.Level = Warn
 		r.Message = fmt.Sprintf("a tunnel runs and the proxy is also published on all interfaces (%s); if the tunnel is meant to be the only way in, publish the proxy on 127.0.0.1",
