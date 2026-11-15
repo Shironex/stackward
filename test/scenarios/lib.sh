@@ -18,7 +18,7 @@ SOCKET_PROXY_IMAGE="tecnativa/docker-socket-proxy:0.3.0"
 
 # Every container and network a scenario creates starts with sw-, and every
 # compose project with sw, so cleanup never touches anything else.
-SW_CONTAINERS="sw-redis sw-socket sw-priv sw-app sw-web sw-socket-proxy"
+SW_CONTAINERS="sw-redis sw-socket sw-priv sw-app sw-web sw-panel sw-socket-proxy"
 
 log() { printf '==> %s\n' "$*"; }
 
