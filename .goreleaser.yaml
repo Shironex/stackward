@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: stackward
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - id: stackward
+    main: ./cmd/stackward
+    binary: stackward
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      # The audit targets Linux hosts; darwin and windows exist for the
+      # laptop side `probe` command only. Windows arm64 is not needed.
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+      - -X github.com/Shironex/stackward/internal/version.Version={{ .Version }}
+    # Fixed file times: the commit time, so two builds of one commit match.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: stackward
+    ids: [stackward]
+    formats: [tar.gz]
+    name_template: "stackward_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - SECURITY.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+  # get.sh is published beside the archives and listed in the same file.
+  extra_files:
+    - glob: scripts/get.sh
+
+sboms:
+  # One SPDX document per archive, made by syft (installed by the workflow).
+  - id: archive-sbom
+    artifacts: archive
+    cmd: syft
+    documents:
+      - "${artifact}.spdx.json"
+    args: ["$artifact", "--output", "spdx-json=$document"]
+
+nfpms:
+  - id: stackward-deb
+    package_name: stackward
+    ids: [stackward]
+    formats: [deb]
+    maintainer: Shironex <Shironex@users.noreply.github.com>
+    description: Read only security audit for a self hosted Linux server.
+    homepage: https://github.com/Shironex/stackward
+    license: Apache-2.0
+    section: admin
+    priority: optional
+    file_name_template: "stackward_{{ .Version }}_{{ .Arch }}"
+    bindir: /usr/bin
+    # mtime of package contents follows the commit as well.
+    mtime: "{{ .CommitDate }}"
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/stackward/LICENSE
+
+# Keyless signing of the checksums file only. Every archive is covered by it.
+# Needs the cosign binary and an OIDC token (id-token: write in CI).
+signs:
+  - id: checksums
+    cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - --yes
+      - --bundle=${signature}
+      - ${artifact}
+    output: true
+
+release:
+  github:
+    owner: Shironex
+    name: stackward
+  draft: false
+  prerelease: auto
+  extra_files:
+    - glob: scripts/get.sh
+
+changelog:
+  disable: true
