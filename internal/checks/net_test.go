@@ -240,6 +240,11 @@ func TestNET007(t *testing.T) {
 		{"loaded with route rules", &facts.Facts{Firewall: loaded(netTSRoute)}, "", Pass},
 		{"loaded, published, tailnet unknown", &facts.Facts{Firewall: loaded(), Listeners: published}, "", Warn},
 		{"loaded, nothing seen", &facts.Facts{Firewall: loaded()}, "", Unknown},
+		{"loaded, docker publishes without docker-proxy", &facts.Facts{Firewall: loaded(), Docker: &facts.Docker{Installed: true, API: "ok",
+			Containers: []facts.DockerContainer{{Name: "web", Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 80, Proto: "tcp"}}}}}}, "", Warn},
+		{"loaded, docker publishes on loopback only", &facts.Facts{Firewall: loaded(), Docker: &facts.Docker{Installed: true, API: "ok",
+			Containers: []facts.DockerContainer{{Name: "web", Ports: []facts.DockerPort{{HostIP: "127.0.0.1", HostPort: 8080, ContainerPort: 80}}}}}}, "", Pass},
+		{"loaded, docker denied", &facts.Facts{Firewall: loaded(), Docker: &facts.Docker{Installed: true, API: "denied"}}, "", Unknown},
 	})
 	netWithTailnet(t, false, true)
 	netCases(t, "NET-007", []netCase{{"loaded, no tailnet", &facts.Facts{Firewall: loaded(), Listeners: published}, "", Pass}})
