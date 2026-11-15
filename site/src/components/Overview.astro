@@ -3,7 +3,7 @@
  * The overview page: what stackward is, the stack it reads, the read only
  * promise, the result levels, and the way into the Learn track.
  */
-import sample from '../samples/audit-showcase.txt?raw';
+import sample from '../samples/audit-showcase.json';
 import { catalog } from '../lib/catalog.mjs';
 import { TOPICS } from '../lib/learn.mjs';
 import { url } from '../lib/site.mjs';
@@ -60,7 +60,7 @@ const levels = [
       <Terminal
         brief
         command="sudo stackward audit"
-        output={sample}
+        report={sample}
         caption="Real output, an excerpt: the showcase-coolify-tunnel test fixture, cut to a trimmed header, three of its findings and the summary."
         more={{ href: `${url('usage')}#reading-a-report`, label: 'See a full report.' }}
       />

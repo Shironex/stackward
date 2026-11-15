@@ -6,7 +6,7 @@ description: Run an audit, read the report, explain a check, probe a server from
 import { Aside } from '@astrojs/starlight/components';
 import Terminal from '../../components/Terminal.astro';
 import Level from '../../components/Level.astro';
-import sample from '../../samples/audit-showcase.txt?raw';
+import sample from '../../samples/audit-showcase.json';
 
 stackward runs on the server you want to audit. It reads, prints a report
 and exits. Nothing on the server changes.
@@ -42,7 +42,10 @@ way: root gives stackward more to read, not more to change.
 | `--format text\|json\|md` | Output format. Text is the default. |
 | `--out FILE` | Write the report to this file. It is the only file stackward ever writes. |
 | `--fail-on fail\|warn\|never` | Which level makes the exit code 1. Default `fail`. |
-| `--all` | Text and Markdown output: also list passing and skipped results. |
+| `--all` | Text and Markdown output: also list passing and skipped results (text: and every info result in full). |
+| `--info` | Text output: list every info result in full instead of one line each. |
+| `--group` | Text output: lay the results out by check group instead of by level. |
+| `--plain` | Text output: no colors, Unicode or box lines, as when piped. `NO_COLOR` drops only the colors. |
 | `--profile NAME` | Ingress profile: `auto`, `tunnel`, `public-web`, `tailnet-only` or `paas-panel`. Default `auto`. |
 | `--dump-facts` | Print the collected facts as redacted JSON instead of a report, for bug reports. |
 | `--facts FILE` | Evaluate the checks over a saved facts file instead of this host. |
@@ -56,8 +59,8 @@ way: root gives stackward more to read, not more to change.
 
 <Terminal
   command="sudo stackward audit"
-  output={sample}
-  caption="A real text report from a build of main, run over the showcase-coolify-tunnel test fixture. An excerpt: only whole groups are left out, and the version is shortened. The fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run. Long lines wrap under their message column."
+  report={sample}
+  caption="A real report from a build of main, run over the showcase-coolify-tunnel test fixture and laid out like the text report. An excerpt: the summary box and the passing and skipped results are left out (the summary line keeps the real counts), and the version is shortened. Long lines wrap under their message column."
 />
 
 The header comes first. Read it before the findings:
@@ -72,9 +75,14 @@ The header comes first. Read it before the findings:
 - **coverage** counts results that were checked, unknown and skipped. A
   report with many unknowns has not told you much yet.
 
-Then come the results, grouped (SYS, SSH, NET, DKR and so on). Each line has a
-level, a check id, a title and the severity from the catalog. Failing and
-warning lines also print the fix.
+On a terminal a summary box follows: the counts per level, the fails most
+severe first and the commands to dig in. Then come the results by level:
+fail, warn, unknown, then info. Each result leads with what was found, then
+its check id, the severity from the catalog and the subject, the rule it was
+measured against (the check title) and, for fail and warn, the fix. Info
+results are one line each unless you pass `--info` or `--all`; `--group`
+lays the results out by check group (SYS, SSH, NET, DKR and so on) instead.
+Piped, written with `--out` or with `--plain`, the report is plain ASCII.
 
 ### Levels
 
@@ -190,6 +198,7 @@ run unless you pass `--i-own-this`.
 | `--i-own-this` | Confirm you own the host or may test it. Required when not on a terminal. |
 | `--json`, `--format text\|json` | Output format. Text is the default. |
 | `--all` | Text output: also list passing and skipped results. |
+| `--plain` | Text output: no colors, Unicode or box lines, as when piped. |
 | `--fail-on fail\|warn\|never` | Which level makes the exit code 1. Default `fail`. |
 | `--out FILE` | Write the report to this file. |
 | `--timeout DURATION` | Time limit for each TCP connect and banner read. Default 3s. |
