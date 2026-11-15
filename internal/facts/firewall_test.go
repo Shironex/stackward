@@ -133,17 +133,17 @@ func TestParseIptablesS(t *testing.T) {
 	if !ipt.HasChain("DOCKER") || !ipt.HasChain("ufw-user-forward") || ipt.HasChain("NOPE") {
 		t.Error("HasChain wrong")
 	}
-	if got := dockerUserState(ipt); got != "filtered" {
+	if got := dockerUserState(ipt, nil); got != "filtered" {
 		t.Errorf("dockerUserState = %s", got)
 	}
 	def := ParseIptablesS([]byte("-P INPUT ACCEPT\n-N DOCKER-USER\n-A DOCKER-USER -j RETURN\n"))
-	if got := dockerUserState(def); got != "default" {
+	if got := dockerUserState(def, nil); got != "default" {
 		t.Errorf("default chain = %s", got)
 	}
-	if got := dockerUserState(ParseIptablesS([]byte("-P INPUT ACCEPT\n"))); got != "absent" {
+	if got := dockerUserState(ParseIptablesS([]byte("-P INPUT ACCEPT\n")), nil); got != "absent" {
 		t.Errorf("no chain = %s", got)
 	}
-	if got := dockerUserState(&Iptables{Installed: true}); got != "" {
+	if got := dockerUserState(&Iptables{Installed: true}, nil); got != "" {
 		t.Errorf("unlisted = %q", got)
 	}
 }
