@@ -2,7 +2,7 @@
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
  104 checks, 141 results  5 fail  11 warn  89 unknown  0 info  34 pass  2 skip                           mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  105 of 141                                      │ DETAIL                                            1-25 of 53
+FINDINGS  105 of 141                                      │ DETAIL                                            1-25 of 59
 Docker DKR                                       17 of 53 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
   FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
@@ -27,6 +27,6 @@ System SYS                                              5 │   day. Even a loop
   UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
   UNKNOWN SYS-004  Clock is synchronized                  │   from the shared listener facts (ss or /proc, no root      
   UNKNOWN SYS-005  Disks have free space                  │   needed). This check can fail without access to the Docker 
-SSH                                                    16 │   socket. A port on 2375 or 2376 held by docker-proxy is a  
+SSH                                                    16 │   socket. A port on 2375 or 2376 that a container publishes 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            

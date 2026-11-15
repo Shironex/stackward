@@ -521,3 +521,60 @@ func TestDKR002PublishedSocketProxy(t *testing.T) {
 		t.Errorf("denied API: %s", got)
 	}
 }
+
+// TestDKR002DockerdHoldsPublishedPort is the real run on Docker without the
+// userland proxy (or on the nftables backend): dockerd, not docker-proxy,
+// holds the socket proxy's published 127.0.0.1:2375. The Docker facts show
+// the container publishing it, so it is that container's port.
+func TestDKR002DockerdHoldsPublishedPort(t *testing.T) {
+	sock := []facts.DockerMount{{Type: "bind", Source: "/var/run/docker.sock", Target: "/var/run/docker.sock", ReadOnly: true}}
+	proxy := app("socket-proxy", func(c *facts.DockerContainer) {
+		c.Image = "lscr.io/linuxserver/socket-proxy:3.2"
+		c.Mounts = sock
+		c.Flags = map[string]string{"CONTAINERS": "1", "INFO": "1", "POST": "0"}
+		c.Ports = []facts.DockerPort{{ContainerPort: 2375, Proto: "tcp", HostIP: "127.0.0.1", HostPort: 2375}}
+	})
+	host := func(addr string, c facts.DockerContainer) *facts.Facts {
+		f := dockerHost(c)
+		f.Docker.TCPRead = false
+		f.Listeners = &facts.Listeners{Source: "ss", ProcessesVisible: true, OwnersSource: "snapshot",
+			Sockets: []facts.Listener{netSock("tcp", addr, 2375, "dockerd")}}
+		return f
+	}
+	cases := []struct {
+		name    string
+		f       *facts.Facts
+		want    Level
+		mention string
+	}{
+		{"socket proxy published by dockerd", host("127.0.0.1", proxy), Info, "not by dockerd"},
+		{"dockerd on another address than the proxy", host("192.0.2.10", proxy), Fail, "anyone who reaches it is root"},
+		{"dockerd with no container publishing 2375", host("127.0.0.1", app("web")), Fail, "loopback only"},
+	}
+	for _, tc := range cases {
+		rs := checkDaemonTCP(Input{Facts: tc.f})
+		if got := only(t, rs); got != tc.want || !strings.Contains(rs[0].Message, tc.mention) {
+			t.Errorf("%s: got %s %q, want %s mentioning %q", tc.name, got, rs[0].Message, tc.want, tc.mention)
+		}
+	}
+
+	// Without the Docker API, dockerd holding 2375 while the daemon config
+	// and unit name no tcp host is most likely a published port: unknown.
+	f := host("127.0.0.1", proxy)
+	f.Docker.API, f.Docker.APIReason = "denied", "permission denied"
+	if rs := checkDaemonTCP(Input{Facts: f}); only(t, rs) != Unknown || !strings.Contains(rs[0].Message, "most likely a container port") {
+		t.Errorf("denied API, no tcp host: got %s %q", rs[0].Level, rs[0].Message)
+	}
+	// With a tcp host in the config it is the daemon's API.
+	f.Docker.Daemon.Hosts = append(f.Docker.Daemon.Hosts, facts.DockerHost{Addr: "tcp://127.0.0.1:2375", Source: "daemon.json"})
+	if got := only(t, checkDaemonTCP(Input{Facts: f})); got != Fail {
+		t.Errorf("denied API, tcp host: got %s", got)
+	}
+	// A config that could not be read proves nothing: still a fail.
+	f = host("127.0.0.1", proxy)
+	f.Docker.API = "denied"
+	f.Docker.Daemon.ConfigError = "permission denied"
+	if got := only(t, checkDaemonTCP(Input{Facts: f})); got != Fail {
+		t.Errorf("denied API, unreadable config: got %s", got)
+	}
+}

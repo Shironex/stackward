@@ -245,10 +245,13 @@ func mountText(m facts.DockerMount) string {
 
 // DKR-002: the daemon must not listen on TCP without TLS client checks.
 //
-// A listener on 2375 or 2376 is not always dockerd: docker-proxy holds the
-// port when a container publishes it, typically a Docker socket proxy on
-// 127.0.0.1. Those are judged by what the container hands out, not as a raw
-// daemon.
+// A listener on 2375 or 2376 is not always the daemon's API: docker-proxy
+// holds the port when a container publishes it, typically a Docker socket
+// proxy on 127.0.0.1, and dockerd itself holds it when Docker runs without
+// the userland proxy or on its nftables firewall backend. Whenever the
+// Docker facts show a container publishing that address and port, the
+// listener is that container's port, judged by what the container hands
+// out, whatever the owner's name.
 func checkDaemonTCP(in Input) []Result {
 	d, early := dockerFacts(in, false)
 	if early != nil {
@@ -266,13 +269,20 @@ func checkDaemonTCP(in Input) []Result {
 	}
 	ports, tcpKnown := dockerPortListenersOwned(in.Facts, d)
 	listeners := []string{}
-	var daemonPorts []string
+	var daemonPorts, maybePublished []string
 	var published []dockerAPIPort
+	// dockerd holding a port that no tcp host in a fully read daemon
+	// config asks for is most likely a published container port; without
+	// the Docker API stackward cannot tell which.
+	configSaysNoTCP := d.Daemon != nil && dd.ConfigError == "" && len(hosts) == 0 && d.API != "ok"
 	for _, p := range ports {
 		listeners = append(listeners, p.label())
-		if p.container {
+		switch {
+		case p.container:
 			published = append(published, p)
-		} else {
+		case p.dockerd && configSaysNoTCP:
+			maybePublished = append(maybePublished, p.label())
+		default:
 			daemonPorts = append(daemonPorts, p.label())
 		}
 	}
@@ -287,6 +297,11 @@ func checkDaemonTCP(in Input) []Result {
 	}
 	if len(published) > 0 {
 		return []Result{judgePublishedAPIPorts(d, published, ev)}
+	}
+	if len(maybePublished) > 0 {
+		return One(Unknown, fmt.Sprintf(
+			"dockerd holds %s, but neither daemon.json nor the docker.service unit asks it to listen on TCP: most likely a container port published by dockerd (no userland proxy, or the nftables backend); which container it is needs the Docker API (%s)",
+			strings.Join(maybePublished, ", "), valueOrUnknown(d.APIReason)), ev)
 	}
 	if d.API != "ok" {
 		return apiUnknown(d)
@@ -314,8 +329,11 @@ type dockerAPIPort struct {
 	port int
 	bind string // "loopback", "any" or "specific"
 	// container is true when docker-proxy holds it or a container
-	// publishes the port: a published container port, not dockerd.
+	// publishes the port: a published container port, not the daemon's
+	// API.
 	container bool
+	// dockerd is true when dockerd is the only owner named.
+	dockerd bool
 }
 
 func (p dockerAPIPort) label() string { return fmt.Sprintf("%d/%s", p.port, p.bind) }
@@ -418,8 +436,9 @@ func portLabels(ps []dockerAPIPort) string {
 }
 
 // dockerPortListenersOwned is dockerPortListeners with the owner of each
-// port: docker-proxy (or, with the API read, a container publishing the
-// port) marks a published container port.
+// port: docker-proxy, or a container the Docker API lists publishing the
+// address and port (whether dockerd or no named process holds it), marks a
+// published container port.
 func dockerPortListenersOwned(f *facts.Facts, d *facts.Docker) (out []dockerAPIPort, known bool) {
 	if l := f.Listeners; l != nil {
 		idx := map[string]int{}
@@ -428,10 +447,11 @@ func dockerPortListenersOwned(f *facts.Facts, d *facts.Docker) (out []dockerAPIP
 				continue
 			}
 			p := dockerAPIPort{port: s.Port, bind: bindWord(s.Class())}
-			p.container = s.HasProcess("docker-proxy") ||
-				(!s.HasProcess("dockerd") && d.API == "ok" && len(containersPublishing(d, s.Port)) > 0)
+			p.container = s.PublishedByContainer(d)
+			p.dockerd = len(s.Processes) > 0 && !p.container && onlyProcess(s, "dockerd")
 			if i, ok := idx[p.label()]; ok {
 				out[i].container = out[i].container && p.container
+				out[i].dockerd = out[i].dockerd && p.dockerd
 				continue
 			}
 			idx[p.label()] = len(out)
@@ -444,6 +464,16 @@ func dockerPortListenersOwned(f *facts.Facts, d *facts.Docker) (out []dockerAPIP
 		out = append(out, dockerAPIPort{port: t.Port, bind: t.Bind})
 	}
 	return out, d.TCPRead
+}
+
+// onlyProcess reports whether every process named for the socket is name.
+func onlyProcess(s facts.Listener, name string) bool {
+	for _, p := range s.Processes {
+		if p != name {
+			return false
+		}
+	}
+	return true
 }
 
 func bindWord(c facts.BindClass) string {

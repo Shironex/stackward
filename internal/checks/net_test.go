@@ -219,6 +219,26 @@ func TestExposureContainerPortWithoutProcessNames(t *testing.T) {
 	}
 }
 
+// TestExposureDockerdHoldsPublishedPort: Docker without the userland
+// proxy (or on the nftables backend) names dockerd as the owner of a
+// published port. With a container publishing it in the Docker facts it is
+// a published container port, not a host socket UFW filters.
+func TestExposureDockerdHoldsPublishedPort(t *testing.T) {
+	l := &facts.Listeners{Source: "ss", ProcessesVisible: true, Sockets: []facts.Listener{netSock("tcp", "0.0.0.0", 8080, "dockerd")}}
+	docker := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
+		Name: "sw-web", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 8080, ContainerPort: 8080, Proto: "tcp"}},
+	}}}
+	f := &facts.Facts{Listeners: l, Firewall: netUFW("deny", netSSHAnywhere), Docker: docker}
+	if r := netOne(t, "NET-004", f, ""); r.Level != Warn || !strings.Contains(r.Message, "published container port") {
+		t.Errorf("dockerd holds a published port: %s (%s), want warn", r.Level, r.Message)
+	}
+	// No container publishes it: a host socket, judged by UFW.
+	f.Docker = &facts.Docker{Installed: true, API: "ok"}
+	if r := netOne(t, "NET-004", f, ""); r.Level != Pass {
+		t.Errorf("dockerd with nothing published: %s (%s), want pass", r.Level, r.Message)
+	}
+}
+
 func TestNET005(t *testing.T) {
 	withWeb := &facts.Facts{Firewall: netUFW("deny", netWebAnywhere, netSSHTailnet)}
 	clean := &facts.Facts{Firewall: netUFW("deny", netSSHTailnet)}
