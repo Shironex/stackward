@@ -106,9 +106,37 @@ regular security support; plan the move to Debian 13.
 - **Release upgrades** are real migrations: new major versions of system
   packages, sometimes of Docker's dependencies. Rehearse on a copy first.
 
+## Disk, time, logs and backups
+
+A server can fail quietly without any attacker. Docker's default `json-file`
+log driver has no size limit unless you set `max-size` (its default is -1,
+unlimited), so a noisy container can fill the disk
+([DKR-031](/stackward/checks/dkr-031/)). journald may use 10 percent of the
+filesystem, capped at 4G, unless you set `SystemMaxUse=`
+([LOG-001](/stackward/checks/log-001/), [LOG-003](/stackward/checks/log-003/)),
+and it keeps the journal across reboots only when `Storage=persistent` is in
+effect or `Storage=auto` finds `/var/log/journal`
+([LOG-005](/stackward/checks/log-005/)). The audit also looks at free space
+on `/`, `/var` and the Docker root ([SYS-005](/stackward/checks/sys-005/)),
+proxy access log rotation ([LOG-002](/stackward/checks/log-002/)) and whether
+the clock is synchronized ([SYS-004](/stackward/checks/sys-004/)).
+
+Two more checks are about being able to recover and notice: a metrics agent
+([LOG-004](/stackward/checks/log-004/)) and backups of the platform's own
+database and host level backup tools
+([BAK-001](/stackward/checks/bak-001/), [BAK-002](/stackward/checks/bak-002/)).
+They only report what exists; whether a backup restores is something only a
+restore test shows.
+
+Versions matter too: the audit reports a distribution it is not tested on
+([SYS-001](/stackward/checks/sys-001/)), a Docker Engine release line past
+upstream support ([DKR-034](/stackward/checks/dkr-034/), dates from
+endoflife.date) and infrastructure containers on `:latest` or no tag
+([DKR-032](/stackward/checks/dkr-032/)).
+
 ## Checks that cover it
 
-<Checks ids={['UPD-001', 'UPD-002', 'UPD-003', 'UPD-004', 'UPD-005', 'UPD-006', 'SYS-002', 'SYS-003']} />
+<Checks ids={['UPD-001', 'UPD-002', 'UPD-003', 'UPD-004', 'UPD-005', 'UPD-006', 'SYS-001', 'SYS-002', 'SYS-003', 'SYS-004', 'SYS-005', 'DKR-031', 'DKR-032', 'DKR-034', 'LOG-001', 'LOG-002', 'LOG-003', 'LOG-004', 'LOG-005', 'BAK-001', 'BAK-002']} />
 
 ## Sources
 
@@ -117,3 +145,6 @@ regular security support; plan the move to Debian 13.
 - Ubuntu, [release cycle](https://ubuntu.com/about/release-cycle): five years of standard security maintenance for LTS.
 - Debian, [releases](https://www.debian.org/releases/): three years of full support and two of LTS; Debian 12 and 13 dates.
 - Debian, [LTS](https://www.debian.org/lts/): extends every stable release to at least five years.
+- Docker docs, [JSON File logging driver](https://docs.docker.com/engine/logging/drivers/json-file/): `max-size` defaults to -1 (unlimited), `max-file` needs `max-size`.
+- freedesktop.org, [journald.conf](https://www.freedesktop.org/software/systemd/man/latest/journald.conf.html): `SystemMaxUse=` defaults to 10 percent capped at 4G; `Storage=` values and the `/var/log/journal` rule.
+- endoflife.date, [Docker Engine](https://endoflife.date/docker-engine): upstream support dates.

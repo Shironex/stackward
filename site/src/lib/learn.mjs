@@ -26,7 +26,7 @@ export const TOPICS = [
     title: 'SSH access',
     short: 'SSH access',
     summary: 'Passwords, root login, the effective config and why the first value wins.',
-    checks: ['SSH-001', 'SSH-002', 'SSH-003', 'SSH-004', 'SSH-005', 'SSH-006', 'SSH-008', 'SSH-009', 'SSH-010', 'SSH-011', 'SSH-013', 'SSH-014'],
+    checks: ['SSH-001', 'SSH-002', 'SSH-003', 'SSH-004', 'SSH-005', 'SSH-006', 'SSH-008', 'SSH-009', 'SSH-010', 'SSH-011', 'SSH-013', 'SSH-014', 'SSH-007', 'SSH-012', 'SSH-015', 'USR-001', 'USR-002', 'USR-003', 'USR-004', 'USR-006', 'USR-007'],
   },
   {
     slug: 'firewall-and-docker',
@@ -71,7 +71,7 @@ export const TOPICS = [
     title: 'Tailscale and tunnels as the only way in',
     short: 'Tunnels and Tailscale',
     summary: 'Close the origin, keep a private path, and prove it still works.',
-    checks: ['TS-001', 'TS-002', 'TS-003', 'TS-004', 'CF-002', 'CF-003', 'NET-003', 'NET-005', 'PAAS-002'],
+    checks: ['TS-001', 'TS-002', 'TS-003', 'TS-004', 'CF-002', 'CF-003', 'NET-003', 'NET-005', 'PAAS-002', 'CF-001', 'TS-005'],
   },
   {
     slug: 'crowdsec-and-fail2ban',
@@ -80,7 +80,7 @@ export const TOPICS = [
     title: 'CrowdSec and fail2ban behind a tunnel',
     short: 'CrowdSec and fail2ban',
     summary: 'Why a firewall ban does nothing when every request arrives from the tunnel.',
-    checks: ['CS-001', 'CS-002', 'CS-003', 'CS-004', 'CS-005', 'CS-008', 'CS-010', 'CS-011'],
+    checks: ['CS-001', 'CS-002', 'CS-003', 'CS-004', 'CS-005', 'CS-008', 'CS-010', 'CS-011', 'CS-006', 'CS-007'],
   },
   {
     slug: 'updates',
@@ -89,7 +89,7 @@ export const TOPICS = [
     title: 'Unattended upgrades and end of support',
     short: 'Updates',
     summary: 'Patches that are installed but not running, and releases nobody patches.',
-    checks: ['UPD-001', 'UPD-002', 'UPD-003', 'UPD-004', 'UPD-005', 'UPD-006', 'SYS-002', 'SYS-003'],
+    checks: ['UPD-001', 'UPD-002', 'UPD-003', 'UPD-004', 'UPD-005', 'UPD-006', 'SYS-002', 'SYS-003', 'SYS-001', 'SYS-004', 'SYS-005', 'DKR-031', 'DKR-032', 'DKR-034', 'LOG-001', 'LOG-002', 'LOG-003', 'LOG-004', 'LOG-005', 'BAK-001', 'BAK-002'],
   },
   {
     slug: 'kernel-settings',
@@ -107,7 +107,7 @@ export const TOPICS = [
     title: 'Secrets on disk',
     short: 'Secrets on disk',
     summary: 'File permissions on .env files, keys and registry credentials.',
-    checks: ['SEC-001', 'SEC-002', 'SEC-003', 'SEC-005', 'SEC-006', 'CF-004'],
+    checks: ['SEC-001', 'SEC-002', 'SEC-003', 'SEC-005', 'SEC-006', 'CF-004', 'SEC-007'],
   },
   {
     slug: 'coolify-and-dokploy',
