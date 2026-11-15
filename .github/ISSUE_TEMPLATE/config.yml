@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Shironex/stackward/security/advisories/new
+    about: Anything that breaks the read only promise. Do not open a public issue, see SECURITY.md.

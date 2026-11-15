@@ -1,0 +1,21 @@
+name: Docs or learn content
+description: A page is wrong, unclear or missing
+labels: ["documentation", "needs triage"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or check id
+      description: A path under docs/, a check page or a section of the README
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested wording or sources (optional)
