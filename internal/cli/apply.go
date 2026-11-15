@@ -220,13 +220,14 @@ func runUndo(args []string, stdout, stderr io.Writer) int {
 
 func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	var runID, txnID string
-	var yes, byTimer bool
+	var yes, timer, boot bool
 	fs := flag.NewFlagSet("undo", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&runID, "run", "", "the run id to undo, as apply printed it")
 	fs.StringVar(&txnID, "transaction", "", "roll back this open access-critical transaction now and stop its timer")
 	fs.BoolVar(&yes, "yes", false, "do not ask before undoing (needed when stdin is not a terminal)")
-	fs.BoolVar(&byTimer, "by-timer", false, "set only by the rollback timer: wait for the run lock, do nothing unless the transaction is still open, and leave the rollback to be acknowledged")
+	fs.BoolVar(&timer, "by-timer", false, "set only by the rollback timer: wait for the run lock, do nothing unless the transaction is still open, and leave the rollback to be acknowledged")
+	fs.BoolVar(&boot, "by-boot", false, "set only by the boot rollback unit: like --by-timer, at boot, and remove the unit")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward undo --run RUN_ID [--yes]\n       stackward undo --transaction ID [--yes]\n\nReverse an apply run from its journal: restore every file it changed from\nthe backup (or remove the files it created), then run the steps' undo\ncommands. A file that changed after the run is not touched. --transaction\nrolls back an open access-critical transaction now; its rollback timer\nruns the same. Needs root.\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -245,13 +246,22 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if fs.NArg() > 0 {
 		return fail("unexpected argument %q", fs.Arg(0))
 	}
+	by := byPerson
+	switch {
+	case timer && boot:
+		return fail("give --by-timer or --by-boot, not both")
+	case timer:
+		by = byTimer
+	case boot:
+		by = byBoot
+	}
 	switch {
 	case runID != "" && txnID != "":
 		return fail("give --run or --transaction, not both")
 	case txnID != "":
-		return undoTransaction(env, txnID, yes, byTimer, stdout, stderr)
-	case byTimer:
-		return fail("--by-timer goes with --transaction")
+		return undoTransaction(env, txnID, yes, by, stdout, stderr)
+	case by != byPerson:
+		return fail("--by-timer and --by-boot go with --transaction")
 	case runID == "":
 		return fail("give the run to undo with --run RUN_ID (apply prints it)")
 	}
@@ -274,9 +284,8 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	if err != nil {
 		return fail("%v", err)
 	}
-	hostname, _ := env.hostname()
-	if hostname == "" || j.Host.HostnameHash != report.HashHostname(hostname) {
-		return fail("run %s was applied on host %s, not this one; nothing was changed", runID, j.Host.HostnameHash)
+	if why := hostMismatch(env, "run", runID, j.Host.HostnameHash); why != "" {
+		return fail("%s", why)
 	}
 	lines := apply.UndoScript(j)
 	if len(lines) == 0 || j.Status == apply.RunUndone {
