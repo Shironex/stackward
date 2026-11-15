@@ -88,7 +88,7 @@ func TestParseProcNet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Listener{{Proto: "tcp", Address: "127.0.0.1", Port: 8080}, {Proto: "tcp", Address: "0.0.0.0", Port: 22}}
+	want := []Listener{{Proto: "tcp", Address: "127.0.0.1", Port: 8080, Inode: 31021}, {Proto: "tcp", Address: "0.0.0.0", Port: 22, Inode: 22011}}
 	if !reflect.DeepEqual(tcp, want) {
 		t.Errorf("tcp = %+v, want %+v", tcp, want)
 	}
@@ -96,7 +96,7 @@ func TestParseProcNet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want6 := []Listener{{Proto: "tcp", Address: "::", Port: 22}, {Proto: "tcp", Address: "2001:db8::10", Port: 8443}}
+	want6 := []Listener{{Proto: "tcp", Address: "::", Port: 22, Inode: 22013}, {Proto: "tcp", Address: "2001:db8::10", Port: 8443, Inode: 22014}}
 	if !reflect.DeepEqual(tcp6, want6) {
 		t.Errorf("tcp6 = %+v, want %+v", tcp6, want6)
 	}
@@ -104,7 +104,7 @@ func TestParseProcNet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantU := []Listener{{Proto: "udp", Address: "127.0.0.53", Port: 53}, {Proto: "udp", Address: "203.0.113.10", Port: 68}}
+	wantU := []Listener{{Proto: "udp", Address: "127.0.0.53", Port: 53, Inode: 20120}, {Proto: "udp", Address: "203.0.113.10", Port: 68, Inode: 20188}}
 	if !reflect.DeepEqual(udp, wantU) {
 		t.Errorf("udp = %+v, want %+v", udp, wantU)
 	}
@@ -158,14 +158,14 @@ func TestParseIfInet6(t *testing.T) {
 func TestListenersCollectorSS(t *testing.T) {
 	sys := newFakeSystem(nil)
 	sys.host.Root = true
-	sys.cmds["ss -Htulnp"] = CmdResult{Stdout: []byte(strings.Replace(ssCapture, "garbage line\n", "", 1))}
+	sys.cmds["ss -Htulnpe"] = CmdResult{Stdout: []byte(strings.Replace(ssCapture, "garbage line\n", "", 1))}
 	sys.cmds["ip -j addr show"] = CmdResult{Stdout: []byte(ipAddrJSON)}
 	var out Facts
 	if err := (listenersCollector{}).Collect(context.Background(), sys, &out); err != nil {
 		t.Fatal(err)
 	}
 	l := out.Listeners
-	if l.Source != "ss" || !l.ProcessesVisible || len(l.Sockets) != 14 || l.AddressesSource != "ip" {
+	if l.Source != "ss" || !l.ProcessesVisible || l.OwnersSource != "ss" || len(l.Sockets) != 14 || l.AddressesSource != "ip" {
 		t.Fatalf("unexpected listeners: %+v", l)
 	}
 	// Sorted: tcp before udp, then by port.
@@ -181,15 +181,122 @@ func TestListenersCollectorSS(t *testing.T) {
 func TestListenersCollectorSandboxHidesProcesses(t *testing.T) {
 	sys := newFakeSystem(nil)
 	sys.host.Root = true
-	sys.cmds["ss -Htulnp"] = CmdResult{Stdout: []byte(
+	sys.cmds["ss -Htulnpe"] = CmdResult{Stdout: []byte(
 		"tcp   LISTEN 0      4096          0.0.0.0:22         0.0.0.0:*\n" +
 			"tcp   LISTEN 0      4096          0.0.0.0:8080       0.0.0.0:*\n")}
 	var out Facts
 	if err := (listenersCollector{}).Collect(context.Background(), sys, &out); err != nil {
 		t.Fatal(err)
 	}
-	if l := out.Listeners; l.ProcessesVisible || len(l.Sockets) != 2 {
+	if l := out.Listeners; l.ProcessesVisible || l.OwnersSource != "none" || len(l.Sockets) != 2 {
 		t.Fatalf("root without any process name must not be visible: %+v", l)
+	}
+}
+
+// ssSandboxed is `ss -Htulnpe` as root under the Landlock sandbox: inodes
+// (from sock_diag netlink) but no owners.
+const ssSandboxed = `tcp   LISTEN 0      4096          0.0.0.0:2222       0.0.0.0:*    ino:23456 sk:1 cgroup:/system.slice/ssh.service <->
+tcp   LISTEN 0      4096          0.0.0.0:8080       0.0.0.0:*    ino:23500 sk:2 cgroup:/system.slice/docker.service <->
+udp   UNCONN 0      0             0.0.0.0:41641      0.0.0.0:*    ino:24001 sk:3 cgroup:/system.slice/tailscaled.service <->
+udp   UNCONN 0      0             0.0.0.0:7844       0.0.0.0:*    uid:998 ino:24100 sk:4 cgroup:/system.slice/cloudflared.service <->
+`
+
+func TestParseSSInode(t *testing.T) {
+	ls, err := ParseSS([]byte(ssSandboxed + `tcp   LISTEN 0      128   127.0.0.1:631   0.0.0.0:*    users:(("cupsd",pid=900,fd=7)) ino:30001 sk:5 <->` + "\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Listener{
+		{Proto: "tcp", Address: "0.0.0.0", Port: 2222, Inode: 23456},
+		{Proto: "tcp", Address: "0.0.0.0", Port: 8080, Inode: 23500},
+		{Proto: "udp", Address: "0.0.0.0", Port: 41641, Inode: 24001},
+		{Proto: "udp", Address: "0.0.0.0", Port: 7844, Inode: 24100},
+		{Proto: "tcp", Address: "127.0.0.1", Port: 631, Processes: []string{"cupsd"}, Inode: 30001},
+	}
+	if !reflect.DeepEqual(ls, want) {
+		t.Errorf("got %+v\nwant %+v", ls, want)
+	}
+}
+
+func fakeOwners(m map[uint64][]string) *SocketOwners {
+	return &SocketOwners{byInode: m, Processes: 100, FDsRead: 100}
+}
+
+// TestListenersCollectorSnapshotNamesOwners: under the sandbox ss names no
+// owner, and the snapshot taken before the sandbox fills them in by inode.
+func TestListenersCollectorSnapshotNamesOwners(t *testing.T) {
+	sys := newFakeSystem(nil)
+	sys.host.Root = true
+	sys.cmds["ss -Htulnpe"] = CmdResult{Stdout: []byte(ssSandboxed)}
+	owners := fakeOwners(map[uint64][]string{
+		23456: {"sshd", "systemd"}, 24001: {"tailscaled"}, 24100: {"cloudflared"}, 99999: {"other"},
+	})
+	var out Facts
+	if err := (listenersCollector{}).Collect(context.Background(), WithSocketOwners(sys, owners), &out); err != nil {
+		t.Fatal(err)
+	}
+	l := out.Listeners
+	if !l.ProcessesVisible || l.OwnersSource != "snapshot" {
+		t.Fatalf("snapshot owners must count as visible: %+v", l)
+	}
+	got := map[int][]string{}
+	for _, s := range l.Sockets {
+		got[s.Port] = s.Processes
+	}
+	want := map[int][]string{2222: {"sshd", "systemd"}, 8080: nil, 41641: {"tailscaled"}, 7844: {"cloudflared"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("owners = %v, want %v", got, want)
+	}
+	if !l.Sockets[0].HasProcess("sshd") {
+		t.Errorf("first socket should be sshd on 2222: %+v", l.Sockets[0])
+	}
+}
+
+func TestListenersCollectorSnapshotLimits(t *testing.T) {
+	cases := []struct {
+		name        string
+		root        bool
+		owners      *SocketOwners
+		wantSource  string
+		wantVisible bool
+	}{
+		{"truncated snapshot is not complete", true, &SocketOwners{byInode: map[uint64][]string{23456: {"sshd"}}, Truncated: true}, "snapshot", false},
+		{"not root sees only its own processes", false, fakeOwners(map[uint64][]string{23456: {"sshd"}}), "snapshot", false},
+		{"snapshot that matches nothing", true, fakeOwners(map[uint64][]string{1: {"x"}}), "none", false},
+		{"no snapshot", true, nil, "none", false},
+	}
+	for _, c := range cases {
+		sys := newFakeSystem(nil)
+		sys.host.Root = c.root
+		sys.cmds["ss -Htulnpe"] = CmdResult{Stdout: []byte(ssSandboxed)}
+		var out Facts
+		if err := (listenersCollector{}).Collect(context.Background(), WithSocketOwners(sys, c.owners), &out); err != nil {
+			t.Fatal(err)
+		}
+		if l := out.Listeners; l.OwnersSource != c.wantSource || l.ProcessesVisible != c.wantVisible {
+			t.Errorf("%s: source %q visible %v, want %q %v", c.name, l.OwnersSource, l.ProcessesVisible, c.wantSource, c.wantVisible)
+		}
+	}
+}
+
+// TestListenersCollectorProcFallbackSnapshot: without ss the /proc/net
+// tables carry inodes too, so the snapshot still names owners.
+func TestListenersCollectorProcFallbackSnapshot(t *testing.T) {
+	sys := newFakeSystem(map[string]string{"/proc/net/tcp": procTCP, "/proc/net/udp": procUDP})
+	sys.host.Root = true
+	owners := fakeOwners(map[uint64][]string{22011: {"sshd"}, 20120: {"systemd-resolve"}})
+	var out Facts
+	if err := (listenersCollector{}).Collect(context.Background(), WithSocketOwners(sys, owners), &out); err != nil {
+		t.Fatal(err)
+	}
+	l := out.Listeners
+	if l.Source != "proc" || l.OwnersSource != "snapshot" || !l.ProcessesVisible {
+		t.Fatalf("unexpected listeners: %+v", l)
+	}
+	for _, s := range l.Sockets {
+		if s.Proto == "tcp" && s.Port == 22 && !s.HasProcess("sshd") {
+			t.Errorf("tcp/22 not named: %+v", s)
+		}
 	}
 }
 
