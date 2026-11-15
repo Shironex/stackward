@@ -22,6 +22,10 @@ export default defineConfig({
       description:
         'A read only security audit for self hosted Linux servers running Docker, a PaaS, tunnels and intrusion prevention, plus a runbook track that explains every finding.',
       favicon: '/favicon.svg',
+      head: [
+        { tag: 'link', attrs: { rel: 'icon', href: `${BASE}/favicon-32.png`, type: 'image/png', sizes: '32x32' } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${BASE}/apple-touch-icon.png`, sizes: '180x180' } },
+      ],
       // The watch-log theme in load order: tokens and fonts, element and
       // Starlight chrome, the site's own components, then responsive rules.
       customCss: ['./src/styles/tokens.css', './src/styles/base.css', './src/styles/components.css', './src/styles/layout.css'],

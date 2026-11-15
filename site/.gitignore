@@ -7,3 +7,7 @@ src/content/docs/checks/
 src/content/docs/project/
 src/content/docs/install.md
 src/content/docs/contributing/architecture.md
+# Copied from assets/brand/ by scripts/sync.mjs.
+public/favicon.svg
+public/favicon-32.png
+public/apple-touch-icon.png

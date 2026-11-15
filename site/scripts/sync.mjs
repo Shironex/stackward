@@ -11,7 +11,7 @@
 // Every output path is gitignored. Missing inputs never fail the sync: an
 // empty catalog renders an empty reference, a missing doc renders a short
 // "not written yet" page.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -220,7 +220,24 @@ function write(path, text) {
   writeFileSync(path, text);
 }
 
+/** Brand files the site serves, copied from assets/brand/ so there is one source. */
+export const BRAND_FILES = [
+  { source: 'icon.svg', target: 'favicon.svg' },
+  { source: 'icon-32.png', target: 'favicon-32.png' },
+  { source: 'icon-180.png', target: 'apple-touch-icon.png' },
+];
+
+export function syncBrand(repoDir = REPO_DIR, publicDir = join(SITE_DIR, 'public')) {
+  mkdirSync(publicDir, { recursive: true });
+  for (const { source, target } of BRAND_FILES) {
+    const from = join(repoDir, 'assets', 'brand', source);
+    if (!existsSync(from)) throw new Error(`assets/brand/${source} is missing; the site needs it for ${target}`);
+    copyFileSync(from, join(publicDir, target));
+  }
+}
+
 export function sync() {
+  syncBrand();
   const catalog = loadCatalog();
   const known = new Set(catalog.checks.map((c) => c.id));
   const groupName = (id) => catalog.groups.find((g) => g.id === id)?.name ?? id;

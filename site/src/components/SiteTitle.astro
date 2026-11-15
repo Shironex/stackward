@@ -1,8 +1,8 @@
 ---
 /**
- * The site title: a plain text wordmark until the brand assets land. When
- * assets/brand/logo-dark.svg and logo-light.svg exist in the repo, they are
- * inlined here and swapped by theme, with the text kept for screen readers.
+ * The site title: the brand lockup from assets/brand/, inlined and swapped by
+ * theme (logo-dark.svg on dark, logo-light.svg on light). The link carries the
+ * accessible name. The plain wordmark is only a fallback if the files are gone.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,9 +11,12 @@ const brandDir = new URL('../../../assets/brand/', import.meta.url);
 function logo(name: string): string | null {
   const file = fileURLToPath(new URL(name, brandDir));
   if (!existsSync(file)) return null;
-  // Strip any XML prolog so the SVG can sit inline; mark it decorative.
+  // Strip any XML prolog so the SVG can sit inline; mark it decorative and
+  // drop its title, description and ids, which would repeat for both themes.
   return readFileSync(file, 'utf8')
     .replace(/<\?xml[^>]*\?>/, '')
+    .replace(/<(title|desc)\b[^>]*>[\s\S]*?<\/\1>/g, '')
+    .replace(/\s(?:role|aria-labelledby)="[^"]*"/g, '')
     .replace(/<svg\b/, '<svg aria-hidden="true" focusable="false"');
 }
 const dark = logo('logo-dark.svg');
