@@ -2,6 +2,7 @@ package cli
 
 import (
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,6 +114,44 @@ func TestProbeLoopbackJSON(t *testing.T) {
 	}
 	if strings.Contains(s, `"id": "SYS-`) {
 		t.Error("probe report lists audit checks")
+	}
+}
+
+// Each case is a target that is this machine; the interface lookup is faked.
+func TestProbeSelfTargetWarns(t *testing.T) {
+	old := probeLocalAddrs
+	probeLocalAddrs = func() ([]netip.Addr, error) { return []netip.Addr{netip.MustParseAddr("2001:db8::5")}, nil }
+	t.Cleanup(func() { probeLocalAddrs = old })
+	for _, target := range []string{"127.0.0.1", "::1", "2001:db8::5"} {
+		answer(t, false, "")
+		code, out, errs := run("probe", "--no-sandbox", "--i-own-this", "--timeout", "100ms", "--fail-on", "never", "--ports", "9", target)
+		if code != report.ExitOK {
+			t.Fatalf("%s: exit %d: %s", target, code, errs)
+		}
+		if !strings.Contains(errs, "is this machine") || !strings.Contains(errs, "not an outside view") {
+			t.Errorf("%s: stderr lacks the warning: %q", target, errs)
+		}
+		if !strings.Contains(out, "WARNING:") || !strings.Contains(out, "not an outside view") {
+			t.Errorf("%s: banner missing in:\n%s", target, out)
+		}
+	}
+}
+
+func TestProbeSelfTargetJSONRecorded(t *testing.T) {
+	answer(t, false, "")
+	code, out, _ := run("probe", "--no-sandbox", "--i-own-this", "--json", "--timeout", "100ms", "--fail-on", "never", "127.0.0.1")
+	if code != report.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	schema, err := os.ReadFile(filepath.Join("..", "..", "schema", "report.v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range schemacheck.Validate(schema, []byte(out)) {
+		t.Error(e)
+	}
+	if !strings.Contains(out, `"self_target": true`) {
+		t.Errorf("report lacks self_target:\n%s", out)
 	}
 }
 
