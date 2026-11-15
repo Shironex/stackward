@@ -114,7 +114,10 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	// /var/cache/apt/pkgcache.bin after dpkg changed (apt.conf(5),
 	// Dir::Cache), which the no writes sandbox would refuse. srcpkgcache is
 	// kept: without it apt reparses every list and needs a temporary file
-	// for each signed InRelease, which the sandbox refuses too.
+	// for each signed InRelease, which the sandbox refuses too. An empty
+	// Dir::Log::Planner stops the internal planner from replacing
+	// /var/log/apt/eipp.log.xz with a dump of the simulated plan, which it
+	// does on every run, simulation or not.
 	if res, err := sys.Run(ctx, "apt-get", aptSimulateArgs...); err != nil || res.ExitCode != 0 {
 		u.PendingError = aptSimulateError(err, res)
 		errs = append(errs, fmt.Errorf("apt-get -s upgrade: %w", cmdErr(err, res)))
@@ -138,8 +141,9 @@ func aptSimulateError(err error, res CmdResult) string {
 	return cmdErr(err, res).Error()
 }
 
-// aptSimulateArgs is `apt-get -s upgrade` with no lock and no cache writes.
-var aptSimulateArgs = []string{"-s", "-o", "Debug::NoLocking=true", "-o", "Dir::Cache::pkgcache=", "upgrade"}
+// aptSimulateArgs is `apt-get -s upgrade` with no lock, no cache writes
+// and no planner log.
+var aptSimulateArgs = []string{"-s", "-o", "Debug::NoLocking=true", "-o", "Dir::Cache::pkgcache=", "-o", "Dir::Log::Planner=", "upgrade"}
 
 func isTrue(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(s)) {
