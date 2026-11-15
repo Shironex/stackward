@@ -3949,9 +3949,10 @@
       "level": "info",
       "severity": "info",
       "subject": "host",
-      "message": "metrics agent found: node_exporter",
+      "message": "metrics agent found: alloy (container alloy), node_exporter",
       "evidence": {
         "agents": [
+          "alloy",
           "node_exporter"
         ]
       },

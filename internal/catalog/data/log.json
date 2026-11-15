@@ -30,8 +30,8 @@
       "id": "LOG-004",
       "title": "A metrics agent is present",
       "severity": "info",
-      "rationale": "Without metrics and an alert for disk and SSH logins you find out about problems from users. Informational: the usual agents (node exporter, Alloy, Netdata, Telegraf, Zabbix, Datadog) are looked for; agents that run as containers or in a PaaS are not detected.",
-      "verify": "systemctl list-units '*exporter*' '*netdata*' '*alloy*'",
+      "rationale": "Without metrics and an alert for disk and SSH logins you find out about problems from users. Informational. Looked for: agent files and units on the host (node exporter, Alloy, Grafana Agent, Netdata, Telegraf, Zabbix, Datadog, Beszel), running containers by image (grafana/alloy, prom/node-exporter, netdata/netdata, grafana/agent, grafana/promtail, datadog/agent, newrelic/infrastructure, telegraf, timberio/vector, fluent/fluent-bit, zabbix agents, cadvisor, beszel-agent), and processes that own a listening socket. Agents on another host or in a PaaS are not detected.",
+      "verify": "systemctl list-units '*exporter*' '*netdata*' '*alloy*'; docker ps --format '{{.Image}}'",
       "fix": "Add monitoring with an alert for disk usage and SSH logins."
     },
     {
