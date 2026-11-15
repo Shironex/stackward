@@ -50,10 +50,18 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: go build -trimpath -o dist/stackward ./cmd/stackward
+      # The transaction scenario needs the test-only access-critical steps
+      # (internal/plan/txntest); only this tagged build carries them.
+      - name: build the scenario binary (with the test-only steps)
+        env:
+          CGO_ENABLED: "0"
+        run: go build -trimpath -tags stackward_scenario -o dist/stackward-scenario ./cmd/stackward
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stackward-linux-amd64
-          path: dist/stackward
+          path: |
+            dist/stackward
+            dist/stackward-scenario
           retention-days: 3
           if-no-files-found: error
 
@@ -65,7 +73,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04]
-        scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ufw-docker, ssh, read-only, non-root, apply]
+        scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ufw-docker, ssh, read-only, non-root, apply, transaction]
     name: ${{ matrix.scenario }} (${{ matrix.os }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,9 +89,12 @@ jobs:
           OUT: ${{ runner.temp }}/scenario-out
           SCENARIO: ${{ matrix.scenario }}
         run: |
-          chmod +x "$STACKWARD"
+          chmod +x dist/stackward dist/stackward-scenario
+          if [ "$SCENARIO" = transaction ]; then
+            STACKWARD="$STACKWARD-scenario"
+          fi
           "$STACKWARD" version
-          test/scenarios/run.sh "$SCENARIO"
+          STACKWARD="$STACKWARD" test/scenarios/run.sh "$SCENARIO"
       - name: upload reports
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
