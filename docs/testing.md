@@ -144,3 +144,23 @@ stackward-scenarios`) rather than reusing it for anything else.
 Scenarios are live host only: they never write golden fixtures. When a
 scenario finds a bug, fix it with a unit test, and add a fixture from
 `stackward audit --dump-facts` if the facts show a new shape.
+
+## Install script
+
+`scripts/install.sh` is tested by `test/install/run.sh` (workflow
+`install-script`, on Ubuntu 24.04, 22.04 and 24.04 arm64). A python3 http
+server on 127.0.0.1 plays the release URLs (`STACKWARD_BASE_URL` points at
+it) and serves several fake releases with a stub `stackward`, a built `.deb`,
+archives and a `checksums.txt`, so nothing real is downloaded or installed.
+The scenarios cover install (also piped into `sh`, the one-line form),
+re-install, update when current and from an older version, no downgrade on
+update, uninstall that leaves nothing, files the script did not add left alone,
+a tampered checksum that writes nothing, a passing and a failing cosign stub,
+`--dry-run`, `--no-sudo`, plain output without escape codes, terminal output
+recorded with `script`, wget as the downloader, and the apt path with the fake
+package (including that apt prints no `_apt` notice).
+
+The binary scenarios write only under a temp directory and run anywhere. The
+apt scenarios install and remove a fake `stackward` package, so they run only
+with `STACKWARD_TEST_DEB=1`, which CI sets on its disposable runner. Never set
+it on a machine you use.
