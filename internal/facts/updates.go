@@ -1,6 +1,7 @@
 package facts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -48,6 +49,9 @@ type Updates struct {
 	PendingTotal        int      `json:"pending_total"`
 	PendingSecurity     int      `json:"pending_security"`
 	PendingSecurityPkgs []string `json:"pending_security_packages,omitempty"`
+	// PendingError says why the simulation did not run, in words a user
+	// can act on; empty when it ran.
+	PendingError string `json:"pending_error,omitempty"`
 }
 
 // Paths the updates collector reads.
@@ -112,6 +116,7 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	// kept: without it apt reparses every list and needs a temporary file
 	// for each signed InRelease, which the sandbox refuses too.
 	if res, err := sys.Run(ctx, "apt-get", aptSimulateArgs...); err != nil || res.ExitCode != 0 {
+		u.PendingError = aptSimulateError(err, res)
 		errs = append(errs, fmt.Errorf("apt-get -s upgrade: %w", cmdErr(err, res)))
 	} else {
 		u.PendingChecked = true
@@ -120,6 +125,17 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 
 	out.Updates = u
 	return errors.Join(errs...)
+}
+
+// aptSimulateError explains a failed `apt-get -s upgrade`. apt needs a
+// temporary file (or a cache write) only when its binary cache is missing
+// or stale; under the no writes sandbox that fails with "Permission denied".
+func aptSimulateError(err error, res CmdResult) string {
+	if err == nil && bytes.Contains(res.Stderr, []byte("Permission denied")) &&
+		(bytes.Contains(res.Stderr, []byte("mkstemp")) || bytes.Contains(res.Stderr, []byte("/var/cache/apt"))) {
+		return "apt's package cache is missing or stale, and rebuilding it needs a temporary file the sandbox refuses; run `sudo apt-cache gencaches` (or apt update) and audit again, or pass --no-sandbox"
+	}
+	return cmdErr(err, res).Error()
 }
 
 // aptSimulateArgs is `apt-get -s upgrade` with no lock and no cache writes.

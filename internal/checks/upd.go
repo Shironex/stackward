@@ -222,7 +222,11 @@ func checkPendingSecurity(in Input) []Result {
 		return One(Skip, "apt not found: this check covers Debian family hosts", map[string]any{"apt": false})
 	}
 	if !u.PendingChecked {
-		return One(Unknown, "could not simulate `apt-get upgrade`", map[string]any{"pending_security": nil})
+		msg := "could not simulate `apt-get upgrade`"
+		if u.PendingError != "" {
+			msg += ": " + u.PendingError
+		}
+		return One(Unknown, msg, map[string]any{"pending_security": nil})
 	}
 	ev := map[string]any{"pending_security": u.PendingSecurity, "pending_total": u.PendingTotal,
 		"packages": nonNil(u.PendingSecurityPkgs), "lists_updated": nil}
