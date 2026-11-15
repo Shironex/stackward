@@ -13,10 +13,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 85,
-    "results": 85,
+    "checks": 90,
+    "results": 90,
     "checked": 0,
-    "unknown": 85,
+    "unknown": 90,
     "skipped": 0,
     "root": false,
     "sandbox": {
@@ -33,7 +33,7 @@
   "summary": {
     "fail": 0,
     "warn": 0,
-    "unknown": 85,
+    "unknown": 90,
     "info": 0,
     "pass": 0,
     "skip": 0
@@ -924,6 +924,87 @@
       "fix": {
         "hint": "Consider Tailnet Lock for tailnets that reach servers (tailscale lock init)",
         "docs": "https://tailscale.com/kb/1226/tailnet-lock"
+      }
+    },
+    {
+      "id": "CF-001",
+      "group": "CF",
+      "title": "Cloudflare Tunnel presence",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the tunnel for profile inference"
+      }
+    },
+    {
+      "id": "CF-002",
+      "group": "CF",
+      "title": "The tunnel runs more than one connector",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Run a second replica of the same tunnel (a second container or service with the same token or credentials)",
+        "docs": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/tunnel-availability/"
+      }
+    },
+    {
+      "id": "CF-003",
+      "group": "CF",
+      "title": "The proxy is not reachable on a public address while ingress is the tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (127.0.0.1:443:443) and let cloudflared reach it locally or over a Docker network"
+      }
+    },
+    {
+      "id": "CF-004",
+      "group": "CF",
+      "title": "The tunnel token is not a command line argument",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pass the token as TUNNEL_TOKEN from a root only env file (or a credentials file with a config.yml), and never print docker inspect without a format filter"
+      }
+    },
+    {
+      "id": "CF-005",
+      "group": "CF",
+      "title": "The origin IP does not answer on 80/443 from outside (probe)",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "See CF-003: bind the proxy to loopback and close 80/443 in the provider firewall"
       }
     },
     {

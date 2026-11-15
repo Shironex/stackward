@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 8 checked, 77 unknown, 4 skipped (85 checks), root: yes
+- **Coverage:** 8 checked, 82 unknown, 4 skipped (90 checks), root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 77 |
+| unknown | 82 |
 | info | 3 |
 | pass | 0 |
 | skip | 4 |
@@ -112,7 +112,7 @@
 
 ## Not inspected
 
-<details><summary>77 checks not inspected</summary>
+<details><summary>82 checks not inspected</summary>
 
 **SYS: System**
 
@@ -190,6 +190,16 @@
 | [TS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-002.md) | Node key expiry is disabled on server nodes | `host` | not inspected: the tailscale collector did not run |
 | [TS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-003.md) | Tailscale Funnel and Serve expose only what is intended | `host` | not inspected: the tailscale collector did not run |
 | [TS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-005.md) | Tailnet Lock state | `host` | not inspected: the tailscale collector did not run |
+
+**CF: Cloudflare Tunnel**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [CF-001](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-001.md) | Cloudflare Tunnel presence | `host` | not inspected: the cloudflared collector did not run |
+| [CF-002](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-002.md) | The tunnel runs more than one connector | `host` | not inspected: the cloudflared collector did not run |
+| [CF-003](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-003.md) | The proxy is not reachable on a public address while ingress is the tunnel | `host` | not inspected: the cloudflared collector did not run |
+| [CF-004](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-004.md) | The tunnel token is not a command line argument | `host` | not inspected: the cloudflared collector did not run |
+| [CF-005](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-005.md) | The origin IP does not answer on 80/443 from outside (probe) | `host` | not inspected: the cloudflared collector did not run |
 
 **UPD: Updates**
 

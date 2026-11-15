@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no, run with sudo for full coverage
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 6 checked, 81 unknown, 0 skipped (85 checks), root: no
+- **Coverage:** 6 checked, 86 unknown, 0 skipped (90 checks), root: no
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 0 |
 | warn | 0 |
-| unknown | 81 |
+| unknown | 86 |
 | info | 0 |
 | pass | 6 |
 | skip | 0 |
@@ -25,7 +25,7 @@ No findings.
 
 Not running as root: run with sudo for full coverage.
 
-<details><summary>81 checks not inspected</summary>
+<details><summary>86 checks not inspected</summary>
 
 **SYS: System**
 
@@ -108,6 +108,16 @@ Not running as root: run with sudo for full coverage.
 | [TS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-003.md) | Tailscale Funnel and Serve expose only what is intended | `host` | not inspected: the tailscale collector did not run |
 | [TS-004](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-004.md) | Firewall rules that mention tailscale0 have a running tailnet behind them | `host` | not inspected: the firewall collector did not run |
 | [TS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/TS-005.md) | Tailnet Lock state | `host` | not inspected: the tailscale collector did not run |
+
+**CF: Cloudflare Tunnel**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [CF-001](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-001.md) | Cloudflare Tunnel presence | `host` | not inspected: the cloudflared collector did not run |
+| [CF-002](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-002.md) | The tunnel runs more than one connector | `host` | not inspected: the cloudflared collector did not run |
+| [CF-003](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-003.md) | The proxy is not reachable on a public address while ingress is the tunnel | `host` | not inspected: the cloudflared collector did not run |
+| [CF-004](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-004.md) | The tunnel token is not a command line argument | `host` | not inspected: the cloudflared collector did not run |
+| [CF-005](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-005.md) | The origin IP does not answer on 80/443 from outside (probe) | `host` | not inspected: the cloudflared collector did not run |
 
 **UPD: Updates**
 
