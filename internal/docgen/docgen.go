@@ -111,7 +111,7 @@ func page(e catalog.Entry) string {
 	fmt.Fprintf(&b, "- **Group:** %s\n", catalog.GroupName(e.Group))
 	fmt.Fprintf(&b, "- **Severity when it fails:** %s\n", e.Severity)
 	if e.NeedsRoot {
-		b.WriteString("- **Root:** the full result needs `sudo`. Without root this check reports `unknown`, never a pass.\n")
+		b.WriteString("- **Root:** the full result needs `sudo`. Without root this check may report `unknown`; it never reports a pass it could not verify.\n")
 	} else {
 		b.WriteString("- **Root:** not needed\n")
 	}
