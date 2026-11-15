@@ -66,6 +66,18 @@ func Check(r Reader, s Step) (applied bool, why string, err error) {
 	return g.Check(r, s)
 }
 
+// Pin runs the generator's Pin on s: it ties values the plan only states
+// (such as what an undo restores) to the host as it is now. Apply calls it
+// after Authorize, for a step that still has to run; a plan that disagrees
+// with the host must be made again.
+func Pin(r Reader, s Step) error {
+	g, ok := Lookup(s.ID)
+	if !ok || g.Pin == nil {
+		return nil
+	}
+	return g.Pin(r, s)
+}
+
 // RunsCommandsOnChange reports whether step id runs its commands only when
 // one of its edits changed a file in this run.
 func RunsCommandsOnChange(id string) bool {

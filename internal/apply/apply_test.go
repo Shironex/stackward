@@ -421,3 +421,45 @@ func ids(steps []plan.Step) []string {
 	}
 	return out
 }
+
+func TestSysctlUndoValueIsPinnedToTheRunningValue(t *testing.T) {
+	p := applytest.FixturePlan(t, "plan-host-settings-fix")
+	for name, tc := range map[string]struct {
+		tamper func(s *plan.Step)
+		want   string
+	}{
+		"another value": {func(s *plan.Step) {
+			s.Undo.Commands[3].Args = []string{"sysctl", "-w", "kernel.kptr_restrict=2"}
+		}, "undo restores kernel.kptr_restrict to 2 but it is 0"},
+		"changed since the audit": {func(*plan.Step) {}, "undo restores net.ipv4.conf.all.rp_filter to 1 but it is 0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := clone(applytest.Step(t, p, "sysctl-hardening"))
+			tc.tamper(&s)
+			root := t.TempDir()
+			applytest.Seed(t, root, p)
+			if name == "changed since the audit" {
+				applytest.Write(t, root, "/proc/sys/net/ipv4/conf/all/rp_filter", "0\n", 0o644)
+			}
+			h, r := applytest.NewHost(root)
+			// Authorize alone accepts a numeric value; the pin refuses it.
+			if err := plan.Authorize(s); err != nil {
+				t.Fatalf("authorize: %v", err)
+			}
+			_, err := apply.Prepare(h, []plan.Step{s})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err %v, want %q", err, tc.want)
+			}
+			if len(r.Calls()) != 0 {
+				t.Errorf("commands ran: %v", r.Calls())
+			}
+		})
+	}
+	// The untouched plan passes against the host it was made for.
+	root := t.TempDir()
+	applytest.Seed(t, root, p)
+	h, _ := applytest.NewHost(root)
+	if _, err := apply.Prepare(h, []plan.Step{applytest.Step(t, p, "sysctl-hardening")}); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -134,8 +134,8 @@ func Read(t testing.TB, root, p string) (string, bool) {
 }
 
 // Seed lays out the host a plan was made on: every replaced file holds the
-// old side of its edit, and every sysctl the plan sets has a running value
-// other than the one it sets.
+// old side of its edit, and every sysctl the plan restores in its undo has
+// that value as its running value (what the audit saw).
 func Seed(t testing.TB, root string, p *plan.Plan) {
 	t.Helper()
 	for _, s := range p.Steps {
@@ -143,13 +143,11 @@ func Seed(t testing.TB, root string, p *plan.Plan) {
 			if e.Action == plan.Replace {
 				Write(t, root, e.Path, e.Old, 0o644)
 			}
-			if s.ID != "sysctl-hardening" {
-				continue
-			}
-			for _, line := range strings.Split(e.New, "\n") {
-				if k, _, ok := strings.Cut(line, " = "); ok && !strings.HasPrefix(line, "#") {
-					Write(t, root, "/proc/sys/"+strings.ReplaceAll(k, ".", "/"), "9\n", 0o644)
-				}
+		}
+		for _, c := range s.Undo.Commands {
+			if len(c.Args) == 3 && c.Args[0] == "sysctl" && c.Args[1] == "-w" {
+				k, v, _ := strings.Cut(c.Args[2], "=")
+				Write(t, root, "/proc/sys/"+strings.ReplaceAll(k, ".", "/"), v+"\n", 0o644)
 			}
 		}
 	}

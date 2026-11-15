@@ -126,7 +126,8 @@ type Prepared struct {
 	Why     string
 }
 
-// Prepare authorizes every selected step, runs its check and verifies the
+// Prepare authorizes every selected step, runs its check, pins what the
+// step's undo restores to the host as it is now and verifies the
 // precondition of every edit of a step that still has to run. It only
 // reads; any error means nothing was changed.
 func Prepare(h Host, steps []plan.Step) ([]Prepared, error) {
@@ -140,6 +141,9 @@ func Prepare(h Host, steps []plan.Step) ([]Prepared, error) {
 			return nil, fmt.Errorf("step %s: %w", s.ID, err)
 		}
 		if !applied {
+			if err := plan.Pin(h, s); err != nil {
+				return nil, fmt.Errorf("step %s: %w", s.ID, err)
+			}
 			for _, e := range s.Edits {
 				if _, err := precondition(h, e); err != nil {
 					return nil, fmt.Errorf("step %s: %w", s.ID, err)
