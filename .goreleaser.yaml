@@ -99,5 +99,9 @@ release:
   extra_files:
     - glob: scripts/get.sh
 
+# Release notes come from CHANGELOG.md through --release-notes. Do not set
+# changelog.disable: goreleaser loads the --release-notes file inside its
+# changelog step, so disabling that step publishes an empty release body.
+# With a notes file the step uses the file and generates nothing from git.
 changelog:
-  disable: true
+  use: git
