@@ -28,6 +28,7 @@ func TestTailscaleCollectorRunning(t *testing.T) {
 	sys.cmds["tailscale status --json"] = CmdResult{Stdout: []byte(tsStatusJSON)}
 	sys.cmds["tailscale serve status --json"] = CmdResult{Stdout: []byte(`{"TCP":{"443":{"HTTPS":true}},"Web":{"edge1.example.com:443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:3000"}}}},"AllowFunnel":{"edge1.example.com:443":true}}`)}
 	sys.cmds["tailscale lock status --json"] = CmdResult{Stdout: []byte(`{"Enabled":false}`)}
+	sys.cmds["tailscale debug prefs"] = CmdResult{Stdout: []byte(`{"ControlURL":"https://controlplane.example.com","RouteAll":false,"RunSSH":true,"Hostname":"edge1"}`)}
 
 	out := &Facts{}
 	if err := (tailscaleCollector{}).Collect(context.Background(), sys, out); err != nil {
@@ -48,6 +49,21 @@ func TestTailscaleCollectorRunning(t *testing.T) {
 	}
 	if r, k := ts.TailnetRunning(); !r || !k {
 		t.Errorf("TailnetRunning = %v %v", r, k)
+	}
+	if ts.SSH == nil || !*ts.SSH {
+		t.Errorf("RunSSH: %v", ts.SSH)
+	}
+}
+
+func TestParseTailscaleRunSSH(t *testing.T) {
+	if v := parseTailscaleRunSSH([]byte(`{"RunSSH":false}`)); v == nil || *v {
+		t.Errorf("false: %v", v)
+	}
+	if v := parseTailscaleRunSSH([]byte(`{"WantRunning":true}`)); v != nil {
+		t.Errorf("missing key should be unknown: %v", *v)
+	}
+	if v := parseTailscaleRunSSH([]byte(`not json`)); v != nil {
+		t.Errorf("garbage should be unknown: %v", *v)
 	}
 }
 
