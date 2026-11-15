@@ -139,7 +139,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	p := plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: pf.accounts}, rep, plan.Options{
+	p := plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: pf.accounts, Source: sess.ClientAddr()}, rep, plan.Options{
 		Version: version.String(), Sandbox: sb, SourceKind: planSource(pf),
 		Vetoes: []plan.Veto{plan.LockoutVeto(apply.GuardInput(f, sess))},
 	})
