@@ -84,6 +84,11 @@ func TestInfer(t *testing.T) {
 		{name: "docker-proxy skips ufw", f: &facts.Facts{
 			Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "docker-proxy")}},
 			Firewall:  activeUFW()}, want: PublicWeb},
+		{name: "dockerd holding a published port skips ufw", f: &facts.Facts{
+			Listeners: &facts.Listeners{Sockets: []facts.Listener{sock("tcp", "0.0.0.0", 443, "dockerd")}},
+			Docker: &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{Name: "proxy", Running: true,
+				Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 443, ContainerPort: 443, Proto: "tcp"}}}}},
+			Firewall: activeUFW()}, want: PublicWeb},
 		{name: "loopback proxy and cloudflared", f: &facts.Facts{Listeners: &facts.Listeners{Sockets: []facts.Listener{
 			sock("tcp", "127.0.0.1", 443, "docker-proxy"), sock("tcp", "127.0.0.1", 20241, "cloudflared")}}}, want: Tunnel},
 		{name: "tunnel from facts", f: &facts.Facts{Listeners: &facts.Listeners{}}, tunnel: &fakeTunnel{true, true}, want: Tunnel},
