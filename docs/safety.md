@@ -20,6 +20,44 @@ first, read the report header (`sandbox: landlock`), and look at the
 `Run` calls in the collector code: they are the only way stackward starts
 another program.
 
+## Read before the sandbox
+
+The audit opens `--out`, reads `--facts`, and then applies the sandbox
+before any collector runs. One more thing is read in that window: which
+process holds which socket.
+
+Naming the process behind a listening socket means reading the links in
+`/proc/<pid>/fd` of every process, and the kernel allows that only with
+ptrace read access. Landlock scopes ptrace to processes inside the
+sandbox, so once it is on neither stackward nor the `ss` it starts can name
+a single owner. Without owners, checks fall back to weaker guesses: SSH is
+assumed on port 22, cloudflared and tailscaled cannot be told apart from
+other listeners (profile inference and the UDP client sockets in NET-004),
+and NET-004 shows no process names.
+
+So right before the sandbox, stackward takes a snapshot:
+
+- it lists `/proc`, and for each process reads `/proc/<pid>/comm` (the
+  short name `ss -p` prints) and the link targets in `/proc/<pid>/fd`,
+  keeping only targets of the form `socket:[inode]`;
+- it keeps a map of socket inode to process names, nothing else: no
+  command lines, no file paths, no other descriptors;
+- it opens files and directories read only, starts no command and sends
+  nothing anywhere;
+- it is bounded: at most 16384 processes, 1048576 descriptors and 3
+  seconds; a process that exits or denies access is skipped, and a walk a
+  limit cut short counts as incomplete.
+
+The listeners collector then joins the inodes `ss -e` prints (or the inode
+column of `/proc/net/tcp`, `tcp6`, `udp` and `udp6` without ss) to the
+snapshot. The facts record how owners were named in
+`listeners.owners_source`: `snapshot`, `ss` (with `--no-sandbox`, where
+ss names them itself and no snapshot is taken) or `none`.
+`processes_visible` is true only when the audit runs as root and owners
+were named; a snapshot cut short by a limit leaves it false, so a socket
+without a name still proves nothing. A socket opened between the snapshot
+and the collector has no name.
+
 ## Commands stackward runs
 
 Every program the audit starts is listed here, with what it touches. None
@@ -40,7 +78,7 @@ this table does not list.
 | `iptables -V` | firewall | no | prints the version |
 | `iptables -S` | firewall | no | iptables-nft (Ubuntu 22.04+, Debian 11+) takes no lock. iptables-legacy opens `/run/xtables.lock` to take a shared flock: that works under the sandbox while the file exists (Docker and UFW create it at boot) and fails if nothing created it since boot |
 | `firewall-cmd --state` | firewall | no | D-Bus query |
-| `ss -Htulnp`, `ss -Htln` | listeners, ssh | no | sock_diag netlink and `/proc`. Under the sandbox ss names no owning process: Landlock scopes ptrace access, which reading another process's `/proc/<pid>/fd` needs. stackward then marks process names as not visible and recognises published container ports through the Docker API |
+| `ss -Htulnpe`, `ss -Htln` | listeners, ssh | no | sock_diag netlink and `/proc`. Under the sandbox ss names no owning process: Landlock scopes ptrace access, which reading another process's `/proc/<pid>/fd` needs. `-e` adds each socket's inode, which the listeners collector joins to the [ownership snapshot](#read-before-the-sandbox) taken before the sandbox. Without a snapshot stackward marks process names as not visible and recognises published container ports through the Docker API |
 | `ip -j addr show` | listeners | no | netlink |
 | `sshd -T` | ssh | no | parses the config and host keys; checks `/run/sshd` exists, does not create it |
 | `systemctl show`, `systemctl is-active`, `systemctl is-enabled` | ssh, updates, tailscale, cloudflared | no | D-Bus queries to systemd |

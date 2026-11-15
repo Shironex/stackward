@@ -185,6 +185,24 @@ state and every collector's status.
 
 ## Sandbox
 
+The run order of `audit` (also with `--dump-facts`) and `tui`:
+
+1. Parse flags; open `--out` (and for `tui` the terminal); read `--facts`
+   or `--report`.
+2. For a live audit with the sandbox on, take the socket ownership
+   snapshot (`facts.SnapshotSocketOwners`, read only, bounded) and attach
+   it to the host System (`facts.WithSocketOwners`).
+3. `sandbox.Apply`.
+4. Run the collectors; the listeners collector joins socket inodes to the
+   snapshot (it asks for it through `facts.SocketOwnerSource`, which test
+   fakes simply do not implement).
+5. Evaluate checks and write the report.
+
+The snapshot exists because the sandbox scopes ptrace access, which reading
+another process's `/proc/<pid>/fd` needs, so after step 3 no socket owner
+can be named. [safety.md](safety.md#read-before-the-sandbox) describes what
+it reads.
+
 `sandbox.Apply` runs after the CLI has opened `--out` and read `--facts`, and
 before any collector. On Linux with Landlock it removes every filesystem write
 right (except writing `/dev/null`) from all threads and child processes, and on
