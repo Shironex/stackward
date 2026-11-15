@@ -1,0 +1,91 @@
+{
+  "group": "NET",
+  "checks": [
+    {
+      "id": "NET-001",
+      "title": "A host firewall is active and denies incoming traffic by default",
+      "severity": "high",
+      "rationale": "Without a default deny, every service that listens on a wildcard address is reachable by anyone who can route to the host. stackward accepts UFW (active, default incoming deny or reject), a running firewalld, an nftables input chain that drops by default, or an iptables INPUT policy of DROP. Without root only the UFW configuration files can be read; they say what loads at boot, not what is loaded, so the result stays unknown.",
+      "verify": "sudo ufw status verbose; sudo nft list ruleset; sudo iptables -S INPUT",
+      "fix": "Allow SSH first (ufw allow in on tailscale0 to any port 22, or from one source), then: ufw default deny incoming; ufw enable",
+      "breaks": "Enabling a default deny before allowing SSH locks you out; keep the provider console at hand. Services reached directly on the host stop answering until allowed.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-002",
+      "title": "UFW filters IPv6 when the host has a global IPv6 address",
+      "severity": "high",
+      "rationale": "With IPV6=no in /etc/default/ufw, UFW writes no ip6tables rules. On a host with a global IPv6 address every service listening on [::] is then open over IPv6 while the IPv4 rules look tight.",
+      "verify": "grep IPV6 /etc/default/ufw; ip -6 addr show scope global",
+      "fix": "Set IPV6=yes in /etc/default/ufw, then ufw reload",
+      "breaks": "IPv6 services that were reachable only because nothing filtered them stop answering until allowed."
+    },
+    {
+      "id": "NET-003",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "severity": "high",
+      "rationale": "SSH open to the whole internet draws constant brute force traffic and exposes every future sshd flaw. When Tailscale is running, SSH can stay reachable over the tailnet and be closed publicly. This check needs the Tailscale facts: without them the result is unknown, because closing public SSH without a proven private path is how people lock themselves out.",
+      "verify": "sudo ufw status verbose | grep -E '22|OpenSSH'; tailscale status; ss -tlnp | grep sshd",
+      "fix": "Allow SSH on tailscale0 and from one explicit source, prove a login over the tailnet from a new session, then delete the public SSH rule",
+      "breaks": "Deleting the public rule before the tailnet path works locks you out; a logged out Tailscale node makes every tailscale0 rule dead (see TS-001).",
+      "needs_root": true
+    },
+    {
+      "id": "NET-004",
+      "title": "Exposure: every listening socket and who can reach it",
+      "severity": "moderate",
+      "rationale": "Each listener is classified by bind address: loopback, tailnet (100.64.0.0/10), private, a specific public address, or wildcard. Wildcard and public listeners are judged against the firewall: filtered or deliberately allowed is fine, unfiltered warns. Docker published ports (docker-proxy) skip UFW's input rules entirely, so they warn unless DOCKER-USER filters them. Hosts that run Docker without the userland proxy publish ports with no listener here at all; DKR-001 covers those from the Docker side.",
+      "verify": "sudo ss -tulnp",
+      "fix": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall",
+      "breaks": "Clients that reached the service on the public address stop connecting.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-005",
+      "title": "No public 80/443 rule on a tunnel or tailnet only host",
+      "severity": "moderate",
+      "rationale": "On a host whose ingress is a tunnel or the tailnet, a UFW rule allowing 80 or 443 from anywhere is either dead (nothing listens) or an open door that lets visitors reach the origin directly, past the tunnel's WAF, access rules and rate limits. The judgement depends on the ingress profile; with an unknown profile the result is unknown.",
+      "verify": "sudo ufw status numbered | grep -E '80|443'",
+      "fix": "Delete the rule (ufw delete <number>); ingress is the tunnel",
+      "breaks": "Anything that really is served on the raw IP stops answering.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-006",
+      "title": "DOCKER-USER chain state",
+      "severity": "info",
+      "rationale": "Docker's published ports are forwarded before UFW's input rules see them; the DOCKER-USER chain is the one place iptables lets you filter them. This records whether the chain is absent, default (no filtering) or filtered, and which firewall backend Docker programs, for DKR-001 and NET-007.",
+      "verify": "sudo iptables -S DOCKER-USER; sudo nft list tables",
+      "fix": "No direct fix: filter published ports in DOCKER-USER (ufw-docker does this) or publish them on 127.0.0.1 only.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-007",
+      "title": "ufw-docker is loaded and lets tailnet traffic reach published ports",
+      "severity": "high",
+      "rationale": "ufw-docker adds a block to /etc/ufw/after.rules that only takes effect after ufw reload; until then published ports are unfiltered. Once loaded it also drops tailnet traffic to published ports unless a route rule allows it on tailscale0, using the container port, not the host port.",
+      "verify": "grep -n 'BEGIN UFW AND DOCKER' /etc/ufw/after.rules; sudo iptables -S DOCKER-USER; sudo ufw status | grep FWD",
+      "fix": "ufw reload; then ufw route allow in on tailscale0 proto tcp to any port <container-port>",
+      "breaks": "ufw reload applies every pending rule change at once; review ufw status first.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-008",
+      "title": "ufw-docker is not paired with Docker's nftables backend",
+      "severity": "high",
+      "rationale": "ufw-docker works by filtering the iptables DOCKER-USER chain. Docker's nftables firewall backend creates no DOCKER-USER chain, so ufw-docker then filters nothing while looking installed.",
+      "verify": "sudo nft list tables | grep docker; grep firewall-backend /etc/docker/daemon.json",
+      "fix": "Use Docker's iptables backend with ufw-docker, or filter published ports directly in nftables",
+      "breaks": "Changing Docker's firewall backend needs a Docker restart and rebuilds every container network rule.",
+      "needs_root": true
+    },
+    {
+      "id": "NET-009",
+      "title": "Provider firewall (outside view)",
+      "severity": "info",
+      "rationale": "A cloud provider's network firewall acts before traffic reaches the host, and before Docker's iptables rules, which makes it the best second layer. It cannot be seen from inside the host, so this result is always unknown on the host. Run stackward probe from another machine to see what is actually reachable.",
+      "verify": "stackward probe <host> --i-own-this  # run from another machine",
+      "fix": "Add a provider network firewall that allows only the ports your ingress needs"
+    }
+  ]
+}
