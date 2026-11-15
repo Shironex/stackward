@@ -331,6 +331,45 @@ func tailnetWord(running, known bool) string {
 // would only be noise.
 var dhcpClientPorts = map[int]bool{68: true, 546: true}
 
+// tailscaleWireGuardPort is tailscaled's default UDP port (--port).
+const tailscaleWireGuardPort = 41641
+
+// udpClientSocket explains a wildcard UDP socket that belongs to a known
+// outbound client rather than a service: cloudflared's QUIC connections to
+// the Cloudflare edge, and tailscaled's WireGuard and discovery sockets.
+// Only process names seen as root count, and only when every process on
+// the port is such a client, so a real listener sharing the port still
+// gets judged.
+func udpClientSocket(l *facts.Listeners, g portGroup) string {
+	if g.proto != "udp" || !l.ProcessesVisible {
+		return ""
+	}
+	owner := ""
+	for _, s := range g.socks {
+		if len(s.Processes) == 0 {
+			return ""
+		}
+		for _, p := range s.Processes {
+			if p != "cloudflared" && p != "tailscaled" {
+				return ""
+			}
+			if owner != "" && owner != p {
+				return ""
+			}
+			owner = p
+		}
+	}
+	switch {
+	case owner == "cloudflared":
+		return "an outbound QUIC socket of cloudflared: the tunnel dials out to Cloudflare and accepts no inbound connections here"
+	case owner == "tailscaled" && g.port == tailscaleWireGuardPort:
+		return "Tailscale's WireGuard port: peers connect to it directly, and it answers only packets from authenticated tailnet nodes"
+	case owner == "tailscaled":
+		return "a socket of tailscaled (WireGuard or path discovery): it answers only packets from authenticated tailnet nodes"
+	}
+	return ""
+}
+
 type portGroup struct {
 	proto string
 	port  int
@@ -422,6 +461,12 @@ func exposureResult(f *facts.Facts, l *facts.Listeners, g portGroup) Result {
 	}
 	open, reason := openFromAnywhere(f.Firewall, g.socks, g.proto, g.port)
 	r.Evidence["open_from_anywhere"] = open.String()
+	if open != triNo {
+		if why := udpClientSocket(l, g); why != "" {
+			r.Level, r.Message = Info, fmt.Sprintf("%s%s is %s", label, who, why)
+			return r
+		}
+	}
 	switch open {
 	case triNo:
 		r.Level, r.Message = Pass, fmt.Sprintf("%s%s listens on %s, but %s", label, who, worst, reason)

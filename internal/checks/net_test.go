@@ -302,3 +302,57 @@ func TestExposureUFWOverIptablesNFT(t *testing.T) {
 		t.Errorf("files only: %s %s", r.Level, r.Message)
 	}
 }
+
+func TestExposureUDPClientSockets(t *testing.T) {
+	fw := netUFW("deny", netSSHTailnet)
+	socks := []facts.Listener{
+		netSock("udp", "0.0.0.0", 41641, "tailscaled"),
+		netSock("udp", "::", 41641, "tailscaled"),
+		netSock("udp", "0.0.0.0", 52113, "tailscaled"),
+		netSock("udp", "0.0.0.0", 48211, "cloudflared"),
+		netSock("udp", "0.0.0.0", 51820),                // no process name: unknown owner
+		netSock("udp", "0.0.0.0", 40000, "cloudflared"), // shared with a real service
+		netSock("udp", "0.0.0.0", 40000, "dnsmasq"),
+	}
+	run := func(visible bool, fw *facts.Firewall) map[string]Result {
+		f := &facts.Facts{Firewall: fw, Listeners: &facts.Listeners{Source: "ss", ProcessesVisible: visible, Sockets: socks}}
+		out := map[string]Result{}
+		for _, r := range netRun(t, "NET-004", Input{Facts: f}) {
+			out[r.Subject] = r
+		}
+		return out
+	}
+	// UFW denies by default and allows none of them: closed, a pass.
+	for subj, r := range run(true, fw) {
+		if r.Level != Pass {
+			t.Errorf("deny default: %s: %s %s", subj, r.Level, r.Message)
+		}
+	}
+	// The firewall could not be judged: client sockets get a reason, the
+	// rest stay unknown.
+	unread := &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "files", Status: "active"},
+		NFT: &facts.NFTables{Installed: true}}
+	got := run(true, unread)
+	for subj, want := range map[string]Level{
+		"port:udp/41641": Info, "port:udp/52113": Info, "port:udp/48211": Info,
+		"port:udp/51820": Unknown, "port:udp/40000": Unknown,
+	} {
+		if got[subj].Level != want {
+			t.Errorf("%s: got %s %q, want %s", subj, got[subj].Level, got[subj].Message, want)
+		}
+	}
+	if !strings.Contains(got["port:udp/41641"].Message, "WireGuard") {
+		t.Errorf("41641: %s", got["port:udp/41641"].Message)
+	}
+	// No firewall at all: the real listener warns, the client sockets stay info.
+	open := &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "live", Status: "inactive"}}
+	got = run(true, open)
+	if got["port:udp/40000"].Level != Warn || got["port:udp/48211"].Level != Info {
+		t.Errorf("no firewall: 40000 %s, 48211 %s", got["port:udp/40000"].Level, got["port:udp/48211"].Level)
+	}
+	// Firewall unknown and names not visible: unknown, never hidden.
+	got = run(false, unread)
+	if got["port:udp/48211"].Level != Unknown {
+		t.Errorf("not root: %s", got["port:udp/48211"].Level)
+	}
+}
