@@ -308,8 +308,11 @@ so its tests never reach the machine. Only `hostApplyEnv` touches the real host.
   alone; `apply.Preflight` reads (systemd-run, `sshd -t`, `sshd -T`, `ss`);
   `apply.RunTransaction` copies the binary, writes the state
   (`/var/lib/stackward/transaction.json`, `schema/transaction.v1.json`),
-  arms the `systemd-run` timer, runs `Execute`, then `ValidateAccess`, and
-  rolls back at once on a failure; `apply.ConfirmTxn`, `apply.RollBack` and
+  arms the `systemd-run` timer, installs the boot unit
+  (`internal/apply/bootunit.go`: `InstallBootUnit`, `RemoveBootUnit`,
+  `StaleBootUnits`, one template in `bootunit.service.tmpl`) so a reboot
+  rolls back too, runs `Execute`, then `ValidateAccess`, and rolls back at
+  once on a failure; `apply.ConfirmTxn`, `apply.RollBack` and
   `apply.AckRollback` move the state on, always under the run lock. Session
   facts come from `apply.ReadSession` (a `/proc` root, so tests use a fake
   tree) and are compared by `apply.CompareSessions`. The CLI takes them from

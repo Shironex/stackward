@@ -227,6 +227,13 @@ below):
 | `systemd-run --quiet --collect --unit=stackward-rollback-ID --on-active=Ns ... /var/lib/stackward/transactions/ID/stackward undo --transaction ID --yes --by-timer` | arms the rollback timer, before the steps |
 | `systemctl is-active stackward-rollback-ID.timer` (and `.service`) | checks the timer is armed, or stopped |
 | `systemctl stop stackward-rollback-ID.timer stackward-rollback-ID.service` | confirm, an immediate rollback, `undo --transaction` |
+| `systemctl enable stackward-boot-rollback-ID.service` | after the unit file is written, before the steps: links the boot unit into `sysinit.target.wants` |
+| `systemctl daemon-reload` | after the boot unit and its link are removed (confirm, every rollback, the boot unit itself) |
+
+The transaction writes one file outside the steps, the backups, the
+journal and its own state: the boot unit
+`/etc/systemd/system/stackward-boot-rollback-ID.service` (0644, root),
+which it removes again.
 
 ### Access critical changes: rollback timer and second session confirm
 
@@ -256,6 +263,25 @@ has the details; in order:
    deadline is `--confirm-within` (default 5 minutes, 30 seconds to 30
    minutes). The state file `/var/lib/stackward/transaction.json` (0600)
    says `open` before the timer can fire.
+   A transient timer does not survive a reboot, so the transaction also
+   installs a **boot unit**: a persistent oneshot service,
+   `/etc/systemd/system/stackward-boot-rollback-<run-id>.service`, enabled
+   for `sysinit.target`, that runs the same copy with `undo --transaction
+   <run-id> --by-boot`. If the host boots while the transaction is open (a
+   reboot from the provider panel is the usual way out of a lockout), it
+   rolls the change back early, after the local file systems and **before
+   `ssh.service`, `sshd.service`, `ssh.socket` and `sshd.socket`**, so sshd
+   starts with the restored configuration. It acts only while the state is
+   still `open`, then removes itself. If the timer or the boot unit cannot
+   be set up, nothing changes.
+   The timer and the boot unit do **not** check the hostname, as a person's
+   `stackward undo` does: at early boot the hostname can be unset or the
+   image default, cloud-init can rename a host, and you may rename it
+   while locked out, and none of that may keep the lockout in place. They
+   need no such check, because the state, the journal and the binary copy
+   are root-only files stackward wrote on this machine. They record the
+   hostname hash they ran under in the state (`rollback_host`), and a
+   `host_note` when it differs from the one that applied.
 5. **Apply** the steps.
 6. **Validate**: `sshd -t` passes, `sshd -T` shows every setting the
    steps mean to leave in place (from the step's own code), and something
@@ -265,13 +291,18 @@ has the details; in order:
 7. **Wait for `stackward confirm ID`**, which must run from a **new** SSH
    session: the same session is refused, because a session that survived the
    change proves nothing about a fresh login. `--console` is the one way
-   around that rule, for the provider console. Confirm stops the timer and
-   marks the transaction confirmed.
+   around that rule, for the provider console. Confirm removes the boot
+   unit, stops the timer and marks the transaction confirmed.
 8. **No confirm before the deadline**: the timer restores the snapshot (the
    same undo as `stackward undo`), reloads what the steps reloaded, and marks
-   the transaction rolled back. Access-critical steps then stay refused
+   the transaction rolled back. A reboot before the confirm does the same at
+   boot through the boot unit. Access-critical steps then stay refused
    until `stackward confirm --ack-rollback ID`, so a rollback you did not
    see cannot go unnoticed. Safe and networking steps are not affected.
+   Every rollback (timer, boot, a failed check, `undo --transaction`)
+   removes the boot unit. Apply refuses access steps while a boot unit is
+   left over without an open transaction of its own, and prints the
+   commands that remove it.
 
 Only one transaction can be open at a time: the state file is read and
 written only under the run lock, and apply refuses a second one.
@@ -302,14 +333,14 @@ The limits, honestly:
   that every way in works (another user, another key, another address). It
   is a strong signal, not a proof of every path; the lockout guard (#27)
   adds the checks on the second way in.
-- Transient units do not survive a reboot. If the host reboots before the
-  deadline, the timer is gone: the transaction stays `open` with its
-  deadline passed, every access step and every confirm is refused, and
-  `sudo stackward undo --transaction ID` rolls it back by hand (from SSH if
-  it still works, otherwise from the provider console).
+- The boot rollback runs only if the host boots normally into a target
+  that pulls in `sysinit.target` (the default and rescue targets do; an
+  emergency shell does not), with `/var` mounted. If it cannot run, the
+  transaction shows as `open` past its deadline and
+  `sudo stackward undo --transaction ID` rolls it back by hand.
 - The rollback waits up to 10 minutes for the run lock when an apply or a
   confirm holds it, and then gives up; the transaction then shows as open
-  past its deadline, as after a reboot.
+  past its deadline.
 - A rollback restores files only while they still hold what the
   transaction wrote; a file you edited in the window is left alone, the
   transaction is marked `rollback-failed`, and you restore it from the
