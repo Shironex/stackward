@@ -13,21 +13,29 @@
     "kernel": "6.8.0-49-generic"
   },
   "profile": {
-    "name": "unknown",
+    "name": "public-web",
     "source": "inferred"
   },
   "coverage": {
     "checks": 51,
-    "results": 52,
-    "checked": 14,
-    "unknown": 37,
-    "skipped": 1,
+    "results": 62,
+    "checked": 31,
+    "unknown": 27,
+    "skipped": 4,
     "root": true,
     "sandbox": {
       "state": "unavailable",
       "reason": "golden test"
     },
     "collectors": [
+      {
+        "name": "firewall",
+        "status": "ok"
+      },
+      {
+        "name": "listeners",
+        "status": "ok"
+      },
       {
         "name": "os",
         "status": "ok"
@@ -43,12 +51,12 @@
     ]
   },
   "summary": {
-    "fail": 3,
-    "warn": 0,
-    "unknown": 37,
-    "info": 3,
-    "pass": 8,
-    "skip": 1
+    "fail": 4,
+    "warn": 3,
+    "unknown": 27,
+    "info": 5,
+    "pass": 19,
+    "skip": 4
   },
   "results": [
     {
@@ -258,13 +266,16 @@
       "id": "NET-001",
       "group": "NET",
       "title": "A host firewall is active and denies incoming traffic by default",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
+      "message": "UFW is active with default incoming deny",
       "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
+        "denies_incoming": "yes",
+        "mechanism": "ufw",
+        "ufw_default_incoming": "deny",
+        "ufw_source": "status",
+        "ufw_status": "active"
       },
       "fix": {
         "hint": "Allow SSH first (ufw allow in on tailscale0 to any port 22, or from one source), then: ufw default deny incoming; ufw enable"
@@ -274,13 +285,12 @@
       "id": "NET-002",
       "group": "NET",
       "title": "UFW filters IPv6 when the host has a global IPv6 address",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
+      "message": "UFW filters IPv6 (IPV6=yes)",
       "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
+        "ipv6": "yes"
       },
       "fix": {
         "hint": "Set IPV6=yes in /etc/default/ufw, then ufw reload"
@@ -293,10 +303,13 @@
       "level": "unknown",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the listeners collector did not run",
+      "message": "SSH is open to anywhere on tcp/22; Tailscale facts are missing, so whether a private path exists is unknown",
       "evidence": {
-        "collector": "listeners",
-        "collector_status": "missing"
+        "open_from_anywhere": "yes",
+        "ssh_ports": [
+          22
+        ],
+        "tailnet": "unknown"
       },
       "fix": {
         "hint": "Allow SSH on tailscale0 and from one explicit source, prove a login over the tailnet from a new session, then delete the public SSH rule"
@@ -306,13 +319,176 @@
       "id": "NET-004",
       "group": "NET",
       "title": "Exposure: every listening socket and who can reach it",
-      "level": "unknown",
+      "level": "info",
       "severity": "moderate",
-      "subject": "host",
-      "message": "not inspected: the listeners collector did not run",
+      "subject": "port:tcp/22",
+      "message": "tcp/22 (sshd) is public by design: UFW allows tcp/22 from anywhere (allow in 22/tcp from anywhere)",
       "evidence": {
-        "collector": "listeners",
-        "collector_status": "missing"
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "sshd"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:tcp/2377",
+      "message": "tcp/2377 (dockerd) listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "*"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": [
+          "dockerd"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/3000",
+      "message": "tcp/3000 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/443",
+      "message": "tcp/443 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:tcp/7946",
+      "message": "tcp/7946 (dockerd) listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "*"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": [
+          "dockerd"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/80",
+      "message": "tcp/80 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:udp/4789",
+      "message": "udp/4789 listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": null,
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:udp/7946",
+      "message": "udp/7946 (dockerd) listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "*"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": [
+          "dockerd"
+        ],
+        "processes_visible": true
       },
       "fix": {
         "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
@@ -322,13 +498,12 @@
       "id": "NET-005",
       "group": "NET",
       "title": "No public 80/443 rule on a tunnel or tailnet only host",
-      "level": "unknown",
+      "level": "skip",
       "severity": "moderate",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
+      "message": "80/443 may be public on the public-web profile",
       "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
+        "profile": "public-web"
       },
       "fix": {
         "hint": "Delete the rule (ufw delete \u003cnumber\u003e); ingress is the tunnel"
@@ -338,13 +513,13 @@
       "id": "NET-006",
       "group": "NET",
       "title": "DOCKER-USER chain state",
-      "level": "unknown",
+      "level": "info",
       "severity": "info",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
+      "message": "DOCKER-USER exists with no filtering rules: published ports are not filtered by the host firewall",
       "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
+        "docker_backend": "iptables",
+        "docker_user": "default"
       },
       "fix": {
         "hint": "No direct fix: filter published ports in DOCKER-USER (ufw-docker does this) or publish them on 127.0.0.1 only."
@@ -354,14 +529,10 @@
       "id": "NET-007",
       "group": "NET",
       "title": "ufw-docker is loaded and lets tailnet traffic reach published ports",
-      "level": "unknown",
+      "level": "skip",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
-      "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
-      },
+      "message": "UFW is not installed",
       "fix": {
         "hint": "ufw reload; then ufw route allow in on tailscale0 proto tcp to any port \u003ccontainer-port\u003e"
       }
@@ -370,13 +541,12 @@
       "id": "NET-008",
       "group": "NET",
       "title": "ufw-docker is not paired with Docker's nftables backend",
-      "level": "unknown",
+      "level": "skip",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the firewall collector did not run",
+      "message": "ufw-docker is not installed",
       "evidence": {
-        "collector": "firewall",
-        "collector_status": "missing"
+        "docker_backend": "iptables"
       },
       "fix": {
         "hint": "Use Docker's iptables backend with ufw-docker, or filter published ports directly in nftables"
@@ -832,13 +1002,20 @@
       "id": "PAAS-002",
       "group": "PAAS",
       "title": "Platform proxy is not published on all interfaces behind a tunnel",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "proxy publishes only 80 and 443, as the public-web profile expects",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "exposed": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "profile": "public-web",
+        "published": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ]
       },
       "fix": {
         "hint": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure."
@@ -848,13 +1025,18 @@
       "id": "PAAS-003",
       "group": "PAAS",
       "title": "Platform panel ports are not open to the world",
-      "level": "unknown",
+      "level": "fail",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the listeners collector did not run",
+      "subject": "port:tcp/3000",
+      "message": "dokploy panel port 3000 listens on all interfaces and the firewall does not filter it",
       "evidence": {
-        "collector": "listeners",
-        "collector_status": "missing"
+        "binds": [
+          "0.0.0.0"
+        ],
+        "exposed": [
+          "0.0.0.0"
+        ],
+        "filter": "none"
       },
       "fix": {
         "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
@@ -881,13 +1063,84 @@
       "id": "PAAS-008",
       "group": "PAAS",
       "title": "Docker Swarm ports are restricted to cluster peers",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the listeners collector did not run",
+      "subject": "port:tcp/2377",
+      "message": "swarm port 2377 listens on all interfaces behind a firewall filter",
       "evidence": {
-        "collector": "listeners",
-        "collector_status": "missing"
+        "binds": [
+          "*"
+        ],
+        "exposed": [
+          "*"
+        ],
+        "filter": "filtered"
+      },
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/7946",
+      "message": "swarm port 7946 listens on all interfaces behind a firewall filter",
+      "evidence": {
+        "binds": [
+          "*"
+        ],
+        "exposed": [
+          "*"
+        ],
+        "filter": "filtered"
+      },
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:udp/4789",
+      "message": "swarm port 4789 listens on all interfaces behind a firewall filter",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "exposed": [
+          "0.0.0.0"
+        ],
+        "filter": "filtered"
+      },
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:udp/7946",
+      "message": "swarm port 7946 listens on all interfaces behind a firewall filter",
+      "evidence": {
+        "binds": [
+          "*"
+        ],
+        "exposed": [
+          "*"
+        ],
+        "filter": "filtered"
       },
       "fix": {
         "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",

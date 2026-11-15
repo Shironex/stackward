@@ -55,12 +55,84 @@ func TestPaaSChecksUnknownWithoutFacts(t *testing.T) {
 			t.Errorf("missing docker or listeners: %s %q", paasLevels(rs), rs[0].Message)
 		}
 	}
-	f = paasCoolifyFacts() // present but this build cannot map them (default hooks)
-	for _, run := range []func(Input) []Result{checkPaaSProxyExposure, checkPaaSPanelPorts, checkPaaSPublicDatabase} {
-		rs := run(Input{Facts: f})
-		if paasLevels(rs) != "=unknown" || !strings.Contains(rs[0].Message, "cannot read") {
-			t.Errorf("unmapped docker or listeners: %s %q", paasLevels(rs), rs[0].Message)
+	f = paasCoolifyFacts() // Docker present but not mapped yet (default hook)
+	rs := checkPaaSPublicDatabase(Input{Facts: f})
+	if paasLevels(rs) != "=unknown" || !strings.Contains(rs[0].Message, "cannot read") {
+		t.Errorf("unmapped docker: %s %q", paasLevels(rs), rs[0].Message)
+	}
+}
+
+func TestPaaSProxyFromListeners(t *testing.T) {
+	// Default hooks: Docker unmapped, listeners mapped from the real facts.
+	f := paasCoolifyFacts()
+	f.Listeners = &facts.Listeners{Sockets: []facts.Listener{
+		{Proto: "tcp", Address: "0.0.0.0", Port: 443, Processes: []string{"docker-proxy"}},
+		{Proto: "tcp", Address: "::", Port: 80, Processes: []string{"docker-proxy"}},
+		{Proto: "tcp", Address: "0.0.0.0", Port: 8080},
+	}}
+	for prof, want := range map[profile.Name]Level{
+		profile.Tunnel: Fail, profile.PublicWeb: Pass, profile.Mixed: Warn, profile.Unknown: Unknown,
+	} {
+		rs := checkPaaSProxyExposure(Input{Facts: f, Profile: prof})
+		if len(rs) != 1 || rs[0].Level != want || rs[0].Subject != "host" {
+			t.Errorf("%s: %s %q", prof, paasLevels(rs), rs[0].Message)
 		}
+	}
+	f.Listeners = &facts.Listeners{Sockets: []facts.Listener{{Proto: "tcp", Address: "127.0.0.1", Port: 443}}}
+	if rs := checkPaaSProxyExposure(Input{Facts: f, Profile: profile.Tunnel}); rs[0].Level != Pass {
+		t.Errorf("loopback: %s", paasLevels(rs))
+	}
+	f.Listeners = &facts.Listeners{Sockets: []facts.Listener{}}
+	if rs := checkPaaSProxyExposure(Input{Facts: f, Profile: profile.Tunnel}); rs[0].Level != Pass {
+		t.Errorf("nothing on 80 or 443: %s", paasLevels(rs))
+	}
+}
+
+func TestPaaSFilterFor(t *testing.T) {
+	ufw := func(rules ...facts.UFWRule) *facts.Firewall {
+		return &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "status", Status: "active", DefaultIncoming: "deny", RulesKnown: true, Rules: rules}}
+	}
+	cases := []struct {
+		name      string
+		fw        *facts.Firewall
+		proto     string
+		port      int
+		viaDocker bool
+		want      paasFilter
+	}{
+		{"no facts", nil, "tcp", 2377, false, paasFilterUnknown},
+		{"ufw blocks", ufw(), "tcp", 2377, false, paasFilterApplied},
+		{"ufw allows anywhere", ufw(facts.UFWRule{Action: "allow", Direction: "in", Port: "2377", Proto: "tcp"}), "tcp", 2377, false, paasFilterNone},
+		{"ufw allows a peer", ufw(facts.UFWRule{Action: "allow", Direction: "in", Port: "2377", Proto: "tcp", From: "198.51.100.7"}), "tcp", 2377, false, paasFilterApplied},
+		{"ufw files only", &facts.Firewall{UFW: &facts.UFW{Installed: true, Source: "files", Status: "active"}}, "tcp", 2377, false, paasFilterUnknown},
+		{"docker default chain", &facts.Firewall{DockerUser: "default", DockerBackend: "iptables"}, "tcp", 8000, true, paasFilterNone},
+		{"docker filtered", &facts.Firewall{DockerUser: "filtered", DockerBackend: "iptables"}, "tcp", 8000, true, paasFilterApplied},
+		{"ufw-docker loaded", &facts.Firewall{UFWDocker: &facts.UFWDocker{Loaded: "yes"}}, "tcp", 8000, true, paasFilterApplied},
+		{"docker chain unread", &facts.Firewall{}, "tcp", 8000, true, paasFilterUnknown},
+		{"ufw does not cover docker", ufw(), "tcp", 8000, true, paasFilterUnknown},
+	}
+	for _, c := range cases {
+		if got := paasFilterFor(c.fw, c.proto, c.port, c.viaDocker); got != c.want {
+			t.Errorf("%s: %s, want %s", c.name, got, c.want)
+		}
+	}
+}
+
+func TestPaaSPanelPortProcessDecidesDocker(t *testing.T) {
+	// UFW blocks host sockets; the panel port is held by docker-proxy, so
+	// UFW does not count and the default DOCKER-USER chain lets it through.
+	f := paasCoolifyFacts()
+	f.Firewall = &facts.Firewall{DockerUser: "default", DockerBackend: "iptables",
+		UFW: &facts.UFW{Installed: true, Source: "status", Status: "active", DefaultIncoming: "deny", RulesKnown: true}}
+	f.Listeners = &facts.Listeners{Sockets: []facts.Listener{{Proto: "tcp", Address: "0.0.0.0", Port: 8000, Processes: []string{"docker-proxy"}}}}
+	rs := EvaluateChecks([]Check{{ID: "PAAS-003", Run: checkPaaSPanelPorts}}, Input{Facts: f})
+	if got := paasLevels(rs); got != "port:tcp/6001=pass port:tcp/6002=pass port:tcp/8000=fail" {
+		t.Errorf("docker-proxy: %s", got)
+	}
+	f.Listeners.Sockets[0].Processes = []string{"php"}
+	rs = EvaluateChecks([]Check{{ID: "PAAS-003", Run: checkPaaSPanelPorts}}, Input{Facts: f})
+	if got := paasLevels(rs); got != "port:tcp/6001=pass port:tcp/6002=pass port:tcp/8000=warn" {
+		t.Errorf("host process behind ufw: %s", got)
 	}
 }
 
@@ -217,10 +289,10 @@ func TestPaaSSwarmPorts(t *testing.T) {
 }
 
 func TestPaaSHelpers(t *testing.T) {
-	for addr, want := range map[string]string{
-		"0.0.0.0": paasAddrWildcard, "[::]": paasAddrWildcard, "*": paasAddrWildcard, "127.0.0.53": paasAddrLoopback, "::1": paasAddrLoopback,
-		"100.64.0.1": paasAddrTailnet, "fd7a:115c:a1e0::1": paasAddrTailnet, "10.1.2.3": paasAddrPrivate, "fe80::1%eth0": paasAddrPrivate,
-		"203.0.113.10": paasAddrPublic, "2001:db8::1": paasAddrPublic, "::ffff:127.0.0.1": paasAddrLoopback, "garbage": paasAddrPublic,
+	for addr, want := range map[string]facts.BindClass{
+		"0.0.0.0": facts.BindWildcard, "[::]": facts.BindWildcard, "*": facts.BindWildcard, "127.0.0.53": facts.BindLoopback, "::1": facts.BindLoopback,
+		"100.64.0.1": facts.BindTailnet, "fd7a:115c:a1e0::1": facts.BindTailnet, "10.1.2.3": facts.BindPrivate, "fe80::1%eth0": facts.BindPrivate,
+		"203.0.113.10": facts.BindPublic, "2001:db8::1": facts.BindPublic, "::ffff:127.0.0.1": facts.BindLoopback, "garbage": facts.BindPublic,
 	} {
 		if got := paasAddrClass(addr); got != want {
 			t.Errorf("paasAddrClass(%q) = %s, want %s", addr, got, want)

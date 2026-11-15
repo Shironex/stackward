@@ -2,7 +2,6 @@ package checks
 
 import (
 	"fmt"
-	"net/netip"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,11 +13,13 @@ import (
 // PAAS checks combine what the paas collector found on disk (facts/paas.go)
 // with container, listener and firewall facts owned by other collectors.
 //
-// Those collectors land separately, so this file reads them through three
-// small views (paasContainer, paasListener, paasFilter) filled by the
-// read* hooks below. A hook that cannot map its facts yet reports them as
-// unavailable and the checks that need them return unknown, never pass.
-// Tests swap the hooks to drive the checks over fake views.
+// They read those facts through three small views (paasContainer,
+// paasListener, paasFilter) filled by the read* hooks below. Listener and
+// firewall facts are mapped; the Docker facts are still a placeholder, so
+// readPaaSContainers reports them unavailable and the checks that need
+// containers fall back to listeners (PAAS-002) or return unknown
+// (PAAS-004), never pass. Tests swap the hooks to drive the checks over
+// fake views.
 
 // paasContainer is the part of a container the PAAS checks need.
 type paasContainer struct {
@@ -53,16 +54,61 @@ const (
 	paasFilterApplied paasFilter = "filtered" // some source restriction applies
 )
 
-// Hooks reading facts owned by other collectors. Each returns ok false
-// while it cannot read its domain; the Docker, listener and firewall
-// collectors map their facts here when they land.
+// Hooks reading facts owned by other collectors. A hook returns ok false
+// while it cannot read its domain: the Docker facts are still a
+// placeholder, so readPaaSContainers maps them when that collector lands.
 var (
 	readPaaSContainers = func(*facts.Docker) ([]paasContainer, bool) { return nil, false }
-	readPaaSListeners  = func(*facts.Listeners) ([]paasListener, bool) { return nil, false }
+	readPaaSListeners  = paasListenersFrom
 	// viaDocker is true for ports Docker publishes (filtered only in the
 	// DOCKER-USER chain), false for host processes (filtered by INPUT).
-	readPaaSFilter = func(_ *facts.Firewall, _ string, _ int, _ bool) paasFilter { return paasFilterUnknown }
+	readPaaSFilter = paasFilterFor
 )
+
+// paasListenersFrom maps the listener facts.
+func paasListenersFrom(l *facts.Listeners) ([]paasListener, bool) {
+	out := make([]paasListener, 0, len(l.Sockets))
+	for _, s := range l.Sockets {
+		out = append(out, paasListener{Proto: s.Proto, Addr: s.Address, Port: s.Port, Process: strings.Join(s.Processes, ",")})
+	}
+	return out, true
+}
+
+// paasFilterFor reads whether the firewall filters proto/port.
+//
+// Docker published ports skip UFW's input rules; only the DOCKER-USER chain
+// (or ufw-docker, which hooks into it) filters them. Host sockets are
+// filtered by UFW when it is active with a deny default: no allow rule for
+// the port means blocked (filtered), an allow from anywhere means
+// reachable, an allow from a source or interface means filtered. Anything
+// the facts do not show (no root, nftables only, firewalld) is unknown.
+func paasFilterFor(fw *facts.Firewall, proto string, port int, viaDocker bool) paasFilter {
+	if fw == nil {
+		return paasFilterUnknown
+	}
+	if viaDocker {
+		switch {
+		case fw.UFWDocker != nil && fw.UFWDocker.Loaded == "yes", fw.DockerUser == "filtered":
+			return paasFilterApplied
+		case fw.DockerBackend == "iptables" && (fw.DockerUser == "default" || fw.DockerUser == "absent"):
+			return paasFilterNone
+		}
+		return paasFilterUnknown
+	}
+	u := fw.UFW
+	if u == nil || u.Source != "status" || u.Status != "active" || !u.RulesKnown {
+		return paasFilterUnknown
+	}
+	if u.DefaultIncoming != "deny" && u.DefaultIncoming != "reject" {
+		return paasFilterUnknown
+	}
+	for _, r := range u.Rules {
+		if r.Direction == "in" && r.Allows() && r.FromAnywhere() && r.MatchesPort(proto, port) {
+			return paasFilterNone
+		}
+	}
+	return paasFilterApplied
+}
 
 // Collector names of the domains read through the hooks, for NotInspected.
 const (
@@ -273,57 +319,24 @@ func paasNonNil(s []string) []string {
 	return s
 }
 
-// Address classes for bind addresses.
-const (
-	paasAddrWildcard = "wildcard"
-	paasAddrLoopback = "loopback"
-	paasAddrTailnet  = "tailnet"
-	paasAddrPrivate  = "private"
-	paasAddrPublic   = "public"
-)
-
-// Tailscale address ranges: 100.64.0.0/10 (shared address space) and the
-// Tailscale ULA prefix.
-var (
-	paasTailnetV4 = netip.MustParsePrefix("100.64.0.0/10")
-	paasTailnetV6 = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
-)
-
-// paasAddrClass classifies a bind address. Unparseable addresses count as
-// public so they are never silently treated as safe.
-func paasAddrClass(addr string) string {
+// paasAddrClass classifies a bind address with the listener collector's
+// rules, accepting brackets and a zone suffix. Unparseable addresses count
+// as public so they are never silently treated as safe.
+func paasAddrClass(addr string) facts.BindClass {
 	a := strings.TrimSuffix(strings.TrimPrefix(addr, "["), "]")
 	if i := strings.IndexByte(a, '%'); i >= 0 {
 		a = a[:i]
 	}
-	switch a {
-	case "", "*", "0.0.0.0", "::":
-		return paasAddrWildcard
+	c := facts.ClassifyAddress(a)
+	if c == facts.BindInvalid {
+		return facts.BindPublic
 	}
-	ip, err := netip.ParseAddr(a)
-	if err != nil {
-		return paasAddrPublic
-	}
-	ip = ip.Unmap()
-	switch {
-	case ip.IsUnspecified():
-		return paasAddrWildcard
-	case ip.IsLoopback():
-		return paasAddrLoopback
-	case paasTailnetV4.Contains(ip) || paasTailnetV6.Contains(ip):
-		return paasAddrTailnet
-	case ip.IsPrivate() || ip.IsLinkLocalUnicast():
-		return paasAddrPrivate
-	}
-	return paasAddrPublic
+	return c
 }
 
 // paasExposed reports whether a bind address is reachable from the internet
 // when nothing filters it.
-func paasExposed(addr string) bool {
-	c := paasAddrClass(addr)
-	return c == paasAddrWildcard || c == paasAddrPublic
-}
+func paasExposed(addr string) bool { return paasAddrClass(addr).Exposed() }
 
 func paasPortLabel(p paasPort) string {
 	proto := p.Proto
@@ -356,14 +369,20 @@ func checkPaaSProxyExposure(in Input) []Result {
 		return One(Skip, "no Coolify or Dokploy installation found", nil)
 	}
 	if why != nil {
-		return []Result{*why}
+		// Without containers, judge the web ports from the listeners: on a
+		// platform host 80 and 443 belong to the platform proxy.
+		proxy, lwhy := paasProxyFromListeners(f)
+		if lwhy != nil {
+			return []Result{*why}
+		}
+		return []Result{paasJudgeProxy(proxy, "host", in.Profile)}
 	}
 	var out []Result
 	for _, c := range containers {
 		if !isPaaSProxy(c) {
 			continue
 		}
-		out = append(out, paasJudgeProxy(c, in.Profile))
+		out = append(out, paasJudgeProxy(c, "container:"+c.Name, in.Profile))
 	}
 	if len(out) == 0 {
 		return One(Skip, "no platform proxy container found", nil)
@@ -371,7 +390,23 @@ func checkPaaSProxyExposure(in Input) []Result {
 	return out
 }
 
-func paasJudgeProxy(c paasContainer, prof profile.Name) Result {
+// paasProxyFromListeners builds a proxy view from the TCP 80 and 443
+// listeners.
+func paasProxyFromListeners(f *facts.Facts) (paasContainer, *Result) {
+	ls, why := paasListeners(f)
+	if why != nil {
+		return paasContainer{}, why
+	}
+	c := paasContainer{Name: "proxy"}
+	for _, l := range ls {
+		if strings.TrimSuffix(l.Proto, "6") == "tcp" && (l.Port == 80 || l.Port == 443) {
+			c.Ports = append(c.Ports, paasPort{HostIP: l.Addr, HostPort: l.Port, ContainerPort: l.Port, Proto: "tcp"})
+		}
+	}
+	return c, nil
+}
+
+func paasJudgeProxy(c paasContainer, subject string, prof profile.Name) Result {
 	var published, exposedWeb, exposedOther []string
 	for _, p := range c.Ports {
 		published = append(published, paasPortLabel(p))
@@ -385,10 +420,12 @@ func paasJudgeProxy(c paasContainer, prof profile.Name) Result {
 		}
 	}
 	exposed := append(append([]string{}, exposedWeb...), exposedOther...)
-	r := Result{Subject: "container:" + c.Name, Evidence: map[string]any{
+	r := Result{Subject: subject, Evidence: map[string]any{
 		"published": paasNonNil(published), "exposed": paasNonNil(exposed), "profile": string(prof),
 	}}
 	switch {
+	case len(published) == 0:
+		r.Level, r.Message = Pass, "nothing listens on 80 or 443"
 	case len(exposed) == 0:
 		r.Level, r.Message = Pass, "proxy is published on loopback or private addresses only"
 	case prof == profile.Tunnel || prof == profile.TailnetOnly:
@@ -400,6 +437,10 @@ func paasJudgeProxy(c paasContainer, prof profile.Name) Result {
 		r.Message = fmt.Sprintf("proxy publishes ports beyond 80 and 443 on all interfaces: %s", strings.Join(exposedOther, ", "))
 	case prof == profile.PublicWeb:
 		r.Level, r.Message = Pass, "proxy publishes only 80 and 443, as the public-web profile expects"
+	case prof == profile.Mixed:
+		r.Level = Warn
+		r.Message = fmt.Sprintf("a tunnel runs and the proxy is also published on all interfaces (%s); if the tunnel is meant to be the only way in, publish the proxy on 127.0.0.1",
+			strings.Join(exposedWeb, ", "))
 	default:
 		r.Level = Unknown
 		r.Message = fmt.Sprintf("proxy is published on all interfaces (%s); whether that is intended depends on the ingress profile (pass --profile)",
@@ -467,6 +508,13 @@ func paasJudgeHostPort(f *facts.Facts, ls []paasListener, proto string, port int
 		binds = append(binds, l.Addr)
 		if paasExposed(l.Addr) {
 			exposed = append(exposed, l.Addr)
+		}
+	}
+	// A visible process name settles whether Docker published the port.
+	for _, l := range ls {
+		if strings.TrimSuffix(l.Proto, "6") == proto && l.Port == port && l.Process != "" {
+			viaDocker = strings.Contains(","+l.Process+",", ",docker-proxy,")
+			break
 		}
 	}
 	filter := readPaaSFilter(f.Firewall, proto, port, viaDocker)
