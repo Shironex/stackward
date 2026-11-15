@@ -69,7 +69,42 @@ func TestGolden(t *testing.T) {
 	}
 }
 
-func render(t *testing.T, factsPath string) []byte {
+// markdownFixtures have a Markdown golden (expected.md) next to expected.json.
+// "all" lists passing and skipped results too, like --all.
+var markdownFixtures = map[string]bool{
+	"net-firewall-off-public": false,
+	"ssh-nonroot-partial":     false,
+	"usr-bad":                 true,
+}
+
+func TestGoldenMarkdown(t *testing.T) {
+	for name, all := range markdownFixtures {
+		t.Run(name, func(t *testing.T) {
+			dir := filepath.Join("fixtures", name)
+			rep := evaluate(t, filepath.Join(dir, "facts.json"))
+			var buf bytes.Buffer
+			if err := report.WriteMarkdown(&buf, rep, report.MarkdownOptions{Passing: all}); err != nil {
+				t.Fatal(err)
+			}
+			expPath := filepath.Join(dir, "expected.md")
+			if *update {
+				if err := os.WriteFile(expPath, buf.Bytes(), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			want, err := os.ReadFile(expPath)
+			if err != nil {
+				t.Fatalf("%v (run: go test ./test/ -update)", err)
+			}
+			if !bytes.Equal(buf.Bytes(), want) {
+				t.Errorf("markdown differs from %s (rerun with -update and review the diff)\n--- got\n%s", expPath, buf.Bytes())
+			}
+		})
+	}
+}
+
+func evaluate(t *testing.T, factsPath string) *report.Report {
 	t.Helper()
 	fh, err := os.Open(factsPath)
 	if err != nil {
@@ -84,6 +119,12 @@ func render(t *testing.T, factsPath string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return rep
+}
+
+func render(t *testing.T, factsPath string) []byte {
+	t.Helper()
+	rep := evaluate(t, factsPath)
 	var buf bytes.Buffer
 	if err := report.WriteJSON(&buf, rep); err != nil {
 		t.Fatal(err)
