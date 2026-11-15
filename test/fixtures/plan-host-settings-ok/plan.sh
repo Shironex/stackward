@@ -12,13 +12,22 @@ set -eu
 # journald-cap (passing): LOG-001 already passes or does not apply
 # sysctl-hardening (passing): KRN-002, KRN-003 and KRN-004 already pass or
 # do not apply
+# unattended-upgrades (unknown): UPD-001 is unknown; nothing to plan until
+# the audit can inspect it
+# unattended-upgrades-install (unknown): UPD-001 is unknown; nothing to plan
+# until the audit can inspect it
 # docker-log-rotation (passing): DKR-031 already passes or does not apply
+# unattended-upgrades-reboot (unknown): SYS-002 is unknown, SYS-003 is
+# unknown and UPD-004 is unknown; nothing to plan until the audit can
+# inspect it
 # admin-user (unknown): the accounts were not audited
 # paas-user (unknown): the accounts were not audited
 # sshd-hardening (unknown): SSH-001 is unknown, SSH-002 is unknown, SSH-003
 # is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan
 # until the audit can inspect it
 # lock-default-user (unknown): USR-003 is unknown; nothing to plan until the
+# audit can inspect it
+# fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 
 echo "stackward: the plan has no steps; nothing to do"

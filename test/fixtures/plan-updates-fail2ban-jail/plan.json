@@ -1,0 +1,336 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:5c4757836113b53f",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "kernel": "6.8.0-49-generic"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "public-web",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 6,
+        "warn": 4,
+        "unknown": 71,
+        "info": 7,
+        "pass": 9,
+        "skip": 12
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 3,
+    "safe": 1,
+    "networking": 1,
+    "access_critical": 1,
+    "opt_in": 2,
+    "restarts": [
+      "fail2ban"
+    ],
+    "skipped": 8
+  },
+  "steps": [
+    {
+      "id": "unattended-upgrades",
+      "title": "Turn on unattended-upgrades with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "risk": "safe",
+      "opt_in": false,
+      "restarts": [],
+      "touches": [
+        "file:/etc/apt/apt.conf.d/90stackward-unattended-upgrades",
+        "service:apt-daily-upgrade.timer"
+      ],
+      "edits": [
+        {
+          "path": "/etc/apt/apt.conf.d/90stackward-unattended-upgrades",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "// Written by stackward: plan step unattended-upgrades, fixes UPD-001.\n// Turns on the daily package list update and unattended-upgrades.\n// Remove this file to undo.\nAPT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";\n",
+          "new_sha256": "8c647046e13af8512c12c5ad25a7cb7d4ab4bc7d6c9dd792a7490efa81b0569f",
+          "diff": "--- /dev/null\n+++ b/etc/apt/apt.conf.d/90stackward-unattended-upgrades\n@@ -0,0 +1,5 @@\n+// Written by stackward: plan step unattended-upgrades, fixes UPD-001.\n+// Turns on the daily package list update and unattended-upgrades.\n+// Remove this file to undo.\n+APT::Periodic::Update-Package-Lists \"1\";\n+APT::Periodic::Unattended-Upgrade \"1\";\n",
+          "validate": [
+            "apt-config",
+            "dump",
+            "-c"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "enable",
+            "apt-daily-upgrade.timer"
+          ],
+          "why": "enable the daily unattended-upgrades timer, disabled when audited"
+        },
+        {
+          "args": [
+            "systemctl",
+            "start",
+            "apt-daily-upgrade.timer"
+          ],
+          "why": "start the timer now"
+        }
+      ],
+      "undo": {
+        "description": "Remove the drop-in; unattended-upgrades then follows the distribution's own settings again. The timer goes back to disabled, as the audit saw it.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/apt/apt.conf.d/90stackward-unattended-upgrades"
+            ],
+            "why": "remove the drop-in"
+          },
+          {
+            "args": [
+              "systemctl",
+              "stop",
+              "apt-daily-upgrade.timer"
+            ],
+            "why": "stop the timer again"
+          },
+          {
+            "args": [
+              "systemctl",
+              "disable",
+              "apt-daily-upgrade.timer"
+            ],
+            "why": "disable the timer again"
+          }
+        ]
+      },
+      "notes": [
+        "Reboot decision: automatic reboot stays off, so updates that need a reboot (a kernel, libc) wait for you and SYS-002 reports them. To let unattended-upgrades reboot at 04:00 (host time) instead, apply the opt in step unattended-upgrades-reboot.",
+        "Only the origins allowed in 50unattended-upgrades are installed; UPD-003 checks that the security pocket is among them.",
+        "A file that sorts after 90stackward-unattended-upgrades in /etc/apt/apt.conf.d can still turn it off; the next audit's UPD-001 says so."
+      ]
+    },
+    {
+      "id": "unattended-upgrades-reboot",
+      "title": "Let unattended-upgrades reboot at 04:00 (host time) when an update needs it",
+      "fixes": [
+        "SYS-002",
+        "SYS-003",
+        "UPD-004"
+      ],
+      "risk": "networking",
+      "opt_in": true,
+      "restarts": [],
+      "touches": [
+        "file:/etc/apt/apt.conf.d/91stackward-automatic-reboot"
+      ],
+      "edits": [
+        {
+          "path": "/etc/apt/apt.conf.d/91stackward-automatic-reboot",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "// Written by stackward: plan step unattended-upgrades-reboot.\n// Lets unattended-upgrades reboot the host at 04:00 (host time)\n// when an update needs a reboot. Remove this file to undo.\nUnattended-Upgrade::Automatic-Reboot \"true\";\nUnattended-Upgrade::Automatic-Reboot-Time \"04:00\";\n",
+          "new_sha256": "3fd38426b998c14c84217ce009c6fb3727704b87a24f28bc557ca6778a06735e",
+          "diff": "--- /dev/null\n+++ b/etc/apt/apt.conf.d/91stackward-automatic-reboot\n@@ -0,0 +1,5 @@\n+// Written by stackward: plan step unattended-upgrades-reboot.\n+// Lets unattended-upgrades reboot the host at 04:00 (host time)\n+// when an update needs a reboot. Remove this file to undo.\n+Unattended-Upgrade::Automatic-Reboot \"true\";\n+Unattended-Upgrade::Automatic-Reboot-Time \"04:00\";\n",
+          "validate": [
+            "apt-config",
+            "dump",
+            "-c"
+          ]
+        }
+      ],
+      "commands": [],
+      "undo": {
+        "description": "Remove the drop-in; automatic reboot is off again and reboots wait for you.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/apt/apt.conf.d/91stackward-automatic-reboot"
+            ],
+            "why": "remove the drop-in"
+          }
+        ]
+      },
+      "notes": [
+        "This is the reboot decision. stackward apply never reboots the host: this step only writes a setting. With it, unattended-upgrades reboots the host at 04:00 host time after a run that leaves /var/run/reboot-required. Without it, automatic reboot stays off and reboots wait for you.",
+        "Logged in users do not hold the reboot back (Unattended-Upgrade::Automatic-Reboot-WithUsers is true unless set otherwise).",
+        "A reboot is pending now (for 20 days, asked for by linux-image-6.8.0-51-generic): after this step the next unattended-upgrades run may reboot the host at 04:00. To reboot at a time you pick instead, skip this step and reboot by hand."
+      ]
+    },
+    {
+      "id": "fail2ban-sshd",
+      "title": "Ban SSH brute force with a fail2ban sshd jail",
+      "fixes": [
+        "CS-010"
+      ],
+      "risk": "access-critical",
+      "opt_in": true,
+      "restarts": [
+        "fail2ban"
+      ],
+      "touches": [
+        "file:/etc/fail2ban/jail.d/90-stackward-sshd.local",
+        "service:fail2ban"
+      ],
+      "edits": [
+        {
+          "path": "/etc/fail2ban/jail.d/90-stackward-sshd.local",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step fail2ban-sshd, fixes CS-010.\n# Bans SSH brute force on the sshd ports. Never bans loopback, the\n# tailnet when Tailscale is in use, or the address the plan was made\n# from. Remove this file and reload fail2ban to undo.\n[sshd]\nenabled = true\nport = 2222\nignoreip = 127.0.0.1/8 ::1 198.51.100.0/24 100.64.0.0/10 fd7a:115c:a1e0::/48\n",
+          "new_sha256": "3e98c93eb3bcec322969f5de9a4fb548d0ca47d54ece34a9da5a2c520b1682f2",
+          "diff": "--- /dev/null\n+++ b/etc/fail2ban/jail.d/90-stackward-sshd.local\n@@ -0,0 +1,8 @@\n+# Written by stackward: plan step fail2ban-sshd, fixes CS-010.\n+# Bans SSH brute force on the sshd ports. Never bans loopback, the\n+# tailnet when Tailscale is in use, or the address the plan was made\n+# from. Remove this file and reload fail2ban to undo.\n+[sshd]\n+enabled = true\n+port = 2222\n+ignoreip = 127.0.0.1/8 ::1 198.51.100.0/24 100.64.0.0/10 fd7a:115c:a1e0::/48\n"
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "fail2ban-client",
+            "-t"
+          ],
+          "why": "check the whole fail2ban configuration with the new jail"
+        },
+        {
+          "args": [
+            "systemctl",
+            "reload",
+            "fail2ban"
+          ],
+          "why": "load the new jail"
+        }
+      ],
+      "undo": {
+        "description": "Remove the jail drop-in and reload fail2ban: the sshd jail stops and its bans are lifted.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/fail2ban/jail.d/90-stackward-sshd.local"
+            ],
+            "why": "remove the jail drop-in"
+          },
+          {
+            "args": [
+              "systemctl",
+              "reload",
+              "fail2ban"
+            ],
+            "why": "stop the jail and lift its bans"
+          }
+        ]
+      },
+      "notes": [
+        "No SSH client address was known when this plan was made (a saved facts file, or not over SSH), so only loopback, the jail's own entries and the tailnet are ignored. apply refuses to run the step from an SSH session whose address the jail would not ignore: plan again from the session you will apply and confirm from.",
+        "fail2ban-client -t checks the whole fail2ban configuration with the new file before fail2ban loads it; a failure stops the step and the transaction rolls back.",
+        "The jail keeps the log backend fail2ban already uses for sshd. If fail2ban cannot read the sshd log with it, loading the jail fails and the transaction rolls back."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "unknown",
+      "reason": "LOG-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-install",
+      "title": "Install unattended-upgrades and turn it on with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "passing",
+      "reason": "does not apply: unattended-upgrades is already installed; the step unattended-upgrades turns it on"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-031 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-002",
+        "SSH-003",
+        "SSH-004",
+        "SSH-005"
+      ],
+      "kind": "unknown",
+      "reason": "SSH-001 is unknown, SSH-002 is unknown, SSH-003 is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "USR-003 is unknown; nothing to plan until the audit can inspect it"
+    }
+  ]
+}
