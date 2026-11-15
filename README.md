@@ -234,6 +234,11 @@ same report format as `audit`.
 - **Probe the origin.** If a name points at a CDN or tunnel edge, probe the
   origin IP and pass the name with `--hostname`. If `audit` on the host shows
   a tunnel and PRB-002 fails, the origin is bypassable (CF-005).
+- **Run it from another machine.** A target that is loopback or one of this
+  machine's own addresses is probed from the host itself, so services bound to
+  loopback answer and the results do not show what the internet sees. probe
+  warns on stderr before it starts, prints a `WARNING:` line in the text
+  report and sets `probe.self_target` to `true` in the JSON report.
 - An address family this machine cannot reach (often IPv6) is reported as
   unreachable and its ports as `unknown`, never as closed.
 - probe reports name the target; read them before sharing.
