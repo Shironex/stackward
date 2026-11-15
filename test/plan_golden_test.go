@@ -139,9 +139,34 @@ func goldenPlan(t *testing.T, factsPath string) *plan.Plan {
 		t.Fatal(err)
 	}
 	rep := evaluate(t, factsPath)
-	return plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep)}, rep, plan.Options{
+	return plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: goldenAccounts(t, filepath.Dir(factsPath))}, rep, plan.Options{
 		Version: "test", Sandbox: goldenOptions.Sandbox, SourceKind: plan.FromFacts,
 	})
+}
+
+// goldenAccounts reads the owner's account choices of a plan fixture from
+// its optional accounts.json (the plan flags --admin-user,
+// --admin-keys-from and --paas-user).
+func goldenAccounts(t *testing.T, dir string) plan.AccountChoices {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, "accounts.json"))
+	if os.IsNotExist(err) {
+		return plan.AccountChoices{}
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var a struct {
+		Admin         string `json:"admin"`
+		AdminKeysFrom string `json:"admin_keys_from"`
+		PaaS          string `json:"paas"`
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&a); err != nil {
+		t.Fatalf("%s: %v", filepath.Join(dir, "accounts.json"), err)
+	}
+	return plan.AccountChoices{Admin: a.Admin, AdminKeysFrom: a.AdminKeysFrom, PaaS: a.PaaS}
 }
 
 func compareGolden(t *testing.T, path string, got []byte) {

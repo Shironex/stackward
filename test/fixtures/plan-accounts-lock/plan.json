@@ -1,0 +1,235 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:82c1a34869ebe223",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "unknown",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 1,
+        "warn": 7,
+        "unknown": 75,
+        "info": 1,
+        "pass": 16,
+        "skip": 9
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 2,
+    "safe": 0,
+    "networking": 0,
+    "access_critical": 2,
+    "opt_in": 0,
+    "restarts": [
+      "ssh"
+    ],
+    "skipped": 5
+  },
+  "steps": [
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-003",
+        "SSH-005"
+      ],
+      "risk": "access-critical",
+      "opt_in": false,
+      "restarts": [
+        "ssh"
+      ],
+      "touches": [
+        "file:/etc/ssh/sshd_config.d/00-stackward-hardening.conf",
+        "service:ssh"
+      ],
+      "edits": [
+        {
+          "path": "/etc/ssh/sshd_config.d/00-stackward-hardening.conf",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.\n# Named to sort first: sshd keeps the first value it reads. Remove this\n# file and reload ssh.service to undo.\nPasswordAuthentication no\nPermitRootLogin no\nMaxAuthTries 3\n",
+          "new_sha256": "c9a38f60ebbc4e5fdac333386546ac39b633823505d09f19d241e029fe8667aa",
+          "diff": "--- /dev/null\n+++ b/etc/ssh/sshd_config.d/00-stackward-hardening.conf\n@@ -0,0 +1,6 @@\n+# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.\n+# Named to sort first: sshd keeps the first value it reads. Remove this\n+# file and reload ssh.service to undo.\n+PasswordAuthentication no\n+PermitRootLogin no\n+MaxAuthTries 3\n",
+          "validate": [
+            "sshd",
+            "-t",
+            "-f"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "try-reload-or-restart",
+            "ssh.service"
+          ],
+          "why": "load the new settings; running sessions stay open"
+        }
+      ],
+      "undo": {
+        "description": "Remove the drop-in and reload ssh.service; the earlier values return for new logins.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/ssh/sshd_config.d/00-stackward-hardening.conf"
+            ],
+            "why": "remove the drop-in"
+          },
+          {
+            "args": [
+              "systemctl",
+              "try-reload-or-restart",
+              "ssh.service"
+            ],
+            "why": "load the earlier settings"
+          }
+        ]
+      },
+      "notes": [
+        "sshd runs under socket activation (ssh.socket); the drop-in sets no port or listen address, so reloading ssh.service is enough and ssh.socket is left alone.",
+        "Existing SSH sessions stay open. Before you confirm, log in again in a new session with your key: that is the proof the change works.",
+        "Ubuntu 22.04 and later and Debian 12 and later; older OpenSSH reads KbdInteractiveAuthentication differently."
+      ]
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "risk": "access-critical",
+      "opt_in": false,
+      "restarts": [],
+      "touches": [
+        "account:ubuntu",
+        "authorized-keys:ubuntu"
+      ],
+      "edits": [],
+      "commands": [
+        {
+          "args": [
+            "usermod",
+            "--shell",
+            "/usr/sbin/nologin",
+            "ubuntu"
+          ],
+          "why": "refuse a login shell"
+        },
+        {
+          "args": [
+            "mv",
+            "-T",
+            "/home/ubuntu/.ssh/authorized_keys",
+            "/home/ubuntu/.ssh/authorized_keys.stackward-locked"
+          ],
+          "why": "move the authorized keys aside, so no key logs in"
+        }
+      ],
+      "undo": {
+        "description": "Move the authorized keys files back, unlock the password if the step locked it, and put the old shell back.",
+        "commands": [
+          {
+            "args": [
+              "mv",
+              "-T",
+              "/home/ubuntu/.ssh/authorized_keys.stackward-locked",
+              "/home/ubuntu/.ssh/authorized_keys"
+            ],
+            "why": "undo: move the authorized keys aside, so no key logs in"
+          },
+          {
+            "args": [
+              "usermod",
+              "--shell",
+              "/bin/bash",
+              "ubuntu"
+            ],
+            "why": "undo: put the old shell back"
+          }
+        ]
+      },
+      "notes": [
+        "Apply it from an SSH session of the admin account that stays (logged in with its key): the lockout guard refuses it from any other session, and from the account it locks.",
+        "Running sessions of ubuntu stay open; new logins are refused.",
+        "ubuntu keeps its NOPASSWD sudo line: taking sudo away is on the never touched list. Nobody can log in as ubuntu to use it, but USR-003 keeps naming it until you remove the line by hand."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "unknown",
+      "reason": "LOG-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-031 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "an admin account besides root and the cloud default exists (ops)"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "passing",
+      "reason": "no platform (Coolify, Dokploy) was found; a PaaS account is only for one"
+    }
+  ]
+}

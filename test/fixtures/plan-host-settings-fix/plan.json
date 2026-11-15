@@ -46,7 +46,7 @@
       "systemd-journald",
       "docker"
     ],
-    "skipped": 0
+    "skipped": 4
   },
   "steps": [
     {
@@ -252,5 +252,47 @@
       ]
     }
   ],
-  "skipped": []
+  "skipped": [
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-002",
+        "SSH-003",
+        "SSH-004",
+        "SSH-005"
+      ],
+      "kind": "unknown",
+      "reason": "SSH-001 is unknown, SSH-002 is unknown, SSH-003 is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "USR-003 is unknown; nothing to plan until the audit can inspect it"
+    }
+  ]
 }
