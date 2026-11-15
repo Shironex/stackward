@@ -1,17 +1,18 @@
 ---
 /**
- * Real stackward output in a terminal panel. The text is captured from the
- * CLI (see src/samples/), never typed by hand. It is parsed into rows so long
- * lines wrap under the message column; the panel never scrolls sideways.
+ * Real stackward output in a terminal panel. The report is the CLI's own
+ * report.v1 JSON (see src/samples/, written by pnpm sample), never typed by
+ * hand. It is laid out like the text report, by level, with long lines
+ * wrapping under the message column; the panel never scrolls sideways.
  * Level words are coloured and stay readable without colour.
  */
-import { compact, parseReport } from '../lib/report.mjs';
+import { compact, fromReport } from '../lib/report.mjs';
 
 interface Props {
   /** The command shown on the prompt line. */
   command: string;
-  /** Raw report text. */
-  output: string;
+  /** A report.v1 document (`stackward audit --json`). */
+  report: object;
   /** What the reader is looking at, for the caption and screen readers. */
   caption: string;
   /** Show a short excerpt: three findings and a trimmed header. */
@@ -19,9 +20,9 @@ interface Props {
   /** A link shown after the caption. */
   more?: { href: string; label: string };
 }
-const { command, output, caption, brief = false, more } = Astro.props;
+const { command, report: doc, caption, brief = false, more } = Astro.props;
 
-const full = parseReport(output);
+const full = fromReport(doc);
 const report = brief ? compact(full, { keys: ['host', 'profile', 'coverage'], levels: ['fail', 'warn', 'unknown'] }) : full;
 const levelWord = (level: string) => level.toUpperCase();
 ---
@@ -50,7 +51,7 @@ const levelWord = (level: string) => level.toUpperCase();
         <section class="t-group-block">
           {g.id && (
             <h3 class="t-group">
-              {g.id} <span>{g.name}</span>
+              {g.id}{g.name && <span> {g.name}</span>}
               {g.note && <span class="t-dim"> ({g.note})</span>}
             </h3>
           )}
@@ -59,14 +60,13 @@ const levelWord = (level: string) => level.toUpperCase();
               <span class={`t-level t-${f.level}`}>{levelWord(f.level)}</span>
               <span class="t-id">{f.id}</span>
               <div class="t-body">
-                <p class="t-title">
-                  {f.target && <span class="t-dim">{f.target} </span>}
-                  {f.title}
-                  {f.severity && <span class="t-dim"> [{f.severity}]</span>}
-                </p>
-                {f.message.map((m) => (
-                  <p class="t-msg">{m}</p>
-                ))}
+                <p class="t-title">{f.headline}</p>
+                {(f.severity || f.target) && <p class="t-msg t-dim">{[f.severity, f.target].filter(Boolean).join(' · ')}</p>}
+                {!brief && f.rule && (
+                  <p class="t-msg">
+                    <span class="t-dim">rule:</span> <span class="t-dim">{f.rule}</span>
+                  </p>
+                )}
                 {f.fix && (
                   <p class="t-fix">
                     <span class="t-dim">fix:</span> {f.fix}
