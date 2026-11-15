@@ -1,0 +1,60 @@
+area:cli:
+  - changed-files:
+      - any-glob-to-any-file: ["cmd/stackward/**", "internal/cli/**", "internal/audit/**", "internal/profile/**"]
+area:facts:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/**"]
+area:checks:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/checks/**"]
+area:catalog:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/catalog/**", "internal/docgen/**", "cmd/docgen/**", "docs/checks/**"]
+area:report:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/report/**", "schema/**", "internal/schemacheck/**"]
+area:sandbox:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/sandbox/**", "internal/redact/**"]
+area:ssh:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/ssh*", "internal/checks/ssh*"]
+area:firewall:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/firewall*", "internal/checks/firewall*"]
+area:docker:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/docker*", "internal/checks/docker*"]
+area:system:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/{os,users,updates,sysctl,disk,journal,clock,load}*", "internal/checks/sys*"]
+area:network-access:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/{tailscale,cloudflared,crowdsec,fail2ban}*", "internal/checks/{tailscale,tunnel,cloudflared,crowdsec,fail2ban}*"]
+area:paas:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/facts/paas*", "internal/checks/paas*"]
+area:release:
+  - changed-files:
+      - any-glob-to-any-file: [".goreleaser.yaml", "scripts/**", ".github/workflows/release.yml", "docs/install.md"]
+area:docs:
+  - changed-files:
+      - any-glob-to-any-file: ["docs/**", "*.md"]
+area:site:
+  - changed-files:
+      - any-glob-to-any-file: ["site/**", ".github/workflows/docs.yml"]
+area:probe:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/probe/**", "cmd/stackward-probe/**"]
+area:tui:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/tui/**"]
+area:brand:
+  - changed-files:
+      - any-glob-to-any-file: ["brand/**", "assets/**"]
+ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/workflows/**"]
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: ["go.mod", "go.sum", "site/package.json", "site/pnpm-lock.yaml"]
