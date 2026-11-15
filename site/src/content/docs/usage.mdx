@@ -1,12 +1,12 @@
 ---
 title: Usage and reports
-description: Run an audit, read the report, explain a check, and use the JSON output and exit codes in scripts and CI.
+description: Run an audit, read the report, explain a check, probe a server from outside, browse findings in the terminal, and use the JSON and Markdown output and exit codes in scripts and CI.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import Terminal from '../../components/Terminal.astro';
 import Level from '../../components/Level.astro';
-import sample from '../../samples/audit-debian-12.txt?raw';
+import sample from '../../samples/audit-showcase.txt?raw';
 
 stackward runs on the server you want to audit. It reads, prints a report
 and exits. Nothing on the server changes.
@@ -15,8 +15,8 @@ and exits. Nothing on the server changes.
 stackward audit [flags]     audit this host (sudo gives full coverage)
 stackward explain [id]      explain a check, or list every check
 stackward version           print the version
-stackward probe             planned: check the server from another machine
-stackward tui               planned: browse findings in the terminal
+stackward probe <host>      check a host from outside (run from another machine)
+stackward tui [flags]       browse the findings in the terminal
 ```
 
 ## Run an audit
@@ -38,10 +38,11 @@ way: root gives stackward more to read, not more to change.
 | Flag | What it does |
 |---|---|
 | `--json` | Print the report as JSON (same as `--format json`). |
-| `--format text\|json` | Output format. Text is the default. |
+| `--md` | Print the report as Markdown (same as `--format md`), for an issue or a handover note. |
+| `--format text\|json\|md` | Output format. Text is the default. |
 | `--out FILE` | Write the report to this file. It is the only file stackward ever writes. |
 | `--fail-on fail\|warn\|never` | Which level makes the exit code 1. Default `fail`. |
-| `--all` | Text output: also list passing and skipped results. |
+| `--all` | Text and Markdown output: also list passing and skipped results. |
 | `--profile NAME` | Ingress profile: `auto`, `tunnel`, `public-web`, `tailnet-only` or `paas-panel`. Default `auto`. |
 | `--dump-facts` | Print the collected facts as redacted JSON instead of a report, for bug reports. |
 | `--facts FILE` | Evaluate the checks over a saved facts file instead of this host. |
@@ -54,9 +55,9 @@ way: root gives stackward more to read, not more to change.
 ## Reading a report
 
 <Terminal
-  command="sudo stackward audit --all"
+  command="sudo stackward audit"
   output={sample}
-  caption="A real text report, from a build of main run over the debian-12-reboot-overdue test fixture. Only the version line is shortened."
+  caption="A real text report from a build of main, run over the showcase-coolify-tunnel test fixture. An excerpt: only whole groups are left out, and the version is shortened. The fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run."
 />
 
 The header comes first. Read it before the findings:
@@ -107,11 +108,15 @@ stackward explain SYS-002    # why it matters, verify, fix, what can break
 The same text is on this site, one page per check, in the
 [check reference](/stackward/checks/).
 
-## JSON output and CI
+## JSON and Markdown output, and CI
 
 ```sh
 sudo stackward audit --json --out report.json
+sudo stackward audit --md --out report.md
 ```
+
+Markdown is meant to be pasted into an issue or a handover note. Both
+formats carry the same results as the text report.
 
 The JSON report follows the `report.v1` schema in
 [`schema/report.v1.json`](https://github.com/Shironex/stackward/blob/main/schema/report.v1.json).
@@ -140,14 +145,97 @@ masked and the hostname hashed. `--facts` replays a saved file, so a report
 can be reproduced on another machine. Read the file before you attach it to
 an issue: redaction is a safety net, and you are the last reviewer.
 
+## stackward probe
+
+`audit` runs on the server and cannot see the provider firewall
+([NET-009](/stackward/checks/net-009/) says so on every run). `probe` runs
+from another machine, against a host you own, and shows what actually gets
+through. Its results are the PRB checks, in the same report format.
+
+```sh
+stackward probe 203.0.113.10 --profile tunnel --hostname app.example.com
+```
+
+What it sends, in full:
+
+- plain TCP connects, over IPv4 and IPv6, to a short fixed port list (SSH,
+  80 and 443, the Docker API, panel and dashboard ports, databases), plus at
+  most 16 ports you add with `--ports`;
+- a read of the first line an SSH server sends (at most 256 bytes);
+- one `GET /` to the raw address on 80 and 443, without following redirects.
+  The HTTPS request skips certificate verification, because an address has
+  no certificate name to match, and the report says so;
+- with `--hostname`, a request to `https://<hostname>/` with normal
+  verification, following redirects on that same hostname only.
+
+It ignores proxy settings from the environment, so the answers come from the
+target itself. It refuses ranges, CIDR blocks, lists and URLs: one host only.
+See [what probe does on the network](/stackward/project/threat-model/#what-probe-does-on-the-network)
+in the threat model.
+
+### Consent
+
+Probing a host you do not own may be illegal. probe prints that and asks for
+`y` on a terminal. When it is not on a terminal (a script, CI), it refuses to
+run unless you pass `--i-own-this`.
+
+### Flags
+
+| Flag | What it does |
+|---|---|
+| `--hostname NAME` | Also check this app hostname over HTTPS (redirect loops, certificate problems). |
+| `--ports LIST` | Extra TCP ports to try, comma separated, for example a moved SSH port. |
+| `--profile NAME` | Ingress profile of the target: `auto`, `tunnel`, `public-web`, `tailnet-only` or `paas-panel`. Default `auto`. |
+| `--i-own-this` | Confirm you own the host or may test it. Required when not on a terminal. |
+| `--json`, `--format text\|json` | Output format. Text is the default. |
+| `--all` | Text output: also list passing and skipped results. |
+| `--fail-on fail\|warn\|never` | Which level makes the exit code 1. Default `fail`. |
+| `--out FILE` | Write the report to this file. |
+| `--timeout DURATION` | Time limit for each TCP connect and banner read. Default 3s. |
+| `--no-sandbox` | Do not apply the Landlock sandbox. For debugging only. |
+
+probe has no host facts, so `--profile auto` judges open SSH and web ports as
+if nothing should be public, and says so. Pass the profile that matches how
+the server is meant to be reached. Probe the origin address: if a name points
+at a CDN or tunnel edge, probe the origin and pass the name with
+`--hostname`. An address family this machine cannot reach, often IPv6, is
+reported as unreachable and its ports as `unknown`, never as closed. The
+report names the target, so read it before you share it. Exit codes are the
+same as for `audit`.
+
+## stackward tui
+
+```sh
+sudo stackward tui
+stackward tui --report report.json
+stackward tui --facts facts.json
+```
+
+`tui` runs the same audit as `stackward audit`, with the same sandbox and the
+same read only promise, and opens a findings browser: results by group, worst
+first, with the full explanation, fix and verify steps of the selected check
+beside them. `--report FILE` browses a saved `--json` report instead and
+`--facts FILE` a saved facts file. `--profile`, `--timeout`, `--show-hostname`
+and `--no-sandbox` work as they do for `audit`.
+
+| Key | Does |
+|---|---|
+| Arrows, `j`, `k` | Move |
+| `tab` | Switch between the list and the detail pane |
+| `/` | Filter |
+| `l` | Cycle the level |
+| `a` | Show or hide passing and skipped results |
+| `g` | Jump to the next group |
+| `y` | Copy the fix to the clipboard |
+| `?` | List every key |
+| `q` | Quit |
+
+Copying uses the terminal clipboard sequence (OSC 52) and only happens when
+you press `y`. The browser writes no file. It needs a terminal of at least
+60 by 16 and is laid out for 80 by 24. `NO_COLOR` turns colors off.
+
 ## Planned
 
-- **`stackward probe`** checks the server from another machine: which ports
-  answer on the public address, and whether the origin answers when it
-  should only be reached through a tunnel. See
-  [the outside view](/stackward/learn/outside-view/).
-- **`stackward tui`** browses findings by group and severity in the
-  terminal.
 - **Hardening (v0.2)**: a reviewed plan of changes with old and new values,
   applied only on request, with a rollback timer for anything that could
   lock you out. Version 0.1 changes nothing. See

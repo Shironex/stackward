@@ -3,7 +3,7 @@
  * The overview page: what stackward is, the stack it reads, the read only
  * promise, the result levels, and the way into the Learn track.
  */
-import sample from '../samples/audit-debian-12.txt?raw';
+import sample from '../samples/audit-showcase.txt?raw';
 import { catalog } from '../lib/catalog.mjs';
 import { TOPICS } from '../lib/learn.mjs';
 import { url } from '../lib/site.mjs';
@@ -15,6 +15,7 @@ const countOf = (ids: string[]) => catalog.groups.filter((g) => ids.includes(g.i
 const name = (id: string) => catalog.groups.find((g) => g.id === id)?.name ?? id;
 const building = catalog.groups.filter((g) => g.checks.length === 0).map((g) => g.name);
 const listOf = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}`);
+const liveGroups = catalog.groups.filter((g) => g.checks.length > 0).length;
 
 // Top of the stack first: how traffic arrives, down to the host underneath.
 const strata = [
@@ -23,6 +24,7 @@ const strata = [
   { layer: 'The platform', parts: 'Coolify or Dokploy, Traefik', groups: ['PAAS'], topic: 'coolify-and-dokploy' },
   { layer: 'The containers', parts: 'Docker engine, socket, networks, users', groups: ['DKR'], topic: 'docker-socket' },
   { layer: 'The host', parts: 'OS, kernel, updates, accounts, secrets, logs, backups', groups: ['SYS', 'UPD', 'KRN', 'USR', 'SEC', 'LOG', 'BAK'], topic: 'updates' },
+  { layer: 'The outside view', parts: 'What another machine sees, from stackward probe', groups: ['PRB'], topic: 'outside-view' },
 ];
 
 const promises = [
@@ -56,9 +58,9 @@ const levels = [
     </div>
     <div class="home-hero-term">
       <Terminal
-        command="sudo stackward audit --all"
+        command="sudo stackward audit"
         output={sample}
-        caption="Real output from a build of main, run over the debian-12-reboot-overdue test fixture. Only the version line is shortened."
+        caption="Real output of a build of main, run over the saved facts of the showcase-coolify-tunnel test fixture. An excerpt: the groups shown are whole, the others are left out, and the version is shortened. That fixture predates the tunnel and intrusion prevention collectors, so those checks report unknown in the full run."
       />
     </div>
   </section>
@@ -66,8 +68,8 @@ const levels = [
   <section class="home-status" aria-label="Project status">
     <p>
       <strong>Pre-alpha.</strong>{' '}
-      {`The audit engine, report format and sandbox are in place, with ${catalog.count} ${catalog.count === 1 ? 'check' : 'checks'} in the catalog today.`}
-      {building.length > 0 ? ` Still being built: the ${listOf(building)} checks.` : ''} Do not rely on it yet. <a href={url('checks')}>See every check</a>.
+      {`The audit, the outside view probe, the terminal browser and Markdown reports are built, with ${catalog.count} checks in ${liveGroups} groups, covering Tailscale, Cloudflare Tunnel, CrowdSec and fail2ban as well as SSH, the firewall, Docker and the host. There is no tagged release yet, so build it from source.`}
+      {building.length > 0 ? ` Groups with no checks yet: ${listOf(building)}.` : ''} Expect rough edges and do not rely on it alone. <a href={url('install')}>Install and verify</a>, or <a href={url('checks')}>see every check</a>.
     </p>
   </section>
 
@@ -75,8 +77,7 @@ const levels = [
     <h2 id="strata-title">The stack it reads, top to bottom</h2>
     <p class="home-intro">
       Generic auditors look at a Linux box. stackward looks at how a self hosted server is actually run, and at the places where those layers
-      disagree, such as a firewall rule that Docker routes around. Each layer is filled in as its checks land; a dim segment is a group with no
-      checks yet.
+      disagree, such as a firewall rule that Docker routes around. A dim segment is a group with no checks yet.
     </p>
     <ol class="strata">
       {
@@ -110,7 +111,7 @@ const levels = [
       </p>
     </div>
     <div class="promise-body">
-    <p class="promise-lead">It writes nothing but the report you ask for, and sends nothing anywhere. No telemetry, ever.</p>
+    <p class="promise-lead">It writes nothing but the report you ask for. The audit sends nothing anywhere; only probe, which you run from another machine, connects to the one host you name. No telemetry, ever.</p>
     <dl class="promise-list">
       {
         promises.map((p) => (
