@@ -111,7 +111,12 @@ type Txn struct {
 	// Rollback is the command the timer runs.
 	Rollback []string `json:"rollback"`
 	// Session is the session that applied.
-	Session        Session  `json:"session"`
+	Session Session `json:"session"`
+	// ConfirmFrom, when set, lists the networks (CIDR) the confirming
+	// session must come from: a step closed public SSH, and the lockout
+	// guard proved the way that stays (the tailnet, an allowed source),
+	// so only a new session over that way proves it works.
+	ConfirmFrom    []string `json:"confirm_from,omitempty"`
 	ConfirmedAt    string   `json:"confirmed_at,omitempty"`
 	ConfirmedVia   string   `json:"confirmed_via,omitempty"`
 	ConfirmSession *Session `json:"confirm_session,omitempty"`
@@ -431,6 +436,9 @@ type TxnOptions struct {
 	// Exe is the path of the running binary; the timer runs a copy.
 	Exe      string
 	Baseline Baseline
+	// ConfirmFrom is what the lockout guard requires of the confirming
+	// session (ConfirmFrom of the proofs); empty for any new session.
+	ConfirmFrom []string
 }
 
 // RunTransaction applies access-critical steps as a transaction: it copies
@@ -465,7 +473,7 @@ func RunTransaction(ctx context.Context, prepared []Prepared, o TxnOptions) (*Jo
 		OpenedAt: stamp(now), Deadline: stamp(now.Add(o.ConfirmWithin)), ConfirmWithin: o.ConfirmWithin.String(),
 		TimerUnit: TimerUnit(o.RunID), BootUnit: BootUnit(o.RunID),
 		Rollback: []string{TxnBinary(o.RunID), "undo", "--transaction", o.RunID, "--yes", "--by-timer"},
-		Session:  o.Session,
+		Session:  o.Session, ConfirmFrom: o.ConfirmFrom,
 	}
 	var steps []plan.Step
 	for _, p := range prepared {
@@ -588,6 +596,12 @@ func ConfirmTxn(ctx context.Context, h Host, t *Txn, console bool, sess Session,
 		if !ok {
 			return "", errors.New(reason)
 		}
+		if len(t.ConfirmFrom) > 0 {
+			if err := confirmSource(t, sess); err != nil {
+				return "", err
+			}
+			reason += "; it comes from " + sess.ClientAddr().String() + ", over the way the lockout guard proved"
+		}
 		via, why = ViaSSH, reason
 	}
 	if err := RemoveBootUnit(ctx, h, t.ID); err != nil {
@@ -607,6 +621,20 @@ func ConfirmTxn(ctx context.Context, h Host, t *Txn, console bool, sess Session,
 	}
 	removeBinary(h, t.ID)
 	return why, nil
+}
+
+// confirmSource refuses a confirming session that does not come from one
+// of the networks the lockout guard proved (t.ConfirmFrom).
+func confirmSource(t *Txn, sess Session) error {
+	addr := sess.ClientAddr()
+	if fromAny(addr, t.ConfirmFrom) {
+		return nil
+	}
+	from := "an unknown address"
+	if addr.IsValid() {
+		from = addr.String()
+	}
+	return fmt.Errorf("transaction %s closed public SSH, so the confirm must come from a new session over the way that stays (%s), and this one comes from %s; open a session over that way and confirm there, or confirm with --console from the provider console", t.ID, strings.Join(t.ConfirmFrom, ", "), from)
 }
 
 // AckRollback acknowledges a rollback, so access steps may run again.
