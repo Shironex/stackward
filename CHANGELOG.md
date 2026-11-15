@@ -5,6 +5,56 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.1.1 (2026-11-15)
+
+A patch release: an installer, clearer findings in the terminal browser, and
+two fixes found while running 0.1.0 on real servers. Still read only; nothing
+new changes the host.
+
+### Added
+
+- `install.sh`, a guided installer with `install` (the default), `update` and
+  `uninstall`. It detects the OS and CPU, installs the `.deb` with apt on
+  Debian and Ubuntu (so `apt remove` works too) and the binary elsewhere,
+  checks the SHA-256 every time and the cosign signature when cosign is
+  installed, and stops before changing anything when a check fails. On a
+  terminal it shows each step with a spinner and ends with a summary; through
+  a pipe it prints plain lines. `update` installs only a newer stable
+  release, and `uninstall` removes only what the installer added. `get.sh`
+  stays as the download only option. See `docs/install.md`.
+- `probe` warns when the target is the machine it runs on (loopback or one of
+  its own addresses), because services bound to loopback then answer and the
+  result is not an outside view. The warning goes to stderr before probing,
+  the text report gets a `WARNING:` line, and the JSON report sets the new
+  optional `probe.self_target` field.
+
+### Changed
+
+- `stackward tui`: a finding row now shows what was found (for example
+  "coolify-proxy mounts the Docker socket") instead of the check title, which
+  states the good state and read like the opposite next to FAIL; the title is
+  shown in the detail pane as `rule`. A row no longer repeats the subject when
+  the message names it.
+- `stackward tui`: the ROOT note says the check had root when the run did,
+  instead of asking for sudo; empty evidence values are hidden; the header
+  keeps its right label whole at any width.
+- The install guide leads with the install script and gives copy paste steps
+  for the `.deb`, including why apt may print a harmless `_apt` notice.
+
+### Fixed
+
+- `CF-003` and `NET-004` now judge published container ports the same way as
+  `DKR-001` (ufw-docker, `DOCKER-USER`, the nftables backend and Docker with
+  iptables off), so one report no longer disagrees with itself. A published
+  port with nothing filtering forwarded traffic is reported as open even
+  without the Docker API; it stays `unknown` only when filtering rules exist
+  that cannot be matched.
+- GitHub releases now carry their `CHANGELOG.md` section as the release body
+  (0.1.0 and 0.1.0-rc.1 were published with an empty body and fixed by hand),
+  and the release workflow fails when the body does not match.
+
+Full changelog: https://github.com/Shironex/stackward/compare/v0.1.0...v0.1.1
+
 ## 0.1.0 (2026-11-15)
 
 
