@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/netip"
 	"regexp"
 	"sort"
 
@@ -122,6 +123,10 @@ type Input struct {
 	// flags --admin-user, --admin-keys-from and --paas-user). The facts
 	// cannot hold them: which account to create is the owner's call.
 	Accounts AccountChoices
+	// Source is the client address of the SSH session that plans; not
+	// valid when unknown (not over SSH, or a saved facts file). A step
+	// that bans clients (fail2ban-sshd) never bans it.
+	Source netip.Addr
 }
 
 // Level returns the worst level among the results of check id (fail, warn,
