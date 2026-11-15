@@ -8,7 +8,8 @@ kernels, by the Landlock sandbox described in the
 [threat model](threat-model.md):
 
 - no file writes except the report you ask for with `--out`;
-- no network calls during `audit`;
+- no network calls during `audit` (only `probe`, run from another machine,
+  connects to the one host you name);
 - Docker is only ever sent GET requests;
 - no command that changes state;
 - secret file contents are never read, only their permissions;

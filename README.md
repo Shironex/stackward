@@ -53,7 +53,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 
 ## What it checks
 
-80 checks in 11 groups today, each with its own page in the
+80 audit checks in 11 groups and 6 outside view checks today, each with its own page in the
 [checks catalog](docs/checks/index.md):
 
 | Group | Checks | What it looks at |
@@ -69,9 +69,10 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 | `SEC` Secrets on disk | 7 | Permissions, never contents: platform `.env` files, the platform SSH key folder, private keys, Docker client config, the proxy dynamic folder |
 | `PAAS` Coolify and Dokploy | 5 | Platform detection, proxy and panel ports, published platform databases, Swarm ports |
 | `BAK` Backups | 2 | Platform database backups on the host, backup tools present |
+| `PRB` Outside view | 6 | Run by `stackward probe` from another machine: public SSH, web ports on the raw IP, Docker API, panels and dashboards, databases, the app hostname over HTTPS |
 
-Tailscale, Cloudflare Tunnel, CrowdSec and fail2ban checks, and an outside
-view from another machine, are being built.
+The PRB checks run in `stackward probe`, not in `audit`. Tailscale,
+Cloudflare Tunnel, CrowdSec and fail2ban checks are being built.
 
 ## The read only promise
 
@@ -154,6 +155,7 @@ stackward audit --facts FILE          evaluate a saved facts file
 stackward explain [id]                explain a check, or list them all
 stackward tui [--report FILE | --facts FILE]
                                       browse the findings in the terminal
+stackward probe HOST [--hostname NAME] [--ports LIST] [--profile P] [--json] [--out FILE] [--i-own-this]
 stackward version
 ```
 
@@ -199,7 +201,36 @@ exactly. That is how a bug report becomes a golden test, and how the
 pictures in this README are made. Read a dump before you share it: secret
 shaped values are masked, but you are the last reviewer.
 
-<!-- usage: stackward probe (outside view from another machine) goes here -->
+### Probing from outside
+
+`audit` cannot see the provider firewall (NET-009). `probe` can: run it from
+your laptop or another server against the host you own.
+
+```sh
+stackward probe 203.0.113.10 --profile tunnel --hostname app.example.com
+```
+
+It resolves the target over IPv4 and IPv6, makes plain TCP connects to a
+short fixed list (SSH, 80 and 443, the Docker API, panel and dashboard
+ports, databases), reads the SSH banner, asks the raw IP for `/` over HTTP
+and HTTPS (the HTTPS request skips certificate verification, since an IP has
+no certificate name) and, with `--hostname`, checks the app over HTTPS for
+redirect loops and certificate problems. Results are the PRB checks in the
+same report format as `audit`.
+
+- **One host only.** Ranges, CIDR blocks and lists are refused. `--ports`
+  adds up to 16 single ports, for example a moved SSH port.
+- **Consent.** Probing a host you do not own may be illegal. probe asks for
+  `y` on a terminal; in scripts pass `--i-own-this`.
+- **Profile.** probe has no host facts, so `--profile auto` judges open SSH
+  and web ports as if nothing should be public and says so. Pass
+  `--profile tunnel`, `public-web`, `tailnet-only` or `paas-panel`.
+- **Probe the origin.** If a name points at a CDN or tunnel edge, probe the
+  origin IP and pass the name with `--hostname`. If `audit` on the host shows
+  a tunnel and PRB-002 fails, the origin is bypassable (CF-005).
+- An address family this machine cannot reach (often IPv6) is reported as
+  unreachable and its ports as `unknown`, never as closed.
+- probe reports name the target; read them before sharing.
 
 ### Browsing findings
 
@@ -235,7 +266,8 @@ was available and whether the sandbox was applied. Fix the highest severity
   coverage line counts them. Run with `sudo` for full coverage.
 - **The provider firewall is invisible from inside.** Security groups and
   cloud firewalls cannot be seen from the host; `NET-009` says so on every
-  run instead of guessing.
+  run instead of guessing. `stackward probe` from another machine shows
+  what actually gets through.
 - **A snapshot of configuration.** It does not scan your applications or
   images for vulnerabilities, does not read your cloud or Cloudflare
   account, and is not an intrusion detector.
@@ -248,7 +280,7 @@ could be inspected. It does not mean the server is secure.
 ## Roadmap
 
 - **v0.1:** the read only audit: the checks above, plus Tailscale, Cloudflare
-  Tunnel, CrowdSec and fail2ban, an outside view, and signed releases.
+  Tunnel, CrowdSec and fail2ban, and signed releases.
 - **v0.2:** `stackward plan` and `stackward apply`. A plan file lists each
   change with a diff, a risk class and how to undo it, and changes nothing.
   Apply keeps backups and a journal; SSH, firewall and user changes run with
