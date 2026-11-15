@@ -183,9 +183,9 @@ and the exact commands to undo by hand.
 ## The access-critical transaction
 
 A step that touches SSH, the firewall or users is `access-critical` in its
-own code. No step of this version is; the first ones come with
-[#28](https://github.com/Shironex/stackward/issues/28). The transaction is
-tested now with steps that exist only in test builds (see
+own code: `admin-user`, `paas-user`, `sshd-hardening` and
+`lock-default-user` ([plan.md](plan.md#steps-in-this-version)). The
+transaction is also tested with steps that exist only in test builds (see
 [Tests](#tests)). When the selection holds access-critical steps, apply:
 
 1. prints the **provider console reminder**, then the preview;

@@ -42,6 +42,9 @@ never through a symlink. Steps whose checks already pass are left out of
 | `--profile P` | ingress profile, as for audit (not with `--report`) |
 | `--show-hostname` | show the hostname instead of its hash |
 | `--no-sandbox` | do not apply the Landlock sandbox (debugging only) |
+| `--admin-user NAME` | plan `admin-user`: create the admin account NAME |
+| `--admin-keys-from USER` | copy the admin account's keys from `/home/USER/.ssh/authorized_keys` on the host (needs `--admin-user`) |
+| `--paas-user NAME` | plan `paas-user`: create the account NAME for a PaaS platform to log in as |
 
 Exit codes: 0 when the plan was written, 2 on an error.
 
@@ -60,7 +63,7 @@ Every step has one of three risk classes.
 |---|---|---|
 | `safe` | Changes a setting that cannot cut you off or stop your services; may restart a logging daemon. | journald size cap, sysctl hardening drop-in |
 | `networking` | Can interrupt traffic: restarts Docker, so containers stop and start. Always says what it restarts. | Docker log rotation in `daemon.json` |
-| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | none yet (#28 adds the first) |
+| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | admin and PaaS accounts, the sshd drop-in, locking the default cloud account |
 
 Some steps are **opt in** (`opt_in: true`): apply runs them only when you
 select them by id. The Docker step is opt in because of its restart.
@@ -72,6 +75,43 @@ select them by id. The Docker step is opt in because of its restart.
 | `journald-cap` | LOG-001 | safe | creates `/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf` with `SystemMaxUse=1G`, restarts systemd-journald |
 | `sysctl-hardening` | KRN-002, KRN-003, KRN-004 | safe | creates `/etc/sysctl.d/90-stackward-hardening.conf` with only the values the checks find off baseline, loads that file with `sysctl -p` |
 | `docker-log-rotation` | DKR-031 | networking, opt in | merges `log-driver` and `log-opts` (`max-size` 10m, `max-file` 3) into `/etc/docker/daemon.json`, keeping every other key, checks the result with `dockerd --validate`, restarts Docker |
+| `admin-user` | SSH-003, USR-003 | access-critical | with `--admin-user NAME --admin-keys-from USER`: `useradd` NAME (home `/home/NAME`, `/bin/bash`, no password), copies `/home/USER/.ssh/authorized_keys` to it with `install`, creates `/etc/sudoers.d/90-stackward-NAME` (`NAME ALL=(ALL:ALL) NOPASSWD: ALL`, checked with `visudo -c -f`); undo removes the drop-in and `userdel --remove` NAME |
+| `paas-user` | SSH-003 | access-critical | with `--paas-user NAME` on a host that runs a platform: the same account and sudoers drop-in, with an empty `~/.ssh` for the platform's key |
+| `sshd-hardening` | SSH-001, SSH-002, SSH-003, SSH-004, SSH-005 | access-critical | creates `/etc/ssh/sshd_config.d/00-stackward-hardening.conf` with the failing settings only (`PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`, `PermitEmptyPasswords no`, `MaxAuthTries 3`), checked with `sshd -t -f`, reloads ssh.service |
+| `lock-default-user` | USR-003 | access-critical | for a cloud image account (`ubuntu`, `debian`, `admin`, `ec2-user`) USR-003 warns about: sets its shell to `/usr/sbin/nologin`, locks a usable password, moves `authorized_keys` aside to `authorized_keys.stackward-locked`; undo puts all three back |
+
+The account and SSH steps, in the order apply should run them:
+
+1. **Keys come from the host, never from the plan.** `admin-user` copies an
+   existing account's `authorized_keys` on the host (`--admin-keys-from`), so
+   no key reaches the plan, the journal or the screen, and stackward never
+   invents one. No step sets or prints a password: the accounts have none,
+   which is why their sudo rule is `NOPASSWD`. A name that exists already
+   (account, group or home) is left alone (`manual`), because the undo
+   deletes the account.
+2. **Prove the new account.** Apply `admin-user`, then confirm from a new
+   SSH session **as the new account**: that login is the proof.
+3. **`sshd-hardening`** needs the [lockout guard](safety.md#lockout-guard)'s
+   proof (a non-root sudo account logs in with a key afterwards). sshd keeps
+   the first value it reads, and Ubuntu and Debian include
+   `sshd_config.d/*.conf` near the top of `sshd_config`, so the drop-in is
+   named `00-` to sort before cloud-init's `50-cloud-init.conf`. A setting
+   that an earlier file or an earlier line of `sshd_config` sets is left out
+   with a note, as is one a `Match` block overrides (written, but not
+   claimed fixed). `PermitRootLogin` is left alone on a host that runs a
+   platform (Coolify and Dokploy log in as root) or whose platform facts are
+   missing; password and keyboard-interactive login stay on when
+   `AuthenticationMethods` needs them. Without an `Include` of
+   `/etc/ssh/sshd_config.d/*.conf` outside any Match block the step is
+   `manual`.
+4. **`lock-default-user`** runs last and only from a session of the admin
+   account that stays: the guard refuses it when the applying account is
+   unknown, is the account it locks, or is not a proven non-root sudo
+   account with a key. So a plan from a saved facts file, or from the
+   default account's own session, lists it as `refused`; plan again from
+   the admin session. It never deletes the account and never touches its
+   sudo rule (removing sudo rights is on the never touched list), so
+   USR-003 can still warn about the `NOPASSWD` line; the step says so.
 
 Rules they follow:
 
@@ -128,7 +168,7 @@ Each step:
 | `fixes` | the check ids it makes pass |
 | `risk`, `opt_in` | risk class; whether apply runs it only when selected |
 | `restarts` | services it restarts, in order |
-| `touches` | everything it changes, as `file:`, `sysctl:`, `service:` or `docker-daemon:` targets |
+| `touches` | everything it changes, as `file:`, `sysctl:`, `service:`, `docker-daemon:`, `account:` or `authorized-keys:` targets |
 | `edits` | file changes, applied in order before `commands` |
 | `commands` | programs it runs, as argument vectors (no shell), each with a `why` |
 | `undo` | how to reverse it by hand, with commands |

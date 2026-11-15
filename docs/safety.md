@@ -110,10 +110,10 @@ command is run.
 
 `stackward plan` and `stackward apply` exist now (in the upcoming 0.2, not yet
 released), and so does the access-critical transaction below: an
-access-critical step runs only inside it. No step of this version is
-access-critical yet (the first ones, for accounts and sshd, are
-[#28](https://github.com/Shironex/stackward/issues/28)); the transaction is
-tested with steps that exist only in test builds. The
+access-critical step runs only inside it. The access-critical steps create
+an admin or PaaS account, write an sshd drop-in and lock the cloud image's
+default account ([plan.md](plan.md#steps-in-this-version)); the transaction
+is also tested with steps that exist only in test builds. The
 [lockout guard](#lockout-guard) and the [never touched list](#never-touched)
 below exist too, tested the same way. All of it is in place before any real
 step changes SSH, the firewall or users.
@@ -145,8 +145,9 @@ the script refuses to overwrite a file that changed since the audit. The
 format, the risk classes and the steps are described in [plan.md](plan.md).
 
 You read the plan, remove what you do not want, and only then apply it.
-This version ships only `safe` steps and one opt in `networking` step (Docker
-log rotation); no step touches SSH, the firewall or users yet.
+This version ships `safe` steps, one opt in `networking` step (Docker log
+rotation) and four `access-critical` steps for accounts and sshd; no step
+touches the firewall yet.
 
 ### Apply rules
 
@@ -215,6 +216,16 @@ selected (or of the run you undo):
 | `sysctl -w KEY=VALUE` | sysctl-hardening | undo only: the running values the audit saw |
 | `dockerd --validate --config-file <staged file>` | docker-log-rotation | before the new `daemon.json` is moved into place |
 | `systemctl restart docker` | docker-log-rotation | after `daemon.json` changed; undo |
+| `visudo -c -f <staged file>` | admin-user, paas-user | before the sudoers drop-in is moved into place |
+| `useradd --create-home --home-dir /home/NAME --user-group --shell /bin/bash NAME` | admin-user, paas-user | after the drop-in is written |
+| `install -d -m 0700 -o NAME -g NAME /home/NAME/.ssh` | admin-user, paas-user | after `useradd` |
+| `install -m 0600 -o NAME -g NAME /home/USER/.ssh/authorized_keys /home/NAME/.ssh/authorized_keys` | admin-user | copies the keys on the host |
+| `userdel --remove NAME` | admin-user, paas-user | undo only |
+| `sshd -t -f <staged file>` | sshd-hardening | before the drop-in is moved into place |
+| `systemctl try-reload-or-restart ssh.service` | sshd-hardening | after the drop-in changed; undo |
+| `usermod --shell /usr/sbin/nologin USER`, `usermod --lock USER` | lock-default-user | the lock (`--lock` only for a usable password) |
+| `mv -T /home/USER/.ssh/authorized_keys /home/USER/.ssh/authorized_keys.stackward-locked` | lock-default-user | the lock; undo moves it back |
+| `usermod --unlock USER`, `usermod --shell SHELL USER` | lock-default-user | undo only: the password lock and the shell the audit saw |
 
 An access-critical transaction also runs these, around its steps (see
 below):
