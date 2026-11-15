@@ -118,6 +118,10 @@ type Undo struct {
 type Input struct {
 	Facts   *facts.Facts
 	Results []checks.Result
+	// Accounts are the owner's choices for the account steps (the plan
+	// flags --admin-user, --admin-keys-from and --paas-user). The facts
+	// cannot hold them: which account to create is the owner's call.
+	Accounts AccountChoices
 }
 
 // Level returns the worst level among the results of check id (fail, warn,
@@ -183,6 +187,10 @@ type Generator struct {
 	Fixes []string
 	Risk  Risk
 	OptIn bool
+	// Order sorts steps of one risk class before their id, for steps
+	// that must run after another (create an account, prove it, then
+	// lock the default one). Zero for most steps.
+	Order int
 	Plan  func(in Input) Outcome
 	// Authorize refuses a step this generator would not produce: an edit
 	// of a path it does not own, content it would not write, a command or
@@ -247,7 +255,7 @@ func Register(g Generator) {
 }
 
 // Generators returns every registered generator in plan order: risk class
-// (safe first), then id.
+// (safe first), then Order, then id.
 func Generators() []Generator {
 	out := make([]Generator, 0, len(registry))
 	for _, g := range registry {
@@ -256,6 +264,9 @@ func Generators() []Generator {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Risk.rank() != out[j].Risk.rank() {
 			return out[i].Risk.rank() < out[j].Risk.rank()
+		}
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
 		}
 		return out[i].ID < out[j].ID
 	})
