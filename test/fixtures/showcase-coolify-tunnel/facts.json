@@ -135,7 +135,7 @@
       "fs.protected_regular": "2"
     },
     "docker_present": true,
-    "tailscale_present": false,
+    "tailscale_present": true,
     "global_ipv6_dynamic": false
   },
   "journal": {
@@ -188,11 +188,23 @@
       "status": "ok"
     },
     {
+      "name": "cloudflared",
+      "status": "ok"
+    },
+    {
+      "name": "crowdsec",
+      "status": "ok"
+    },
+    {
       "name": "disk",
       "status": "ok"
     },
     {
       "name": "docker",
+      "status": "ok"
+    },
+    {
+      "name": "fail2ban",
       "status": "ok"
     },
     {
@@ -225,6 +237,10 @@
     },
     {
       "name": "sysctl",
+      "status": "ok"
+    },
+    {
+      "name": "tailscale",
       "status": "ok"
     },
     {
@@ -490,9 +506,48 @@
           "action": "allow",
           "direction": "in",
           "port": "22",
-          "proto": "tcp"
+          "proto": "tcp",
+          "interface": "tailscale0"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "8080",
+          "proto": "tcp",
+          "from": "172.16.0.0/12"
         }
       ]
+    },
+    "nft": {
+      "installed": true,
+      "listed": true
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": {
+        "FORWARD": "DROP",
+        "INPUT": "DROP",
+        "OUTPUT": "ACCEPT"
+      },
+      "chains": [
+        "DOCKER",
+        "DOCKER-USER",
+        "FORWARD",
+        "INPUT",
+        "OUTPUT",
+        "ufw-before-input",
+        "ufw-user-input"
+      ],
+      "input_rules": 7,
+      "docker_user_rules": [
+        "-A DOCKER-USER -j RETURN"
+      ]
+    },
+    "ufw_docker": {
+      "in_files": "absent",
+      "loaded": "no"
     },
     "docker_user": "default",
     "docker_backend": "iptables"
@@ -511,10 +566,82 @@
       },
       {
         "proto": "tcp",
+        "address": "::",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6001,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6002,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
         "address": "0.0.0.0",
         "port": 8000,
         "processes": [
           "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "172.17.0.1",
+        "port": 8080,
+        "processes": [
+          "crowdsec"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 20241,
+        "processes": [
+          "cloudflared"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 20242,
+        "processes": [
+          "cloudflared"
+        ]
+      },
+      {
+        "proto": "udp",
+        "address": "0.0.0.0",
+        "port": 41641,
+        "processes": [
+          "tailscaled"
         ]
       }
     ],
@@ -535,6 +662,12 @@
         "interface": "eth0",
         "address": "2001:db8:10::30",
         "prefix": 64,
+        "scope": "global"
+      },
+      {
+        "interface": "tailscale0",
+        "address": "100.64.0.30",
+        "prefix": 32,
         "scope": "global"
       }
     ],
@@ -736,14 +869,14 @@
         "/lib/systemd/system/docker.service"
       ]
     },
-    "tcp_read": true,
+    "tcp_read": false,
     "containers": [
       {
         "id": "000000000000",
         "name": "coolify",
         "project": "coolify",
         "service": "coolify",
-        "image": "ghcr.io/coollabsio/coolify:4.0.0",
+        "image": "ghcr.io/coollabsio/coolify:4.0.0-beta.420",
         "running": true,
         "user": "9999",
         "network_mode": "coolify",
@@ -767,119 +900,222 @@
         }
       },
       {
+        "id": "000000000001",
+        "name": "coolify-db",
+        "project": "coolify",
+        "service": "postgres",
+        "image": "postgres:15-alpine",
+        "running": true,
+        "user": "postgres",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "coolify-db",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "postgres"
+        }
+      },
+      {
+        "id": "000000000002",
+        "name": "coolify-redis",
+        "project": "coolify",
+        "service": "redis",
+        "image": "redis:7-alpine",
+        "running": true,
+        "user": "redis",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "redis"
+        }
+      },
+      {
+        "id": "000000000003",
+        "name": "coolify-realtime",
+        "project": "coolify",
+        "service": "soketi",
+        "image": "ghcr.io/coollabsio/coolify-realtime:1.0.6",
+        "running": true,
+        "user": "9999",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "ports": [
+          {
+            "container_port": 6001,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 6001
+          },
+          {
+            "container_port": 6002,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 6002
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "soketi"
+        }
+      },
+      {
         "id": "111111111111",
-        "name": "proxy",
-        "project": "edge",
-        "service": "proxy",
+        "name": "coolify-proxy",
         "image": "traefik:v3.1.4",
         "running": true,
         "user": "10001",
         "cap_add": [
           "NET_BIND_SERVICE"
         ],
-        "network_mode": "edge_default",
+        "network_mode": "coolify",
         "networks": [
-          "app_default",
-          "edge_default"
+          "coolify",
+          "k4s9d2"
+        ],
+        "security_opt": [
+          "no-new-privileges:true"
         ],
         "mounts": [
           {
             "type": "bind",
-            "source": "/srv/traefik/traefik.yml",
-            "target": "/etc/traefik/traefik.yml",
+            "source": "/var/run/docker.sock",
+            "target": "/var/run/docker.sock",
             "read_only": true
+          },
+          {
+            "type": "bind",
+            "source": "/data/coolify/proxy",
+            "target": "/traefik"
           }
         ],
         "ports": [
           {
+            "container_port": 80,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 80
+          },
+          {
             "container_port": 443,
             "proto": "tcp",
             "host_ip": "127.0.0.1",
-            "host_port": 8443
+            "host_port": 443
           }
         ],
         "labels": {
-          "com.docker.compose.project": "edge",
-          "com.docker.compose.service": "proxy"
+          "coolify.managed": "true",
+          "coolify.proxy": "true"
         }
       },
       {
         "id": "222222222222",
-        "name": "app-web-1",
-        "project": "app",
+        "name": "shop-web-k4s9d2",
+        "project": "shop",
         "service": "web",
-        "image": "ghcr.io/example/app:2.4.1",
+        "image": "ghcr.io/example/shop:2.4.1",
         "running": true,
         "user": "10001:10001",
-        "network_mode": "app_default",
+        "network_mode": "k4s9d2",
         "networks": [
-          "app_default"
+          "k4s9d2"
         ],
         "proxy_routed": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
         "labels": {
-          "com.docker.compose.project": "app",
-          "com.docker.compose.service": "web",
+          "coolify.managed": "true",
+          "coolify.projectName": "shop",
+          "coolify.serviceName": "web",
+          "coolify.type": "application",
           "traefik.enable": "true"
         }
       },
       {
         "id": "333333333333",
-        "name": "app-db-1",
-        "project": "app",
+        "name": "shop-db-k4s9d2",
+        "project": "shop",
         "service": "db",
         "image": "postgres:17.2",
         "running": true,
         "user": "postgres",
-        "network_mode": "app_default",
+        "network_mode": "k4s9d2",
         "networks": [
-          "app_default"
+          "k4s9d2"
         ],
         "mounts": [
           {
             "type": "volume",
-            "source": "app_pg",
+            "source": "shop_pg",
             "target": "/var/lib/postgresql/data"
           }
         ],
         "labels": {
-          "com.docker.compose.project": "app",
-          "com.docker.compose.service": "db"
+          "coolify.managed": "true",
+          "coolify.projectName": "shop",
+          "coolify.serviceName": "db",
+          "coolify.type": "database"
         }
       },
       {
         "id": "444444444444",
-        "name": "tunnel",
-        "project": "edge",
-        "service": "tunnel",
+        "name": "tunnel-1",
+        "project": "tunnel",
+        "service": "cloudflared",
         "image": "cloudflare/cloudflared:2026.10.0",
         "running": true,
         "user": "nonroot",
-        "network_mode": "edge_default",
+        "network_mode": "host",
         "networks": [
-          "edge_default"
+          "host"
         ],
         "labels": {
-          "com.docker.compose.project": "edge",
-          "com.docker.compose.service": "tunnel"
+          "com.docker.compose.project": "tunnel",
+          "com.docker.compose.service": "cloudflared"
+        }
+      },
+      {
+        "id": "444444444445",
+        "name": "tunnel-2",
+        "project": "tunnel",
+        "service": "cloudflared",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "host",
+        "networks": [
+          "host"
+        ],
+        "labels": {
+          "com.docker.compose.project": "tunnel",
+          "com.docker.compose.service": "cloudflared"
         }
       }
     ],
     "networks": [
-      {
-        "name": "app_default",
-        "driver": "bridge",
-        "scope": "local"
-      },
       {
         "name": "bridge",
         "driver": "bridge",
         "scope": "local"
       },
       {
-        "name": "edge_default",
+        "name": "coolify",
         "driver": "bridge",
         "scope": "local"
       },
@@ -889,9 +1125,151 @@
         "scope": "local"
       },
       {
-        "name": "coolify",
+        "name": "k4s9d2",
         "driver": "bridge",
         "scope": "local"
+      },
+      {
+        "name": "none",
+        "driver": "null",
+        "scope": "local"
+      }
+    ]
+  },
+  "tailscale": {
+    "installed": true,
+    "unit": {
+      "name": "tailscaled.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "status_read": true,
+    "backend_state": "Running",
+    "version": "1.80.0",
+    "serve": {},
+    "lock_enabled": false,
+    "ssh": false
+  },
+  "cloudflared": {
+    "installed": true,
+    "processes_read": true,
+    "processes_visible": true,
+    "connectors": [
+      {
+        "container": true,
+        "args_read": true,
+        "mode": "named"
+      },
+      {
+        "container": true,
+        "args_read": true,
+        "mode": "named"
+      }
+    ]
+  },
+  "crowdsec": {
+    "installed": true,
+    "unit": {
+      "name": "crowdsec.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "processes_read": true,
+    "processes_visible": true,
+    "engine_processes": 1,
+    "cscli": true,
+    "version": "v1.6.4",
+    "bouncers_read": true,
+    "bouncers": [
+      {
+        "name": "traefik-bouncer",
+        "type": "crowdsec-bouncer-traefik-plugin",
+        "version": "1.4.1",
+        "kind": "proxy",
+        "last_pull": "2026-03-01T11:59:48Z"
+      }
+    ],
+    "hub_read": true,
+    "collections": [
+      "crowdsecurity/linux",
+      "crowdsecurity/sshd",
+      "crowdsecurity/traefik"
+    ],
+    "parsers": [
+      "crowdsecurity/sshd-logs",
+      "crowdsecurity/traefik-logs",
+      "crowdsecurity/whitelists"
+    ],
+    "lapi_listen": "172.17.0.1:8080",
+    "acquisition_read": true,
+    "acquisition": [
+      {
+        "file": "/etc/crowdsec/acquis.yaml",
+        "source": "file",
+        "type": "syslog",
+        "paths": [
+          "/var/log/auth.log"
+        ]
+      },
+      {
+        "file": "/etc/crowdsec/acquis.d/traefik.yaml",
+        "source": "docker",
+        "type": "traefik",
+        "containers": [
+          "coolify-proxy"
+        ]
+      }
+    ],
+    "parser_files_read": true,
+    "parser_files": [
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/whitelists.yaml",
+        "name": "crowdsecurity/whitelists",
+        "whitelist_cidrs": [
+          "192.168.0.0/16",
+          "10.0.0.0/8",
+          "172.16.0.0/12"
+        ],
+        "whitelist_ips": [
+          "127.0.0.1",
+          "::1"
+        ]
+      },
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/cf-real-ip.yaml",
+        "name": "local/cf-real-ip",
+        "real_ip_header": "cf-connecting-ip"
+      }
+    ]
+  },
+  "fail2ban": {
+    "installed": true,
+    "unit": {
+      "name": "fail2ban.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "status_read": true,
+    "active_jails": [
+      "sshd"
+    ],
+    "config_read": true,
+    "jails": [
+      {
+        "name": "sshd",
+        "enabled": true,
+        "port": "ssh",
+        "ignoreip": [
+          "127.0.0.1/8",
+          "::1",
+          "100.64.0.0/10"
+        ]
       }
     ]
   }
