@@ -10,7 +10,8 @@
 # The runner has no SSH session, which is what a dropped connection looks
 # like to the timer.
 #
-# 1. plan holds both test steps.
+# 1. plan holds both test steps, and refuses txn-test-close-public (the
+#    lockout guard: the runner has no tailnet to keep SSH reachable).
 # 2. Validation failure: apply --step txn-test-sshd-bad exits 1, the bad
 #    drop-in is gone at once, no timer is left, sshd -t passes and the
 #    state is rolled-back (validation) and does not block.
@@ -107,6 +108,10 @@ scenario_verify() {
 	steps="$(jq -r '[.steps[].id] | join(",")' "$OUT/plan.json")"
 	note "$(yn grep -q 'txn-test-sshd-bad' <<<"$steps")" "plan holds txn-test-sshd-bad" yes "$steps"
 	note "$(yn grep -Eq '(^|,)txn-test-sshd(,|$)' <<<"$steps")" "plan holds txn-test-sshd" yes "$steps"
+	# The lockout guard on a real host: the runner has no tailnet, so the
+	# test step that closes public SSH is refused at plan time.
+	out="$(jq -r '.skipped[] | select(.id == "txn-test-close-public") | .kind + ": " + .reason' "$OUT/plan.json")"
+	note "$(yn grep -q '^refused: lockout guard: txn-test-close-public closes public SSH' <<<"$out")" "the lockout guard refuses closing public SSH without a tailnet" refused "$out"
 
 	# 2. Validation failure rolls back at once.
 	run_apply txn-bad --step txn-test-sshd-bad --confirm-within 60s --yes
