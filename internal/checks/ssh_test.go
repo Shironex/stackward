@@ -263,9 +263,29 @@ func TestSSH010(t *testing.T) {
 	named := sshWith(sshHardened(), "listenaddress", "ssh.example.com:22")
 	noSS := sshHardened()
 	noSS.ListeningInspected, noSS.ListeningError = false, "ss not found"
+	// listenAt sets ListenAddress in the files as well as in sshd -T.
+	listenAt := func(s *facts.SSH, addrs ...string) *facts.SSH {
+		s = sshWith(s, "listenaddress", strings.Join(addrs, " "))
+		for i, a := range addrs {
+			s.Config.Directives = append(s.Config.Directives, sshd.Directive{Keyword: "listenaddress", Value: a, File: "/etc/ssh/sshd_config", Line: 10 + i})
+		}
+		return s
+	}
+	pinned := sock(listenAt(sshHardened(), "100.64.0.7:22", "10.0.0.7:22"), "100.64.0.7:22", "10.0.0.7:22")
+	pinned.Listening = []string{"100.64.0.7:22", "10.0.0.7:22"}
+	ignored := sock(listenAt(sshHardened(), "100.64.0.7:22"), "[::]:22")
+	ignored.Listening = []string{"*:22"}
+	extra := sock(listenAt(sshHardened(), "100.64.0.7:22"), "100.64.0.7:22", "192.0.2.10:22")
+	extra.Listening = []string{"100.64.0.7:22", "192.0.2.10:22"}
+	extraPort := sock(sshHardened(), "[::]:22", "[::]:2222")
+	extraPort.Listening = []string{"*:22", "*:2222"}
 	runCases(t, "SSH-010", checkListeners, []sshCase{
 		{"plain match", sshHardened(), Pass},
-		{"socket activation", dual, Warn},
+		{"socket activation, no ListenAddress", dual, Pass},
+		{"socket on tailnet and private, matching ListenAddress", pinned, Pass},
+		{"ListenAddress the socket ignores", ignored, Warn},
+		{"socket listens beyond ListenAddress", extra, Warn},
+		{"socket on another port, no ListenAddress", extraPort, Warn},
 		{"port moved without socket restart", moved, Fail},
 		{"v4 not listening", v6only, Fail},
 		{"specific covered by wildcard", specific, Pass},
@@ -274,7 +294,7 @@ func TestSSH010(t *testing.T) {
 		{"config unknown", sshNonRoot(), Unknown},
 	})
 	rs := runSSH(t, checkListeners, moved)
-	if !strings.Contains(rs[0].Message, "daemon-reload") || !strings.Contains(rs[0].Message, "[::]:2222") {
+	if !strings.Contains(rs[0].Message, "daemon-reload") || !strings.Contains(rs[0].Message, "2222") {
 		t.Errorf("message = %q", rs[0].Message)
 	}
 }

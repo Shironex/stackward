@@ -39,10 +39,10 @@
   },
   "summary": {
     "fail": 3,
-    "warn": 7,
+    "warn": 6,
     "unknown": 89,
     "info": 0,
-    "pass": 9,
+    "pass": 10,
     "skip": 0
   },
   "results": [
@@ -306,10 +306,10 @@
       "id": "SSH-010",
       "group": "SSH",
       "title": "sshd listens where it is configured to",
-      "level": "warn",
+      "level": "pass",
       "severity": "high",
       "subject": "host",
-      "message": "socket activation in use: ssh.socket listens on [::]:22 and decides where sshd listens; Port and ListenAddress take effect only after daemon-reload and a socket restart",
+      "message": "socket activation in use: ssh.socket listens on [::]:22; ListenAddress is not set, so the socket decides the addresses, on the configured port",
       "evidence": {
         "configured": [
           "[::]:22",
