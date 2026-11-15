@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-37 checks in the catalog.
+42 checks in the catalog.
 
 ## System (SYS)
 
@@ -72,3 +72,13 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [LOG-003](LOG-003.md) | info | Journal disk use |
 | [LOG-004](LOG-004.md) | info | A metrics agent is present |
 | [LOG-005](LOG-005.md) | moderate | The journal survives a reboot |
+
+## Coolify and Dokploy (PAAS)
+
+| Id | Severity | Check |
+|---|---|---|
+| [PAAS-001](PAAS-001.md) | info | Self hosted platform detected |
+| [PAAS-002](PAAS-002.md) | high | Platform proxy is not published on all interfaces behind a tunnel |
+| [PAAS-003](PAAS-003.md) | high | Platform panel ports are not open to the world |
+| [PAAS-004](PAAS-004.md) | critical | No platform database is published publicly |
+| [PAAS-008](PAAS-008.md) | high | Docker Swarm ports are restricted to cluster peers |

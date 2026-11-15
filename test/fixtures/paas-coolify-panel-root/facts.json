@@ -1,0 +1,218 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "panel1.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-49-generic",
+    "installed": [
+      "6.8.0-45-generic",
+      "6.8.0-49-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "paas": {
+    "platforms": [
+      {
+        "name": "coolify",
+        "role": "panel",
+        "data_root": "/data/coolify",
+        "evidence": [
+          "path:/data/coolify",
+          "path:/data/coolify/source/docker-compose.yml"
+        ],
+        "proxy_dynamic_dirs": [
+          "/data/coolify/proxy/dynamic"
+        ],
+        "backups": {
+          "dir": "/data/coolify/backups",
+          "readable": true,
+          "files": 4,
+          "newest": "2026-02-27T03:00:00Z"
+        }
+      }
+    ]
+  },
+  "secrets": {
+    "paas_env_files": {
+      "roots": [
+        "/data/coolify/applications",
+        "/data/coolify/services"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/applications/a1b2c3/.env",
+          "kind": "env",
+          "mode": "0644",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/applications/d4e5f6/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/services/g7h8i9/.env",
+          "kind": "env",
+          "mode": "0644",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_main_env": {
+      "roots": [
+        "/data/coolify/source/.env"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/source/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_ssh_keys": {
+      "roots": [
+        "/data/coolify/ssh/keys"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/ssh/keys",
+          "kind": "dir",
+          "mode": "0700",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/ssh/keys/id.root@host.docker.internal",
+          "kind": "key",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "proxy_dynamic": {
+      "roots": [
+        "/data/coolify/proxy/dynamic",
+        "/data/coolify/proxy/caddy/dynamic"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/proxy/dynamic/coolify.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/proxy/dynamic/coolify.yaml.bak",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/proxy/dynamic/default_redirect_503.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/proxy/dynamic/myapp-backup.yaml",
+          "kind": "config",
+          "mode": "0644",
+          "uid": 0,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "private_keys": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.ssh/id_ed25519",
+          "kind": "ssh",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "docker_configs": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.docker/config.json",
+          "kind": "docker",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "world_writable": {
+      "roots": [
+        "/data/coolify"
+      ],
+      "files": []
+    },
+    "backup_configs": {
+      "roots": [],
+      "files": []
+    },
+    "backup_tools": []
+  },
+  "collectors": [
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "paas",
+      "status": "ok"
+    },
+    {
+      "name": "secrets",
+      "status": "ok"
+    }
+  ]
+}
