@@ -45,7 +45,7 @@
     "restarts": [
       "docker"
     ],
-    "skipped": 6
+    "skipped": 10
   },
   "steps": [
     {
@@ -140,6 +140,35 @@
       "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
     },
     {
+      "id": "unattended-upgrades",
+      "title": "Turn on unattended-upgrades with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-install",
+      "title": "Install unattended-upgrades and turn it on with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-reboot",
+      "title": "Let unattended-upgrades reboot at 04:00 (host time) when an update needs it",
+      "fixes": [
+        "SYS-002",
+        "SYS-003",
+        "UPD-004"
+      ],
+      "kind": "unknown",
+      "reason": "SYS-002 is unknown, SYS-003 is unknown and UPD-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
       "id": "admin-user",
       "title": "Create an admin account with sudo and the keys of an existing account",
       "fixes": [
@@ -179,6 +208,16 @@
       ],
       "kind": "unknown",
       "reason": "USR-003 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "fail2ban-sshd",
+      "title": "Ban SSH brute force with a fail2ban sshd jail",
+      "fixes": [
+        "CS-010",
+        "SSH-011"
+      ],
+      "kind": "unknown",
+      "reason": "CS-010 is unknown; nothing to plan until the audit can inspect it"
     }
   ]
 }

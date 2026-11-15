@@ -73,12 +73,21 @@ step_lock_default_user() {
 # audit can inspect it
 # sysctl-hardening (unknown): KRN-002 is unknown, KRN-003 is unknown and
 # KRN-004 is unknown; nothing to plan until the audit can inspect it
+# unattended-upgrades (unknown): UPD-001 is unknown; nothing to plan until
+# the audit can inspect it
+# unattended-upgrades-install (unknown): UPD-001 is unknown; nothing to plan
+# until the audit can inspect it
 # docker-log-rotation (unknown): DKR-031 is unknown; nothing to plan until
 # the audit can inspect it
+# unattended-upgrades-reboot (unknown): SYS-002 is unknown, SYS-003 is
+# unknown and UPD-004 is unknown; nothing to plan until the audit can
+# inspect it
 # admin-user (passing): an admin account besides root and the cloud default
 # exists (ops)
 # paas-user (passing): no platform (Coolify, Dokploy) was found; a PaaS
 # account is only for one
+# fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
+# audit can inspect it
 
 step_sshd_hardening
 step_lock_default_user
