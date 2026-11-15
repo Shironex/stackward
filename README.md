@@ -162,6 +162,8 @@ stackward explain [id]                explain a check, or list them all
 stackward tui [--report FILE | --facts FILE]
                                       browse the findings in the terminal
 stackward probe HOST [--hostname NAME] [--ports LIST] [--profile P] [--json] [--out FILE] [--i-own-this]
+stackward plan [--out FILE] [--json | --emit-script]
+                                      upcoming 0.2, not released: the changes that would fix the findings, changing nothing
 stackward version
 ```
 

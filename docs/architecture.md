@@ -31,6 +31,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/catalog` | embedded `data/<group>.json`, loader, group order |
 | `internal/profile` | ingress profile names, `--profile` parsing, `Infer` (from listeners, firewall, tunnel, tailnet and PaaS panel facts) |
 | `internal/report` | `report.v1` types, `Build`, text and JSON renderers, exit codes |
+| `internal/plan` | `stackward plan`: the step model, the generator registry, `Build` (vetoes, redaction), unified diffs, the plan.v1 JSON, the text summary and the shell script |
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
@@ -38,6 +39,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
 | `internal/version` | link time version (`-X .../internal/version.Version=v0.1.0`) |
 | `schema/report.v1.json` | the JSON contract |
+| `schema/plan.v1.json` | the plan JSON contract |
 | `test/` | golden tests over `test/fixtures/<scenario>/` |
 
 ## Levels, severity, exit codes
@@ -185,9 +187,77 @@ The hostname is hashed (`sha256:` plus 16 hex digits) unless
 (pass, warn, fail, info), unknown and skipped, plus `root`, the sandbox
 state and every collector's status.
 
+## Plan steps
+
+`stackward plan` adds one stage after the checks:
+
+```
+facts + results  ->  generators (pure)  ->  vetoes  ->  redaction  ->  plan.v1
+```
+
+A **step** (`plan.Step`) is plain data: a stable `id`, the check ids it
+`fixes`, a `risk` class (`safe`, `networking`, `access-critical`), `opt_in`,
+the services it `restarts`, the targets it `touches` (`file:`, `sysctl:`,
+`service:`, `docker-daemon:`), file `edits` (old and new content, their
+SHA-256, a unified diff, an optional `validate` command for the staged file),
+`commands` as argument vectors, an `undo` and `notes`. The format is in
+[plan.md](plan.md).
+
+A **generator** (`plan.Generator`) owns one step id. Its `Plan` function is
+pure: it reads `plan.Input` (the facts, nil for a report alone, and the check
+results) and returns a step or a skip with a kind and a reason. No host
+access, no clock, no network: the facts already hold everything, which is why
+a facts file reproduces a plan and plans have golden files.
+
+### Add a step
+
+1. Make the audit see what the step needs. A step that writes a file needs
+   its current content in the facts (as `DockerDaemon.Content` does for
+   `daemon.json`); never read a secret file for it.
+2. Add `internal/plan/<name>.go` and register from `init`:
+
+   ```go
+   func init() {
+       plan.Register(plan.Generator{ID: "journald-cap", Title: "...", Fixes: []string{"LOG-001"}, Risk: plan.Safe, Plan: planJournaldCap})
+   }
+   ```
+
+   `Build` copies `ID`, `Title`, `Risk` and `OptIn` from the generator into
+   the step; a step may narrow `Fixes` to a subset.
+3. Start with `checkGate(in, ids)`: it skips when the checks pass (passing)
+   or are unknown or missing (unknown). Then return `Skip(SkipUnknown, ...)`
+   when the facts are missing, `Skip(SkipManual, ...)` when a step would not
+   fix it, and otherwise a step built with `newEdit` (hashes and diff).
+   Prefer a drop-in to editing a main configuration file; reuse the checks'
+   own judgement (`checks.SysctlFixes`) rather than copying a baseline.
+4. Test the three cases (pass gives no step, fail gives the exact diff,
+   unknown facts give no step and a reason) in `internal/plan/plan_test.go`,
+   and add or extend a `test/fixtures/plan-*` scenario (`plan.json`,
+   `plan.txt`, `plan.sh`, written by `go test ./test/ -update`).
+
+### How apply and the never touched list plug in
+
+- **Check and apply (issue #24).** `Generator` gains `Check` and `Apply`
+  function fields; apply loads a plan, looks each step's generator up by
+  `Step.ID` (`plan.Lookup`) and calls them. The serialized step does not
+  change. Most steps need no custom code: a shared executor applies `edits`
+  (refuse when the file no longer hashes to `old_sha256`, or exists for
+  `create`; keep `FILE.orig`; back up; write; run `validate` on the staged
+  file; check `new_sha256`) and then runs `commands`. `Plan.Validate`
+  already checks every plan's invariants (known ids, risk classes match the
+  registry, hashes match unredacted content).
+- **Never touched list (issue #27).** `plan.Options.Vetoes` takes
+  `func(Step) string` policies; a non empty reason moves the step to
+  `skipped` with kind `refused`, at plan time. Policies judge the step's
+  `touches` and `edits`, so a step cannot reach a forbidden target without
+  declaring it.
+- **Order.** Steps sort by risk class, then id. A later step that must run
+  after another (create a user, prove it, then lock the default user) adds
+  an explicit ordering field rather than relying on ids.
+
 ## Sandbox
 
-The run order of `audit` (also with `--dump-facts`) and `tui`:
+The run order of `audit` (also with `--dump-facts`), `tui` and `plan`:
 
 1. Parse flags; open `--out` (and for `tui` the terminal); read `--facts`
    or `--report`.
