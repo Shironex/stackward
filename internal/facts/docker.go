@@ -102,7 +102,16 @@ type DockerDaemon struct {
 	NoNewPrivileges bool `json:"no_new_privileges,omitempty"`
 	// UnitFiles lists the systemd unit and drop-in files read.
 	UnitFiles []string `json:"unit_files,omitempty"`
+	// Content is daemon.json as read, so `stackward plan` can merge a
+	// change into it without dropping keys. Nil when the file is absent,
+	// unreadable, larger than MaxDaemonJSONBytes, or the facts were saved
+	// by an older build; an empty file is an empty string. It passes
+	// through the same redaction as every other dumped value.
+	Content *string `json:"content,omitempty"`
 }
+
+// MaxDaemonJSONBytes caps the daemon.json content kept in the facts.
+const MaxDaemonJSONBytes = 64 << 10
 
 // DockerHost is one address the daemon listens on.
 type DockerHost struct {
@@ -670,6 +679,10 @@ func readDaemonConfig(sys System) *DockerDaemon {
 	case err != nil:
 		dd.ConfigError = fmt.Sprintf("%s: %v", dockerDaemonJSON, err)
 	default:
+		if len(b) <= MaxDaemonJSONBytes {
+			content := string(b)
+			dd.Content = &content
+		}
 		var cfg daemonJSON
 		if len(bytes.TrimSpace(b)) == 0 {
 			dd.ConfigFound = true

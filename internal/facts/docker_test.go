@@ -111,6 +111,9 @@ func TestDockerCollectorRecorded(t *testing.T) {
 	if !d.Daemon.ConfigFound || d.Daemon.LogMaxSize != "10m" || len(d.Daemon.UnitFiles) != 2 {
 		t.Fatalf("daemon %+v", d.Daemon)
 	}
+	if d.Daemon.Content == nil || *d.Daemon.Content != `{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"}}` {
+		t.Fatalf("daemon.json content not kept for plan: %v", d.Daemon.Content)
+	}
 	// The drop-in reset ExecStart: only its hosts count.
 	if len(d.Daemon.Hosts) != 2 || d.Daemon.Hosts[1].Addr != "tcp://0.0.0.0:2375" {
 		t.Fatalf("hosts %+v", d.Daemon.Hosts)
@@ -193,6 +196,27 @@ func TestDockerCollectorNoSocket(t *testing.T) {
 		t.Fatalf("docker %+v err %v", d, err)
 	}
 }
+
+func TestDockerCollectorDaemonJSONContent(t *testing.T) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  *string
+	}{
+		{"absent", map[string]string{"/etc/docker/.keep": ""}, nil},
+		{"empty file", map[string]string{"/etc/docker/daemon.json": ""}, ptr("")},
+		{"too large", map[string]string{"/etc/docker/daemon.json": "{" + strings.Repeat(" ", MaxDaemonJSONBytes) + "}"}, nil},
+	}
+	for _, tc := range cases {
+		d, _ := collectDocker(t, dockerSys(tc.files), recordedAPI(t))
+		got := d.Daemon.Content
+		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+			t.Errorf("%s: content %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func ptr(s string) *string { return &s }
 
 func TestDockerCollectorBrokenDaemonJSON(t *testing.T) {
 	sys := dockerSys(map[string]string{"/etc/docker/daemon.json": "{not json"})
