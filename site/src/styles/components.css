@@ -339,7 +339,7 @@
 }
 
 .check-note {
-  margin: 0 0 1.25rem;
+  margin: 1rem 0 1.25rem;
   padding: 0.6rem 0.9rem;
   border-inline-start: 3px solid var(--sw-mint);
   background: var(--sw-bg-2);
@@ -606,4 +606,9 @@
   margin: 0.25rem 0 0;
   max-width: 68ch;
   color: var(--sw-ink-2);
+}
+
+.check-note a,
+.check-table .group-note a {
+  color: var(--sw-mint-ink);
 }

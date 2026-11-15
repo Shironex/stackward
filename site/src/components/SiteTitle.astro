@@ -5,11 +5,13 @@
  * accessible name. The plain wordmark is only a fallback if the files are gone.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const brandDir = new URL('../../../assets/brand/', import.meta.url);
+// The build and dev server run from site/ (scripts/run.mjs sets the cwd), and
+// import.meta.url points into a bundled chunk at build time, so resolve from cwd.
+const brandDir = join(process.cwd(), '..', 'assets', 'brand');
 function logo(name: string): string | null {
-  const file = fileURLToPath(new URL(name, brandDir));
+  const file = join(brandDir, name);
   if (!existsSync(file)) return null;
   // Strip any XML prolog so the SVG can sit inline; mark it decorative and
   // drop its title, description and ids, which would repeat for both themes.
