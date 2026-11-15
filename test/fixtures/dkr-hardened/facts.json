@@ -1,0 +1,179 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-11-15T12:00:00Z",
+  "host": {
+    "hostname": "box.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "29.9.3",
+      "api_version": "1.52",
+      "os": "linux",
+      "arch": "arm64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": true,
+      "hosts": [
+        {
+          "addr": "fd://",
+          "source": "/lib/systemd/system/docker.service"
+        }
+      ],
+      "log_driver": "json-file",
+      "log_max_size": "10m",
+      "log_max_file": "3",
+      "no_new_privileges": true,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp_read": true,
+    "containers": [
+      {
+        "id": "111111111111",
+        "name": "proxy",
+        "project": "edge",
+        "service": "proxy",
+        "image": "traefik:v3.1.4",
+        "running": true,
+        "user": "10001",
+        "cap_add": [
+          "NET_BIND_SERVICE"
+        ],
+        "network_mode": "edge_default",
+        "networks": [
+          "app_default",
+          "edge_default"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/srv/traefik/traefik.yml",
+            "target": "/etc/traefik/traefik.yml",
+            "read_only": true
+          }
+        ],
+        "ports": [
+          {
+            "container_port": 443,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 8443
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "edge",
+          "com.docker.compose.service": "proxy"
+        }
+      },
+      {
+        "id": "222222222222",
+        "name": "app-web-1",
+        "project": "app",
+        "service": "web",
+        "image": "ghcr.io/example/app:2.4.1",
+        "running": true,
+        "user": "10001:10001",
+        "network_mode": "app_default",
+        "networks": [
+          "app_default"
+        ],
+        "proxy_routed": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "labels": {
+          "com.docker.compose.project": "app",
+          "com.docker.compose.service": "web",
+          "traefik.enable": "true"
+        }
+      },
+      {
+        "id": "333333333333",
+        "name": "app-db-1",
+        "project": "app",
+        "service": "db",
+        "image": "postgres:17.2",
+        "running": true,
+        "user": "postgres",
+        "network_mode": "app_default",
+        "networks": [
+          "app_default"
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "app_pg",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "app",
+          "com.docker.compose.service": "db"
+        }
+      },
+      {
+        "id": "444444444444",
+        "name": "tunnel",
+        "project": "edge",
+        "service": "tunnel",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "edge_default",
+        "networks": [
+          "edge_default"
+        ],
+        "labels": {
+          "com.docker.compose.project": "edge",
+          "com.docker.compose.service": "tunnel"
+        }
+      }
+    ],
+    "networks": [
+      {
+        "name": "app_default",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "edge_default",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "docker",
+      "status": "ok"
+    }
+  ]
+}
