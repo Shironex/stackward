@@ -35,8 +35,9 @@ Usage:
   stackward version           print the version
   stackward probe <host>      check a host from outside (run from another machine)
   stackward tui [flags]       browse the findings in the terminal
+  stackward plan [flags]      write the changes that would fix the findings (changes nothing; upcoming 0.2)
 
-Run "stackward audit -h", "stackward probe -h" or "stackward tui -h" for their flags.
+Run "stackward audit -h", "stackward probe -h", "stackward tui -h" or "stackward plan -h" for their flags.
 
 Exit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.
 `
@@ -59,6 +60,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runTUI(args[1:], stdout, stderr)
 	case "probe":
 		return runProbe(args[1:], stdout, stderr)
+	case "plan":
+		return runPlan(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		_, _ = io.WriteString(stdout, usage)
 		return report.ExitOK
