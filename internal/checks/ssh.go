@@ -550,6 +550,9 @@ func checkListeners(in Input) []Result {
 		return r
 	}
 	ev["configured"] = conf
+	if sock.Active() && listenAddressUnset(s) {
+		return socketOwnsAddresses(s, sock, ev)
+	}
 	var missing, unresolved []string
 	for _, e := range conf {
 		hit, canCompare := covered(e, s.Listening)
@@ -572,9 +575,135 @@ func checkListeners(in Input) []Result {
 		return One(Unknown, "cannot compare host name listen addresses: "+strings.Join(unresolved, ", "), ev)
 	}
 	if sock.Active() {
-		return One(Warn, fmt.Sprintf("socket activation in use: %s listens on %s and decides where sshd listens; Port and ListenAddress take effect only after daemon-reload and a socket restart", sock.Unit, listOrNone(sock.Listen)), ev)
+		return socketListenResult(sock, conf, ev)
 	}
 	return One(Pass, "sshd listens on every configured address: "+strings.Join(conf, ", "), ev)
+}
+
+// socketListenResult judges socket activation, where ssh.socket holds the
+// listening sockets and sshd's Port and ListenAddress only matter through
+// the unit (Ubuntu's sshd-socket-generator writes them into a drop-in at
+// daemon-reload). It passes when the socket listens exactly where the
+// config says, and warns on a real mismatch: a configured address the
+// socket does not cover, or a socket address the config does not name.
+// listenAddressUnset reports whether every sshd config file was read and
+// none sets ListenAddress in the global section. With socket activation
+// that leaves the addresses to the socket unit.
+func listenAddressUnset(s *facts.SSH) bool {
+	if s.Config == nil || len(s.Config.Unreadable()) > 0 {
+		return false
+	}
+	for _, d := range s.Config.Directives {
+		if d.Match == 0 && d.Keyword == "listenaddress" {
+			return false
+		}
+	}
+	return true
+}
+
+// socketOwnsAddresses judges socket activation with no ListenAddress in the
+// config: the socket unit is the source of truth for addresses, so only
+// the ports are compared with Port.
+func socketOwnsAddresses(s *facts.SSH, sock *facts.SSHSocket, ev map[string]any) []Result {
+	if len(sock.Listen) == 0 {
+		return One(Warn, fmt.Sprintf("socket activation in use: %s decides where sshd listens, but its listen addresses could not be read", sock.Unit), ev)
+	}
+	ports, ok := s.Setting("port")
+	if !ok || len(ports) == 0 {
+		ports = []string{"22"}
+	}
+	want, have := map[string]bool{}, map[string]bool{}
+	for _, p := range ports {
+		want[p] = true
+	}
+	var extra, missing []string
+	for _, l := range sock.Listen {
+		_, p, _ := sshd.SplitHostPort(l)
+		have[p] = true
+		if !want[p] {
+			extra = append(extra, l)
+		}
+	}
+	for _, p := range ports {
+		if !have[p] {
+			missing = append(missing, p)
+		}
+	}
+	switch {
+	case len(missing) > 0:
+		return One(Fail, fmt.Sprintf("configured port %s not listening (listening: %s); %s is active and listens on %s, so Port changes need a daemon-reload and a socket restart",
+			strings.Join(missing, ", "), listOrNone(s.Listening), sock.Unit, listOrNone(sock.Listen)), ev)
+	case len(extra) > 0:
+		return One(Warn, fmt.Sprintf("%s also listens on %s, which Port does not name; the socket, not sshd_config, decides where SSH is reachable",
+			sock.Unit, strings.Join(extra, ", ")), ev)
+	}
+	return One(Pass, fmt.Sprintf("socket activation in use: %s listens on %s; ListenAddress is not set, so the socket decides the addresses, on the configured port", sock.Unit, strings.Join(sock.Listen, ", ")), ev)
+}
+
+func socketListenResult(sock *facts.SSHSocket, conf []string, ev map[string]any) []Result {
+	if len(sock.Listen) == 0 {
+		return One(Warn, fmt.Sprintf("socket activation in use: %s decides where sshd listens, but its listen addresses could not be read; Port and ListenAddress take effect only after daemon-reload and a socket restart", sock.Unit), ev)
+	}
+	var notOnSocket, notConfigured, unresolved []string
+	for _, e := range conf {
+		hit, canCompare := socketCovers(e, sock.Listen)
+		switch {
+		case !canCompare:
+			unresolved = append(unresolved, e)
+		case !hit:
+			notOnSocket = append(notOnSocket, e)
+		}
+	}
+	for _, l := range sock.Listen {
+		if hit, canCompare := covered(l, conf); canCompare && !hit && !wildcardCoveredByConfig(l, conf) {
+			notConfigured = append(notConfigured, l)
+		}
+	}
+	switch {
+	case len(notOnSocket) > 0:
+		return One(Warn, fmt.Sprintf("%s listens on %s, but sshd is configured for %s, which the socket ignores; run daemon-reload and restart %s, or set ListenStream in the unit",
+			sock.Unit, listOrNone(sock.Listen), strings.Join(notOnSocket, ", "), sock.Unit), ev)
+	case len(notConfigured) > 0:
+		return One(Warn, fmt.Sprintf("%s listens on %s, which Port and ListenAddress do not name; the socket, not sshd_config, decides where SSH is reachable (daemon-reload and a socket restart apply ListenAddress)",
+			sock.Unit, strings.Join(notConfigured, ", ")), ev)
+	case len(unresolved) > 0:
+		return One(Unknown, "cannot compare host name listen addresses with the socket: "+strings.Join(unresolved, ", "), ev)
+	}
+	return One(Pass, fmt.Sprintf("socket activation in use: %s listens on %s, which matches Port and ListenAddress", sock.Unit, strings.Join(sock.Listen, ", ")), ev)
+}
+
+// socketCovers is covered for socket unit addresses: systemd binds "[::]"
+// dual stack by default (BindIPv6Only=default), so it covers IPv4 too.
+func socketCovers(endpoint string, listen []string) (bool, bool) {
+	hit, ok := covered(endpoint, listen)
+	if hit || !ok {
+		return hit, ok
+	}
+	_, port, _ := sshd.SplitHostPort(endpoint)
+	for _, l := range listen {
+		lh, lp, _ := sshd.SplitHostPort(l)
+		if lp == port && lh == "::" {
+			return true, true
+		}
+	}
+	return false, true
+}
+
+// wildcardCoveredByConfig reports whether a dual stack socket address
+// ("[::]:22") is what the config's pair of wildcards (0.0.0.0:22 and
+// [::]:22, the default with no ListenAddress) means.
+func wildcardCoveredByConfig(l string, conf []string) bool {
+	lh, lp, _ := sshd.SplitHostPort(l)
+	if lh != "::" {
+		return false
+	}
+	for _, e := range conf {
+		h, p, _ := sshd.SplitHostPort(e)
+		if p == lp && (h == "0.0.0.0" || h == "::") {
+			return true
+		}
+	}
+	return false
 }
 
 func listOrNone(v []string) string {

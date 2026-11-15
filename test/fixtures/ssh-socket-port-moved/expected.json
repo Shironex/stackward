@@ -302,7 +302,7 @@
       "level": "fail",
       "severity": "high",
       "subject": "host",
-      "message": "configured [::]:2222, 0.0.0.0:2222 not listening (listening: *:22); ssh.socket is active and listens on [::]:22, so Port and ListenAddress changes need a daemon-reload and a socket restart",
+      "message": "configured port 2222 not listening (listening: *:22); ssh.socket is active and listens on [::]:22, so Port changes need a daemon-reload and a socket restart",
       "evidence": {
         "configured": [
           "[::]:2222",
@@ -311,10 +311,7 @@
         "listening": [
           "*:22"
         ],
-        "missing": [
-          "[::]:2222",
-          "0.0.0.0:2222"
-        ],
+        "missing": [],
         "socket_active": true,
         "socket_listen": [
           "[::]:22"
