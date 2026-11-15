@@ -41,9 +41,10 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 `unknown`, never as a pass.
 
 > [!WARNING]
-> **Pre-alpha.** The checks below exist and are tested against saved facts,
-> but there is no release yet and the output may still change. Read the
-> report before acting on it.
+> **Pre-release.** The checks below exist and are tested against saved facts
+> and on real Ubuntu hosts. The first release candidate, `v0.1.0-rc.1`, is a
+> pre-release: the output may still change. Read the report before acting on
+> it.
 
 ## A run, start to finish
 
@@ -96,14 +97,17 @@ What it reads, what it never does and what it does not cover:
 
 ## Install
 
-There is no release yet. Once there is, every release holds Linux archives
-for amd64 and arm64, a `.deb`, an SPDX SBOM per archive, `checksums.txt`
-signed keylessly with cosign, GitHub build provenance, and `get.sh`.
+The newest release is `v0.1.0-rc.1`, a pre-release, so GitHub shows no
+"latest" release yet. Every release holds Linux archives for amd64 and arm64,
+archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
+archive, `checksums.txt` signed keylessly with cosign, GitHub build
+provenance, and `get.sh`. Name the tag explicitly; once a stable release
+exists, replace it with that tag.
 
-Download, check and run (replace the version with a real tag):
+Download, check and run:
 
 ```sh
-VERSION=v0.1.0
+VERSION=v0.1.0-rc.1   # a pre-release; use a stable tag once there is one
 ARCH=amd64   # or arm64
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -131,12 +135,12 @@ check when cosign is installed. It never runs the binary and never uses
 sudo; read it first:
 
 ```sh
-curl -fsSLO https://github.com/Shironex/stackward/releases/latest/download/get.sh
+curl -fsSLO https://github.com/Shironex/stackward/releases/download/v0.1.0-rc.1/get.sh
 less get.sh
-sh get.sh -d "$HOME/.local/bin"
+sh get.sh -v v0.1.0-rc.1 -d "$HOME/.local/bin"
 ```
 
-Until then, build from source with Go 1.26 or later. Keep `CGO_ENABLED=0`:
+Or build from source with Go 1.26 or later. Keep `CGO_ENABLED=0`:
 the Landlock sandbox needs a cgo free binary.
 
 ```sh
@@ -273,8 +277,10 @@ was available and whether the sandbox was applied. Fix the highest severity
 - **A snapshot of configuration.** It does not scan your applications or
   images for vulnerabilities, does not read your cloud or Cloudflare
   account, and is not an intrusion detector.
-- **Tested on** Ubuntu 22.04 and later and Debian 12 and later. Other
-  distributions work, with more `unknown` results; `SYS-001` tells you.
+- **Tested on** Ubuntu 22.04 and 24.04: CI runs the live scenarios there.
+  Debian 12 and later is supported by design but not covered by the live
+  scenarios yet. Other distributions work, with more `unknown` results;
+  `SYS-001` tells you.
 
 A report with no findings means none of these checks found a problem in what
 could be inspected. It does not mean the server is secure.
