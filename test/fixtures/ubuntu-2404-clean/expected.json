@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 28,
-    "results": 28,
+    "checks": 37,
+    "results": 37,
     "checked": 4,
-    "unknown": 24,
+    "unknown": 33,
     "skipped": 0,
     "root": true,
     "sandbox": {
@@ -37,7 +37,7 @@
   "summary": {
     "fail": 0,
     "warn": 0,
-    "unknown": 24,
+    "unknown": 33,
     "info": 0,
     "pass": 4,
     "skip": 0
@@ -244,6 +244,149 @@
       },
       "fix": {
         "hint": "Store the console or rescue procedure and any root password in a password manager."
+      }
+    },
+    {
+      "id": "NET-001",
+      "group": "NET",
+      "title": "A host firewall is active and denies incoming traffic by default",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Allow SSH first (ufw allow in on tailscale0 to any port 22, or from one source), then: ufw default deny incoming; ufw enable"
+      }
+    },
+    {
+      "id": "NET-002",
+      "group": "NET",
+      "title": "UFW filters IPv6 when the host has a global IPv6 address",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set IPV6=yes in /etc/default/ufw, then ufw reload"
+      }
+    },
+    {
+      "id": "NET-003",
+      "group": "NET",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the listeners collector did not run",
+      "evidence": {
+        "collector": "listeners",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Allow SSH on tailscale0 and from one explicit source, prove a login over the tailnet from a new session, then delete the public SSH rule"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the listeners collector did not run",
+      "evidence": {
+        "collector": "listeners",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-005",
+      "group": "NET",
+      "title": "No public 80/443 rule on a tunnel or tailnet only host",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Delete the rule (ufw delete \u003cnumber\u003e); ingress is the tunnel"
+      }
+    },
+    {
+      "id": "NET-006",
+      "group": "NET",
+      "title": "DOCKER-USER chain state",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "No direct fix: filter published ports in DOCKER-USER (ufw-docker does this) or publish them on 127.0.0.1 only."
+      }
+    },
+    {
+      "id": "NET-007",
+      "group": "NET",
+      "title": "ufw-docker is loaded and lets tailnet traffic reach published ports",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "ufw reload; then ufw route allow in on tailscale0 proto tcp to any port \u003ccontainer-port\u003e"
+      }
+    },
+    {
+      "id": "NET-008",
+      "group": "NET",
+      "title": "ufw-docker is not paired with Docker's nftables backend",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the firewall collector did not run",
+      "evidence": {
+        "collector": "firewall",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use Docker's iptables backend with ufw-docker, or filter published ports directly in nftables"
+      }
+    },
+    {
+      "id": "NET-009",
+      "group": "NET",
+      "title": "Provider firewall (outside view)",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable",
+      "evidence": {
+        "visible_from_host": false
+      },
+      "fix": {
+        "hint": "Add a provider network firewall that allows only the ports your ingress needs"
       }
     },
     {

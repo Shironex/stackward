@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-28 checks in the catalog.
+37 checks in the catalog.
 
 ## System (SYS)
 
@@ -27,6 +27,20 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [USR-005](USR-005.md) | moderate | Docker group has no extra members |
 | [USR-006](USR-006.md) | low | Login accounts are used |
 | [USR-007](USR-007.md) | info | Root recovery path is known |
+
+## Firewall and exposure (NET)
+
+| Id | Severity | Check |
+|---|---|---|
+| [NET-001](NET-001.md) | high | A host firewall is active and denies incoming traffic by default |
+| [NET-002](NET-002.md) | high | UFW filters IPv6 when the host has a global IPv6 address |
+| [NET-003](NET-003.md) | high | SSH is not open to anywhere when a private path exists |
+| [NET-004](NET-004.md) | moderate | Exposure: every listening socket and who can reach it |
+| [NET-005](NET-005.md) | moderate | No public 80/443 rule on a tunnel or tailnet only host |
+| [NET-006](NET-006.md) | info | DOCKER-USER chain state |
+| [NET-007](NET-007.md) | high | ufw-docker is loaded and lets tailnet traffic reach published ports |
+| [NET-008](NET-008.md) | high | ufw-docker is not paired with Docker's nftables backend |
+| [NET-009](NET-009.md) | info | Provider firewall (outside view) |
 
 ## Updates (UPD)
 
