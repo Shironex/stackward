@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 42,
-    "results": 42,
+    "checks": 51,
+    "results": 51,
     "checked": 4,
-    "unknown": 38,
+    "unknown": 47,
     "skipped": 0,
     "root": true,
     "sandbox": {
@@ -37,7 +37,7 @@
   "summary": {
     "fail": 1,
     "warn": 1,
-    "unknown": 38,
+    "unknown": 47,
     "info": 0,
     "pass": 2,
     "skip": 0
@@ -653,6 +653,120 @@
       }
     },
     {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-002",
+      "group": "SEC",
+      "title": "Platform main .env is not world readable",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod o-rwx /data/coolify/source/.env and keep the owner and group the installer set (the documented install uses 9999:root and chmod 700).",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "SEC-003",
+      "group": "SEC",
+      "title": "Platform SSH key folder is closed to other users",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 700 the folder and chmod 600 every key in it."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-005",
+      "group": "SEC",
+      "title": "Private keys are readable by their owner only",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the key files (and 700 their folder)."
+      }
+    },
+    {
+      "id": "SEC-006",
+      "group": "SEC",
+      "title": "Docker client config is readable by its owner only",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the file, and configure a credential helper so passwords are not stored in it.",
+        "docs": "https://docs.docker.com/reference/cli/docker/login/#credential-stores"
+      }
+    },
+    {
+      "id": "SEC-007",
+      "group": "SEC",
+      "title": "No world writable folders under the platform data root",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod o-w the folders."
+      }
+    },
+    {
       "id": "PAAS-001",
       "group": "PAAS",
       "title": "Self hosted platform detected",
@@ -733,6 +847,38 @@
       "fix": {
         "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
         "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "BAK-001",
+      "group": "BAK",
+      "title": "Platform database backups on the host",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Schedule backups of the platform database to off site storage and test a restore; store the app key outside the server."
+      }
+    },
+    {
+      "id": "BAK-002",
+      "group": "BAK",
+      "title": "Backup tools present",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Run a restore test into a scratch folder and write down how long it took."
       }
     }
   ]

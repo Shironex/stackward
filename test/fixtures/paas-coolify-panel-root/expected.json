@@ -17,9 +17,9 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 42,
-    "results": 42,
-    "checked": 5,
+    "checks": 51,
+    "results": 55,
+    "checked": 18,
     "unknown": 36,
     "skipped": 1,
     "root": true,
@@ -43,11 +43,11 @@
     ]
   },
   "summary": {
-    "fail": 0,
-    "warn": 0,
+    "fail": 2,
+    "warn": 2,
     "unknown": 36,
-    "info": 1,
-    "pass": 4,
+    "info": 3,
+    "pass": 11,
     "skip": 1
   },
   "results": [
@@ -656,6 +656,220 @@
       }
     },
     {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "fail",
+      "severity": "high",
+      "subject": "file:/data/coolify/applications/a1b2c3/.env",
+      "message": "app .env is readable by group or others (mode 0644)",
+      "evidence": {
+        "gid": 0,
+        "kind": "env",
+        "mode": "0644",
+        "path": "/data/coolify/applications/a1b2c3/.env",
+        "platform": "coolify",
+        "uid": 9999
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "fail",
+      "severity": "high",
+      "subject": "file:/data/coolify/services/g7h8i9/.env",
+      "message": "app .env is readable by group or others (mode 0644)",
+      "evidence": {
+        "gid": 0,
+        "kind": "env",
+        "mode": "0644",
+        "path": "/data/coolify/services/g7h8i9/.env",
+        "platform": "coolify",
+        "uid": 9999
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "1 app .env file is readable by the owner only",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/data/coolify/applications",
+          "/data/coolify/services"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-002",
+      "group": "SEC",
+      "title": "Platform main .env is not world readable",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "platform main .env is not world readable",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/data/coolify/source/.env"
+        ]
+      },
+      "fix": {
+        "hint": "chmod o-rwx /data/coolify/source/.env and keep the owner and group the installer set (the documented install uses 9999:root and chmod 700).",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "SEC-003",
+      "group": "SEC",
+      "title": "Platform SSH key folder is closed to other users",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "2 SSH key paths are closed to other users",
+      "evidence": {
+        "passed": 2,
+        "roots": [
+          "/data/coolify/ssh/keys"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 700 the folder and chmod 600 every key in it."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "file:/data/coolify/proxy/dynamic/coolify.yaml.bak",
+      "message": "backup or editor file in the proxy dynamic folder",
+      "evidence": {
+        "gid": 0,
+        "kind": "config",
+        "loaded": false,
+        "mode": "0600",
+        "path": "/data/coolify/proxy/dynamic/coolify.yaml.bak",
+        "platform": "coolify",
+        "uid": 9999
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "file:/data/coolify/proxy/dynamic/myapp-backup.yaml",
+      "message": "backup copy in the proxy dynamic folder is loaded as live config",
+      "evidence": {
+        "gid": 0,
+        "kind": "config",
+        "loaded": true,
+        "mode": "0644",
+        "path": "/data/coolify/proxy/dynamic/myapp-backup.yaml",
+        "platform": "coolify",
+        "uid": 0
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "2 files in the proxy dynamic folder are not a backup or editor copy",
+      "evidence": {
+        "passed": 2,
+        "roots": [
+          "/data/coolify/proxy/dynamic",
+          "/data/coolify/proxy/caddy/dynamic"
+        ]
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-005",
+      "group": "SEC",
+      "title": "Private keys are readable by their owner only",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "1 private key file is readable by the owner only",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/root",
+          "/home/deploy"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the key files (and 700 their folder)."
+      }
+    },
+    {
+      "id": "SEC-006",
+      "group": "SEC",
+      "title": "Docker client config is readable by its owner only",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "1 Docker client config is readable by the owner only",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/root",
+          "/home/deploy"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the file, and configure a credential helper so passwords are not stored in it.",
+        "docs": "https://docs.docker.com/reference/cli/docker/login/#credential-stores"
+      }
+    },
+    {
+      "id": "SEC-007",
+      "group": "SEC",
+      "title": "No world writable folders under the platform data root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "no world writable folders under the platform data root",
+      "evidence": {
+        "passed": 0,
+        "roots": [
+          "/data/coolify"
+        ]
+      },
+      "fix": {
+        "hint": "chmod o-w the folders."
+      }
+    },
+    {
       "id": "PAAS-001",
       "group": "PAAS",
       "title": "Self hosted platform detected",
@@ -742,6 +956,42 @@
       "fix": {
         "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
         "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "BAK-001",
+      "group": "BAK",
+      "title": "Platform database backups on the host",
+      "level": "info",
+      "severity": "info",
+      "subject": "file:/data/coolify",
+      "message": "4 files in the platform backup folder, newest 2 days old; keep a copy off the server",
+      "evidence": {
+        "days": 2,
+        "dir": "/data/coolify/backups",
+        "files": 4,
+        "newest": "2026-02-27T03:00:00Z",
+        "platform": "coolify"
+      },
+      "fix": {
+        "hint": "Schedule backups of the platform database to off site storage and test a restore; store the app key outside the server."
+      }
+    },
+    {
+      "id": "BAK-002",
+      "group": "BAK",
+      "title": "Backup tools present",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "no restic, borg, borgmatic, kopia or rclone found",
+      "evidence": {
+        "configs": [],
+        "denied": [],
+        "tools": []
+      },
+      "fix": {
+        "hint": "Run a restore test into a scratch folder and write down how long it took."
       }
     }
   ]

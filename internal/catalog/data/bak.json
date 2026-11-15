@@ -1,0 +1,22 @@
+{
+  "group": "BAK",
+  "checks": [
+    {
+      "id": "BAK-001",
+      "title": "Platform database backups on the host",
+      "severity": "info",
+      "rationale": "The platform's own database holds every project, server, secret and key it manages; losing it means rebuilding all of it by hand. Coolify keeps local backups under /data/coolify/backups; Dokploy sends backups to S3 destinations only. A local copy alone is not a backup: keep one off the server, and keep the platform's app key somewhere else, since the database is useless without it.",
+      "verify": "ls -lR /data/coolify/backups | tail",
+      "fix": "Schedule backups of the platform database to off site storage and test a restore; store the app key outside the server.",
+      "needs_root": true
+    },
+    {
+      "id": "BAK-002",
+      "title": "Backup tools present",
+      "severity": "info",
+      "rationale": "restic, borg, borgmatic, kopia and rclone configs or binaries are a sign host level backups exist. Their configs often hold repository passwords and cloud credentials, so stackward records only that they exist. A backup nobody has restored is a hope, not a backup.",
+      "verify": "command -v restic borg borgmatic kopia rclone; ls -l /etc/borgmatic* /etc/restic ~/.config/rclone",
+      "fix": "Run a restore test into a scratch folder and write down how long it took."
+    }
+  ]
+}
