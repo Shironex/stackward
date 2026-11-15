@@ -142,10 +142,10 @@ func TestRowDropsSubjectTheMessageNames(t *testing.T) {
 			continue
 		}
 		it := m.items[r.item]
-		subj := shortSubject(it.Subject)
+		subj := report.ShortSubject(it.Subject)
 		line := ansi.Strip(m.rowLine(r, false, 8, 200))
 		switch {
-		case subj != "" && namesSubject(it.Message, subj):
+		case subj != "" && report.NamesSubject(it.Message, subj):
 			named++
 			if strings.Contains(line, subj+" · ") {
 				t.Errorf("row of %s %s repeats the subject the message starts with:\n%s", it.ID, it.Subject, line)
@@ -159,23 +159,5 @@ func TestRowDropsSubjectTheMessageNames(t *testing.T) {
 	}
 	if named == 0 || unnamed == 0 {
 		t.Fatalf("fixture covers %d rows that name the subject and %d that do not, want both", named, unnamed)
-	}
-}
-
-func TestNamesSubject(t *testing.T) {
-	for _, tc := range []struct {
-		msg, subj string
-		want      bool
-	}{
-		{"socket-proxy mounts the Docker socket", "socket-proxy", true},
-		{"socket-proxy: mounts it", "socket-proxy", true},
-		{"shop-web-1 mounts /etc", "shop/web", false},
-		{"socket-proxy-2 mounts it", "socket-proxy", false},
-		{"Platform app .env is readable", "tcp/8000", false},
-		{"anything", "", false},
-	} {
-		if got := namesSubject(tc.msg, tc.subj); got != tc.want {
-			t.Errorf("namesSubject(%q, %q) = %v, want %v", tc.msg, tc.subj, got, tc.want)
-		}
 	}
 }
