@@ -761,13 +761,14 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/443",
-      "message": "tcp/443 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/443 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0",
           "::"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "docker-proxy"
         ],
@@ -828,13 +829,14 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/80",
-      "message": "tcp/80 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/80 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0",
           "::"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "docker-proxy"
         ],
@@ -851,12 +853,13 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/8000",
-      "message": "tcp/8000 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/8000 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "docker-proxy"
         ],
@@ -3471,7 +3474,7 @@
       "level": "fail",
       "severity": "high",
       "subject": "host",
-      "message": "the tunnel is the ingress, but the origin is reachable from anywhere on tcp/80, tcp/443: it bypasses Cloudflare (tcp/80: a published container port on a wildcard or public address (UFW input rules do not apply); tcp/443: a published container port on a wildcard or public address (UFW input rules do not apply))",
+      "message": "the tunnel is the ingress, but the origin is reachable from anywhere on tcp/80, tcp/443: it bypasses Cloudflare (tcp/80: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports; tcp/443: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports)",
       "evidence": {
         "exposed": [
           "tcp/80",

@@ -15,9 +15,9 @@
   "coverage": {
     "checks": 104,
     "results": 107,
-    "checked": 20,
-    "unknown": 76,
-    "skipped": 11,
+    "checked": 29,
+    "unknown": 65,
+    "skipped": 13,
     "root": true,
     "sandbox": {
       "state": "unavailable",
@@ -30,6 +30,10 @@
       },
       {
         "name": "crowdsec",
+        "status": "ok"
+      },
+      {
+        "name": "docker",
         "status": "ok"
       },
       {
@@ -52,11 +56,11 @@
   },
   "summary": {
     "fail": 3,
-    "warn": 5,
-    "unknown": 76,
+    "warn": 7,
+    "unknown": 65,
     "info": 3,
-    "pass": 9,
-    "skip": 11
+    "pass": 16,
+    "skip": 13
   },
   "results": [
     {
@@ -595,12 +599,13 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/443",
-      "message": "tcp/443 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/443 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "docker-proxy"
         ],
@@ -617,12 +622,13 @@
       "level": "warn",
       "severity": "moderate",
       "subject": "port:tcp/80",
-      "message": "tcp/80 is a published container port on wildcard: UFW input rules do not apply to it (see DKR-001)",
+      "message": "tcp/80 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
       "evidence": {
         "binds": [
           "0.0.0.0"
         ],
         "class": "wildcard",
+        "open_from_anywhere": "yes",
         "processes": [
           "docker-proxy"
         ],
@@ -735,13 +741,24 @@
       "id": "DKR-001",
       "group": "DKR",
       "title": "Published container ports do not bypass the host firewall",
-      "level": "unknown",
+      "level": "warn",
       "severity": "critical",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 publishes on all interfaces: 0.0.0.0:80-\u003e80/tcp: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports; 0.0.0.0:443-\u003e443/tcp: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "profile": "mixed",
+        "published": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "unknown": []
       },
       "fix": {
         "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
@@ -755,10 +772,12 @@
       "level": "unknown",
       "severity": "critical",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "could not read the daemon config and the listening sockets to rule out a TCP listener",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "listeners": [],
+        "published_by": [],
+        "tcp_hosts": [],
+        "tlsverify": false
       },
       "fix": {
         "hint": "Remove -H tcp:// from the unit and \"hosts\" from daemon.json. For remote access use DOCKER_HOST=ssh://user@host, or a socket proxy that allows only the GET endpoints needed. If TCP is truly needed, use 2376 with tlsverify and client certificates.",
@@ -772,10 +791,9 @@
       "level": "unknown",
       "severity": "critical",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "no Docker socket found at /var/run/docker.sock",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "path": "/var/run/docker.sock"
       },
       "fix": {
         "hint": "Restore the default: chown root:docker /var/run/docker.sock \u0026\u0026 chmod 660 /var/run/docker.sock, then find what changed it (often a chmod 666 in a setup script or a unit override) and remove that."
@@ -785,13 +803,17 @@
       "id": "DKR-010",
       "group": "DKR",
       "title": "No container mounts the Docker socket",
-      "level": "unknown",
+      "level": "pass",
       "severity": "critical",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 does not mount the Docker socket",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "image": "caddy:2.8.4",
+        "managed_by": "",
+        "role": "proxy",
+        "running": true,
+        "socket_mounts": null
       },
       "fix": {
         "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
@@ -802,13 +824,12 @@
       "id": "DKR-011",
       "group": "DKR",
       "title": "Socket proxies do not allow writes",
-      "level": "unknown",
+      "level": "skip",
       "severity": "high",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "no Docker socket proxy container found",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "socket_proxies": 0
       },
       "fix": {
         "hint": "Set POST=0 and EXEC=0, and enable only the read sections the client needs (for example CONTAINERS=1, NETWORKS=1). If a client truly needs writes, give it its own proxy with the narrowest flags and keep it off shared networks."
@@ -818,13 +839,16 @@
       "id": "DKR-012",
       "group": "DKR",
       "title": "No container mounts a sensitive host path",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 mounts no sensitive host path",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "managed_by": "",
+        "read_only": [],
+        "running": true,
+        "writable": []
       },
       "fix": {
         "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
@@ -834,13 +858,19 @@
       "id": "DKR-020",
       "group": "DKR",
       "title": "Containers do not run as root",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 runs as \"caddy\"",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
+        "privileged": false,
+        "public": true,
+        "root": false,
+        "running": true,
+        "user": "caddy"
       },
       "fix": {
         "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
@@ -850,13 +880,15 @@
       "id": "DKR-021",
       "group": "DKR",
       "title": "No privileged containers",
-      "level": "unknown",
+      "level": "pass",
       "severity": "critical",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 is not privileged",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -866,13 +898,17 @@
       "id": "DKR-022",
       "group": "DKR",
       "title": "No dangerous added capabilities",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 adds no dangerous capability",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "cap_add": [],
+        "container": "edge-proxy-1",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -882,13 +918,18 @@
       "id": "DKR-023",
       "group": "DKR",
       "title": "No host network, PID or IPC namespace",
-      "level": "unknown",
+      "level": "pass",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 uses its own network, PID and IPC namespaces",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "",
+        "pid_mode": "",
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -898,13 +939,18 @@
       "id": "DKR-024",
       "group": "DKR",
       "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
-      "level": "unknown",
+      "level": "warn",
       "severity": "moderate",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 is reachable from outside without no-new-privileges",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "managed_by": "",
+        "no_new_privileges": false,
+        "public": true,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
       },
       "fix": {
         "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
@@ -914,13 +960,15 @@
       "id": "DKR-030",
       "group": "DKR",
       "title": "Projects do not share networks",
-      "level": "unknown",
+      "level": "skip",
       "severity": "high",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 is a reverse proxy; it joins project networks by design",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
       },
       "fix": {
         "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
@@ -933,10 +981,9 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "the daemon config was not read",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "config_found": false
       },
       "fix": {
         "hint": "Set {\"log-driver\":\"json-file\",\"log-opts\":{\"max-size\":\"10m\",\"max-file\":\"3\"}} in /etc/docker/daemon.json (or use the local driver) and restart Docker. Existing containers keep their old settings until they are recreated."
@@ -946,13 +993,16 @@
       "id": "DKR-032",
       "group": "DKR",
       "title": "Infrastructure containers run pinned images",
-      "level": "unknown",
+      "level": "pass",
       "severity": "low",
-      "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "subject": "container:edge-proxy-1",
+      "message": "edge-proxy-1 runs a pinned tag (2.8.4)",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "container": "edge-proxy-1",
+        "digest": false,
+        "image": "caddy:2.8.4",
+        "role": "proxy",
+        "tag": "2.8.4"
       },
       "fix": {
         "hint": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out."
@@ -965,10 +1015,10 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "the daemon config was not read",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "config_found": false,
+        "iptables": null
       },
       "fix": {
         "hint": "Know why it was set. Usually remove \"iptables\": false and filter published ports in the DOCKER-USER chain or with ufw-docker instead."
@@ -981,10 +1031,9 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "not inspected: the docker collector did not run",
+      "message": "the Docker API did not report a version",
       "evidence": {
-        "collector": "docker",
-        "collector_status": "missing"
+        "version": ""
       },
       "fix": {
         "hint": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
@@ -1116,7 +1165,7 @@
       "level": "fail",
       "severity": "high",
       "subject": "host",
-      "message": "the tunnel is the ingress, but the origin is reachable from anywhere on tcp/80, tcp/443: it bypasses Cloudflare (tcp/80: a published container port on a wildcard or public address (UFW input rules do not apply); tcp/443: a published container port on a wildcard or public address (UFW input rules do not apply))",
+      "message": "the tunnel is the ingress, but the origin is reachable from anywhere on tcp/80, tcp/443: it bypasses Cloudflare (tcp/80: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports; tcp/443: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports)",
       "evidence": {
         "exposed": [
           "tcp/80",
