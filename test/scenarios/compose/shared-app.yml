@@ -1,0 +1,10 @@
+# Project swa: an app on a network it shares with project swb's database.
+services:
+  app:
+    image: ${ALPINE_IMAGE:?}
+    command: ["sleep", "infinity"]
+    networks: [shared]
+networks:
+  shared:
+    name: sw-shared
+    external: true

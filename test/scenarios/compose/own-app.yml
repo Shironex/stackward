@@ -1,0 +1,6 @@
+# Project swa: an app on its own project network, as a non-root user.
+services:
+  app:
+    image: ${ALPINE_IMAGE:?}
+    command: ["sleep", "infinity"]
+    user: "65534:65534"
