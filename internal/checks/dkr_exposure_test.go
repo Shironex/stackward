@@ -38,6 +38,22 @@ var dropPublic = []string{
 	"-A DOCKER-USER -j RETURN",
 }
 
+// ufwDockerRules is the DOCKER-USER chain of a standard ufw-docker
+// install, as iptables -S prints it.
+var ufwDockerRules = []string{
+	"-A DOCKER-USER -j ufw-user-forward",
+	"-A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN",
+	"-A DOCKER-USER -m conntrack --ctstate INVALID -j DROP",
+	"-A DOCKER-USER -i docker0 -o docker0 -j ACCEPT",
+	"-A DOCKER-USER -s 10.0.0.0/8 -j RETURN",
+	"-A DOCKER-USER -s 172.16.0.0/12 -j RETURN",
+	"-A DOCKER-USER -s 192.168.0.0/16 -j RETURN",
+	"-A DOCKER-USER -d 10.0.0.0/8 -m conntrack --ctstate NEW -j ufw-docker-logging-deny",
+	"-A DOCKER-USER -d 172.16.0.0/12 -m conntrack --ctstate NEW -j ufw-docker-logging-deny",
+	"-A DOCKER-USER -d 192.168.0.0/16 -m conntrack --ctstate NEW -j ufw-docker-logging-deny",
+	"-A DOCKER-USER -j RETURN",
+}
+
 func dkr001(t *testing.T, f *facts.Facts, p profile.Name) Result {
 	t.Helper()
 	rs := checkPublishedPorts(Input{Facts: f, Profile: p})
@@ -57,11 +73,13 @@ func TestDKR001(t *testing.T) {
 	nftDrop.Firewall.DockerBackend = "nftables"
 	nftDrop.Firewall.NFT = &facts.NFTables{Installed: true, Listed: true, Chains: []facts.NFTChain{{Family: "inet", Table: "filter", Name: "forward", Hook: "forward", Policy: "drop"}}}
 	ufwDocker := func(rules ...facts.UFWRule) *facts.Facts {
-		f := exposureHost("filtered", []string{"-A DOCKER-USER -j ufw-user-forward", "-A DOCKER-USER -j RETURN"}, db)
+		f := exposureHost("filtered", ufwDockerRules, db)
 		f.Firewall.UFWDocker = &facts.UFWDocker{InFiles: "present", Loaded: "yes"}
 		f.Firewall.UFW.Rules = append(f.Firewall.UFW.Rules, rules...)
 		return f
 	}
+	ufwDockerShort := ufwDocker()
+	ufwDockerShort.Firewall.Iptables.DockerUserRules = []string{"-A DOCKER-USER -j ufw-user-forward", "-A DOCKER-USER -j RETURN"}
 	iptOff := exposureHost("absent", nil, db)
 	iptOff.Docker.Daemon.IPTables = ptrBool(false)
 	noFirewall := exposureHost("default", nil, db)
@@ -94,6 +112,7 @@ func TestDKR001(t *testing.T) {
 		{"ufw-docker, route from anywhere", ufwDocker(facts.UFWRule{Action: "allow", Direction: "fwd", Port: "5432", Proto: "tcp"}), profile.Unknown, Warn},
 		{"ufw-docker, route on tailscale0", ufwDocker(netTSRoute, facts.UFWRule{Action: "allow", Direction: "fwd", Port: "5432", Proto: "tcp", Interface: "tailscale0"}), profile.Unknown, Pass},
 		{"ufw-docker, route on tunnel profile", ufwDocker(facts.UFWRule{Action: "allow", Direction: "fwd", Port: "5432", Proto: "tcp"}), profile.Tunnel, Fail},
+		{"ufw-docker jump with no deny rules", ufwDockerShort, profile.Unknown, Unknown},
 		{"nftables backend, nothing drops", nftHost, profile.Unknown, Fail},
 		{"nftables backend, forward drop", nftDrop, profile.Unknown, Unknown},
 		{"iptables off, ufw denies", iptOff, profile.Unknown, Pass},
