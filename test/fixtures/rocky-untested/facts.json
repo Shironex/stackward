@@ -1,0 +1,26 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "app.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "rocky",
+    "id_like": ["rhel", "centos", "fedora"],
+    "version_id": "9.4",
+    "pretty_name": "Rocky Linux 9.4 (Blue Onyx)"
+  },
+  "kernel": {
+    "release": "5.14.0-427.13.1.el9_4.x86_64",
+    "installed": ["5.14.0-427.13.1.el9_4.x86_64"]
+  },
+  "reboot": {
+    "required": false
+  },
+  "collectors": [
+    {"name": "os", "status": "ok"}
+  ]
+}

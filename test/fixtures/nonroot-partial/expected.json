@@ -1,0 +1,92 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:11d10a4dba4e2a8b",
+    "kernel": "6.8.0-45-generic"
+  },
+  "profile": {
+    "name": "unknown",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 3,
+    "results": 3,
+    "checked": 0,
+    "unknown": 3,
+    "skipped": 0,
+    "root": false,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "os",
+        "status": "partial",
+        "error": "os-release: open /etc/os-release: permission denied; planted for the redaction test DB_PASSWORD=[REDACTED]"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "unknown": 3,
+    "info": 0,
+    "pass": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: os collector partial: os-release: open /etc/os-release: permission denied; planted for the redaction test DB_PASSWORD=[REDACTED]",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "partial"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: os collector partial: os-release: open /etc/os-release: permission denied; planted for the redaction test DB_PASSWORD=[REDACTED]",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "partial"
+      },
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "could not list installed kernels in /boot",
+      "evidence": {
+        "running": "6.8.0-45-generic"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    }
+  ]
+}
