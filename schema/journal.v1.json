@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/journal.v1.json",
+  "title": "stackward run journal v1",
+  "description": "The record `stackward apply` keeps of one run, at /var/backups/stackward/<run_id>/journal.json (mode 0600). It is rewritten atomically after every file and command, so a run that dies leaves a journal with status running. `stackward undo --run <run_id>` reads it. File content is redacted; the hashes are of the real bytes. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs journal.v2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tool",
+    "run_id",
+    "status",
+    "started_at",
+    "finished_at",
+    "host",
+    "plan",
+    "selected",
+    "backup_dir",
+    "steps"
+  ],
+  "properties": {
+    "schema": {
+      "const": "stackward.journal.v1"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "stackward"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "run_id": {
+      "description": "The UTC start time and six random hex digits.",
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$"
+    },
+    "status": {
+      "description": "running: in progress, or the run died. ok: every selected step is applied. failed: a step failed and the run stopped there. undone: stackward undo reversed the run.",
+      "enum": [
+        "running",
+        "ok",
+        "failed",
+        "undone"
+      ]
+    },
+    "started_at": {
+      "description": "RFC 3339 UTC.",
+      "type": "string"
+    },
+    "finished_at": {
+      "description": "RFC 3339 UTC; empty while running.",
+      "type": "string"
+    },
+    "undone_at": {
+      "description": "When stackward undo finished, RFC 3339 UTC.",
+      "type": "string"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname_hash"
+      ],
+      "properties": {
+        "hostname_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{16}$"
+        }
+      }
+    },
+    "plan": {
+      "description": "The plan file the run applied.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "sha256",
+        "schema",
+        "tool_version",
+        "generated_at"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "sha256": {
+          "description": "SHA-256 of the plan file as read.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        }
+      }
+    },
+    "selected": {
+      "description": "The selected step ids, in plan order.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "backup_dir": {
+      "description": "Where the run keeps the old copy of every file it overwrote, at the file's own path below this directory.",
+      "type": "string"
+    },
+    "error": {
+      "description": "Why the run failed.",
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "duration_ms",
+        "step",
+        "files",
+        "commands"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "status": {
+          "description": "applied: ran to the end. failed: stopped part way (see files and commands). already: the check found it in place and nothing ran. not-run: an earlier step failed first.",
+          "enum": [
+            "applied",
+            "failed",
+            "already",
+            "not-run"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "description": "The plan step as applied, in the shape of a step of plan.v1 (schema/plan.v1.json), with old and new file content redacted. Undo authorizes it again and runs its undo commands.",
+          "type": "object"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "action",
+        "changed",
+        "new_sha256",
+        "mode",
+        "uid",
+        "gid",
+        "orig_created"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "create",
+            "replace"
+          ]
+        },
+        "changed": {
+          "description": "False when the file already held the new content, or the write did not happen (validation failed).",
+          "type": "boolean"
+        },
+        "old_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "new_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mode": {
+          "description": "Permission the file was written with, octal.",
+          "type": "string",
+          "pattern": "^0[0-7]{3}$"
+        },
+        "uid": {
+          "description": "Owner it was written with; -1 when left to the writing process (root).",
+          "type": "integer"
+        },
+        "gid": {
+          "type": "integer"
+        },
+        "backup": {
+          "description": "The copy of the old file under backup_dir (replace only).",
+          "type": "string"
+        },
+        "orig": {
+          "description": "FILE.orig (replace only). It is written once, the first time stackward replaces the file, and never replaced.",
+          "type": "string"
+        },
+        "orig_created": {
+          "description": "True when this run wrote FILE.orig.",
+          "type": "boolean"
+        },
+        "undone": {
+          "description": "Set by stackward undo once the file is restored or removed.",
+          "type": "boolean"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "args",
+        "exit_code",
+        "duration_ms"
+      ],
+      "properties": {
+        "kind": {
+          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). command: a step command after the edits. undo: run by stackward undo.",
+          "enum": [
+            "validate",
+            "command",
+            "undo"
+          ]
+        },
+        "args": {
+          "description": "Argument vector, run without a shell.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exit_code": {
+          "description": "-1 when the command could not start or was killed.",
+          "type": "integer"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output": {
+          "description": "stdout and stderr, redacted, at most 4 KiB.",
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
