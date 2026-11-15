@@ -214,12 +214,15 @@ func PanelHost(f *facts.Facts) bool {
 
 // blockedByFirewall reports whether an active UFW with a deny default and
 // no rule allowing the port from anywhere keeps the socket closed. Docker
-// published ports skip UFW's input rules, so they never count as blocked
-// here.
+// published ports skip UFW's input rules; they count as blocked only
+// behind a standard ufw-docker chain with no route rule allowing them.
 func blockedByFirewall(f *facts.Facts, l facts.Listener) bool {
 	fw := f.Firewall
-	if fw == nil || fw.UFW == nil || l.PublishedByContainer(f.Docker) {
+	if fw == nil || fw.UFW == nil {
 		return false
+	}
+	if l.PublishedByContainer(f.Docker) {
+		return blockedByUFWDocker(f, l)
 	}
 	u := fw.UFW
 	if !u.Live() || u.Status != "active" || !u.RulesKnown {
@@ -234,6 +237,45 @@ func blockedByFirewall(f *facts.Facts, l facts.Listener) bool {
 		}
 	}
 	return true
+}
+
+// blockedByUFWDocker reports whether a standard ufw-docker chain drops new
+// connections from anywhere to every container port behind a published
+// socket: no UFW route rule allows the container port from any source on a
+// public interface, and the chain's deny rules cover it.
+func blockedByUFWDocker(f *facts.Facts, l facts.Listener) bool {
+	fw, d := f.Firewall, f.Docker
+	if fw.DockerBackend == "nftables" || !fw.UFW.RulesKnown || d == nil ||
+		(d.Daemon != nil && d.Daemon.IPTables != nil && !*d.Daemon.IPTables) {
+		return false
+	}
+	c, _ := fw.UFWDockerChain()
+	if c == nil {
+		return false
+	}
+	found := false
+	for _, ct := range d.Publishing(l.Proto, l.Address, l.Port) {
+		for _, p := range ct.Ports {
+			proto := p.Proto
+			if proto == "" {
+				proto = "tcp"
+			}
+			if p.HostPort != l.Port || proto != l.Proto {
+				continue
+			}
+			found = true
+			for _, r := range fw.UFW.Rules {
+				if r.Direction == "fwd" && r.Allows() && r.From == "" && r.MatchesPort(proto, p.ContainerPort) &&
+					(r.Interface == "" || !facts.InternalInterface(r.Interface)) {
+					return false
+				}
+			}
+			if denied, _ := c.Denies(proto, p.ContainerPort); !denied {
+				return false
+			}
+		}
+	}
+	return found
 }
 
 // Infer guesses the profile from facts.

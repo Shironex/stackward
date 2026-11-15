@@ -156,7 +156,13 @@ func forwardFilter(f *facts.Facts, d *facts.Docker, proto, hostIP string, hostPo
 	if fw.DockerBackend == "nftables" {
 		return nftForward(fw.NFT)
 	}
+	if c, why := fw.UFWDockerChain(); c != nil {
+		return ufwDockerReach(f, c, proto, containerPort)
+	} else if why != "" {
+		return triUnknown, "ufw-docker", "ufw-docker is loaded, but DOCKER-USER " + why
+	}
 	if u := fw.UFWDocker; u != nil && u.Loaded == "yes" {
+		// Facts without the DOCKER-USER rules: trust the jump.
 		return ufwRoute(f, proto, containerPort)
 	}
 	switch fw.DockerUser {
@@ -223,17 +229,78 @@ func ufwRoute(f *facts.Facts, proto string, containerPort int) (tri, string, str
 	return triNo, "ufw-docker", "ufw-docker drops it unless a route rule allows the source"
 }
 
-// internalIfacePrefixes are interfaces that never carry internet traffic
-// straight in.
-var internalIfacePrefixes = []string{"lo", "docker", "br-", "veth", "tailscale", "wg", "virbr", "cni", "flannel", "cali"}
+// ufwDockerReach judges a published port behind the DOCKER-USER chain of
+// a standard ufw-docker install: a UFW route rule for the container port
+// accepts new connections from anywhere; otherwise the chain's deny rules
+// drop them, unless they leave that protocol and port out.
+func ufwDockerReach(f *facts.Facts, c *facts.UFWDockerChain, proto string, containerPort int) (tri, string, string) {
+	o, filter, why := ufwRoute(f, proto, containerPort)
+	if o != triNo {
+		return o, filter, why
+	}
+	if denied, dwhy := c.Denies(proto, containerPort); !denied {
+		return triYes, "ufw-docker", dwhy
+	}
+	return triNo, "ufw-docker", "ufw-docker drops it: no UFW route rule allows " + portLabel(proto, containerPort) + " from anywhere"
+}
+
+// ufwDockerChainOf returns the DOCKER-USER chain when it is a standard
+// ufw-docker install's, or nil.
+func ufwDockerChainOf(f *facts.Facts) *facts.UFWDockerChain {
+	c, _ := f.Firewall.UFWDockerChain()
+	return c
+}
+
+// publishedReach judges whether a published port on proto/port, held by
+// the given sockets, accepts connections from any source, the way DKR-001
+// judges each binding (forwardFilter). The container port behind it comes
+// from the Docker API; without it the answer is unknown.
+func publishedReach(f *facts.Facts, socks []facts.Listener, proto string, port int) (tri, string, string) {
+	var conts []facts.DockerContainer
+	seen := map[string]bool{}
+	for _, s := range socks {
+		if !s.Class().Exposed() {
+			continue
+		}
+		for _, ct := range f.Docker.Publishing(proto, s.Address, port) {
+			if !seen[ct.Name] {
+				seen[ct.Name] = true
+				conts = append(conts, ct)
+			}
+		}
+	}
+	if len(conts) == 0 {
+		return triUnknown, "unknown", "a published container port; which container port is behind it needs the Docker API"
+	}
+	rank := map[tri]int{triNo: 0, triUnknown: 1, triYes: 2}
+	best, filter, why, found := triNo, "unknown", "", false
+	for _, ct := range conts {
+		for _, p := range ct.Ports {
+			pp := p.Proto
+			if pp == "" {
+				pp = "tcp"
+			}
+			if p.HostPort != port || pp != proto || !paasAddrClass(p.HostIP).Exposed() {
+				continue
+			}
+			o, fl, w := forwardFilter(f, f.Docker, proto, p.HostIP, port, p.ContainerPort)
+			if !found || rank[o] > rank[best] {
+				best, filter, why = o, fl, w
+			}
+			found = true
+		}
+	}
+	if !found {
+		return triUnknown, "unknown", "a published container port, but no container the Docker API lists publishes it on all interfaces"
+	}
+	return best, filter, why
+}
 
 // ifacePublic says whether an interface has a public address, from the
 // interface addresses in the listener facts.
 func ifacePublic(f *facts.Facts, name string) tri {
-	for _, p := range internalIfacePrefixes {
-		if strings.HasPrefix(name, p) {
-			return triNo
-		}
+	if facts.InternalInterface(name) {
+		return triNo
 	}
 	l := f.Listeners
 	if l == nil || l.Addresses == nil || strings.ContainsAny(name, "+*") {

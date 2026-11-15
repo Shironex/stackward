@@ -130,6 +130,25 @@ func paasFilterFor(fw *facts.Firewall, proto string, port int, viaDocker bool) p
 	return paasFilterApplied
 }
 
+// paasDockerFilter reads whether a standard ufw-docker chain lets a
+// published port through from anywhere: a route rule allowing the
+// container port is none, the chain's deny rules are filtered.
+func paasDockerFilter(f *facts.Facts, proto string, port int) paasFilter {
+	var socks []facts.Listener
+	for _, s := range f.Listeners.Sockets {
+		if s.Proto == proto && s.Port == port {
+			socks = append(socks, s)
+		}
+	}
+	switch o, _, _ := publishedReach(f, socks, proto, port); o {
+	case triYes:
+		return paasFilterNone
+	case triNo:
+		return paasFilterApplied
+	}
+	return paasFilterUnknown
+}
+
 // Collector names of the domains read through the hooks, for NotInspected.
 const (
 	paasDockerCollector    = "docker"
@@ -559,6 +578,9 @@ func paasJudgeHostPort(f *facts.Facts, ls []paasListener, proto string, port int
 		}
 	}
 	filter := readPaaSFilter(f.Firewall, proto, port, viaDocker)
+	if viaDocker && f.Firewall != nil && f.Listeners != nil && ufwDockerChainOf(f) != nil {
+		filter = paasDockerFilter(f, proto, port)
+	}
 	ev := map[string]any{"binds": paasNonNil(binds), "exposed": paasNonNil(exposed), "filter": string(filter)}
 	r := Result{Subject: subject, Evidence: ev}
 	switch {

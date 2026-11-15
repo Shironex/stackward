@@ -23,7 +23,7 @@
       "id": "CF-003",
       "title": "The proxy is not reachable on a public address while ingress is the tunnel",
       "severity": "high",
-      "rationale": "When the origin proxy also answers on a wildcard or public 80/443, anyone who finds the origin IP can bypass the tunnel and with it Cloudflare's WAF, Access policies and rate limits. Docker published ports skip UFW, so a 0.0.0.0:443 publish is open even under a default deny.",
+      "rationale": "When the origin proxy also answers on a wildcard or public 80/443, anyone who finds the origin IP can bypass the tunnel and with it Cloudflare's WAF, Access policies and rate limits. Docker published ports skip UFW, so a 0.0.0.0:443 publish is open even under a default deny, unless the DOCKER-USER chain filters it: behind a standard ufw-docker chain it is open only when a ufw route rule allows the container port.",
       "verify": "ss -tlnp | grep -E ':(80|443) '; from another machine: curl -kv https://<origin-ip>/",
       "fix": "Publish the proxy on 127.0.0.1 only (127.0.0.1:443:443) and let cloudflared reach it locally or over a Docker network",
       "breaks": "Anything that reached the origin directly (health checks, other CDNs, Let's Encrypt HTTP challenges) stops working; switch certificates to DNS challenges first."

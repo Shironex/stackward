@@ -136,6 +136,8 @@ func webExposure(f *facts.Facts) (tri, []string, string) {
 		switch {
 		case !isExposed:
 			o, reason = triNo, "loopback or private bind only"
+		case docker && ufwDockerChainOf(f) != nil:
+			o, _, reason = publishedReach(f, g.socks, g.proto, g.port)
 		case docker && f.Firewall != nil && f.Firewall.DockerUser == "filtered":
 			o, reason = triUnknown, "a published container port; DOCKER-USER has rules that are not analysed"
 		case docker:

@@ -452,6 +452,21 @@ func exposureResult(f *facts.Facts, l *facts.Listeners, g portGroup) Result {
 		r.Level, r.Message = Info, fmt.Sprintf("%s%s is a DHCP client socket", label, who)
 		return r
 	}
+	if docker && ufwDockerChainOf(f) != nil {
+		open, filter, reason := publishedReach(f, g.socks, g.proto, g.port)
+		r.Evidence["open_from_anywhere"] = open.String()
+		switch {
+		case open == triNo:
+			r.Level, r.Message = Pass, fmt.Sprintf("%s is a published container port on %s, but %s (see DKR-001)", label, worst, reason)
+		case open == triUnknown:
+			r.Level, r.Message = Unknown, fmt.Sprintf("%s is a published container port on %s; %s (see DKR-001)", label, worst, reason)
+		case filter == "ufw-route":
+			r.Level, r.Message = Info, fmt.Sprintf("%s is a published container port, public by design: %s (see DKR-001)", label, reason)
+		default:
+			r.Level, r.Message = Warn, fmt.Sprintf("%s is a published container port on %s and nothing filters it: %s (see DKR-001)", label, worst, reason)
+		}
+		return r
+	}
 	if docker {
 		r.Level = Warn
 		r.Message = fmt.Sprintf("%s is a published container port on %s: UFW input rules do not apply to it (see DKR-001)", label, worst)
