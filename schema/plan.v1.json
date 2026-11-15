@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/plan.v1.json",
+  "title": "stackward plan v1",
+  "description": "Output of `stackward plan --json` and `stackward plan --out FILE`. A plan changes nothing; it lists the steps that would fix the findings. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs plan.v2. Steps are ordered by risk class (safe, networking, access-critical), then id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tool",
+    "generated_at",
+    "host",
+    "source",
+    "sandbox",
+    "summary",
+    "steps",
+    "skipped"
+  ],
+  "properties": {
+    "schema": {
+      "const": "stackward.plan.v1"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "stackward"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "generated_at": {
+      "description": "When the facts behind the plan were collected (the source report's generated_at), RFC 3339 UTC. Empty when unknown.",
+      "type": "string"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hostname_hash": {
+          "description": "sha256: plus the first 16 hex digits of the SHA-256 of the hostname. Present unless --show-hostname.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{16}$"
+        },
+        "hostname": {
+          "description": "Only with --show-hostname.",
+          "type": "string"
+        },
+        "os": {
+          "description": "os-release PRETTY_NAME.",
+          "type": "string"
+        },
+        "os_id": {
+          "description": "os-release ID.",
+          "type": "string"
+        },
+        "os_version": {
+          "description": "os-release VERSION_ID.",
+          "type": "string"
+        },
+        "kernel": {
+          "description": "Running kernel release.",
+          "type": "string"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "facts",
+        "report"
+      ],
+      "properties": {
+        "kind": {
+          "description": "live: this host was audited now; facts: a saved facts file; report: a saved report alone; report+facts: a saved report and the facts of the same audit.",
+          "enum": [
+            "live",
+            "facts",
+            "report",
+            "report+facts"
+          ]
+        },
+        "facts": {
+          "description": "False when only a report was given; steps that need file contents are then skipped as unknown.",
+          "type": "boolean"
+        },
+        "report": {
+          "description": "The report the plan answers: the one given with --report, or the one evaluated in process.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "tool_version",
+            "generated_at",
+            "profile",
+            "summary"
+          ],
+          "properties": {
+            "schema": {
+              "const": "stackward.report.v1"
+            },
+            "tool_version": {
+              "description": "Version of the stackward that wrote the report.",
+              "type": "string"
+            },
+            "generated_at": {
+              "type": "string"
+            },
+            "profile": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "source"
+              ],
+              "properties": {
+                "name": {
+                  "description": "Ingress profile. mixed is inferred only (a tunnel plus public web ports) and is not a --profile value.",
+                  "enum": [
+                    "unknown",
+                    "tunnel",
+                    "public-web",
+                    "tailnet-only",
+                    "paas-panel",
+                    "mixed"
+                  ]
+                },
+                "source": {
+                  "enum": [
+                    "inferred",
+                    "flag"
+                  ]
+                }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fail",
+                "warn",
+                "unknown",
+                "info",
+                "pass",
+                "skip"
+              ],
+              "properties": {
+                "fail": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "warn": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "unknown": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "info": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pass": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "skip": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sandbox": {
+      "$ref": "#/$defs/sandbox"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "steps",
+        "safe",
+        "networking",
+        "access_critical",
+        "opt_in",
+        "restarts",
+        "skipped"
+      ],
+      "properties": {
+        "steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "safe": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "networking": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "access_critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "opt_in": {
+          "description": "Steps applied only when selected by id.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "restarts": {
+          "description": "Every service a planned step restarts, in plan order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skipped"
+      }
+    }
+  },
+  "$defs": {
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "landlock",
+            "unavailable",
+            "disabled",
+            "failed"
+          ]
+        },
+        "abi": {
+          "description": "Landlock ABI version.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "network": {
+          "description": "TCP bind and connect denied as well.",
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "fixes",
+        "risk",
+        "opt_in",
+        "restarts",
+        "touches",
+        "edits",
+        "commands",
+        "undo",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable step id, the same across runs and releases.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "fixes": {
+          "description": "Check ids the step makes pass.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,4}-[0-9]{3}$"
+          }
+        },
+        "risk": {
+          "description": "safe: no service interruption beyond a log daemon restart; networking: can interrupt traffic (restarts Docker); access-critical: SSH, firewall or users, applied only inside the rollback transaction.",
+          "enum": [
+            "safe",
+            "networking",
+            "access-critical"
+          ]
+        },
+        "opt_in": {
+          "description": "Applied only when selected by id.",
+          "type": "boolean"
+        },
+        "restarts": {
+          "description": "Services the step restarts, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "touches": {
+          "description": "Everything the step changes, as kind:name (file:, sysctl:, service:, docker-daemon:). Policies such as the never touched list veto steps by these.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(file|sysctl|service|docker-daemon):.+$"
+          }
+        },
+        "edits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/edit"
+          }
+        },
+        "commands": {
+          "description": "Run after the edits, in order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "undo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "description",
+            "commands"
+          ],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "commands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/command"
+              }
+            }
+          }
+        },
+        "notes": {
+          "description": "Caveats to read before running the step.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "action",
+        "old",
+        "new",
+        "new_sha256",
+        "diff"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "action": {
+          "description": "create: the file must not exist; replace: the file must still hash to old_sha256.",
+          "enum": [
+            "create",
+            "replace"
+          ]
+        },
+        "mode": {
+          "description": "Permission of a created file.",
+          "type": "string",
+          "pattern": "^0[0-7]{3}$"
+        },
+        "old": {
+          "description": "Content the audit saw (empty for create).",
+          "type": "string"
+        },
+        "new": {
+          "description": "Content the step writes.",
+          "type": "string"
+        },
+        "old_sha256": {
+          "description": "SHA-256 of the old content before redaction; replace only.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "new_sha256": {
+          "description": "SHA-256 of the new content before redaction.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "diff": {
+          "description": "Unified diff from old to new.",
+          "type": "string"
+        },
+        "redacted": {
+          "description": "True when a secret shaped value was masked in old, new or diff; the plan then cannot be applied from its own text.",
+          "type": "boolean"
+        },
+        "validate": {
+          "description": "Command that checks the staged new content before it replaces the file; the staged file's path is appended as the last argument. A failure leaves the file untouched.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "args",
+        "why"
+      ],
+      "properties": {
+        "args": {
+          "description": "Argument vector, run without a shell.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "why": {
+          "description": "What the command is for.",
+          "type": "string"
+        }
+      }
+    },
+    "skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "fixes",
+        "kind",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "fixes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,4}-[0-9]{3}$"
+          }
+        },
+        "kind": {
+          "description": "passing: the checks already pass or do not apply; unknown: facts or results are missing; manual: a step would not fix it; refused: a policy vetoed the step.",
+          "enum": [
+            "passing",
+            "unknown",
+            "manual",
+            "refused"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
