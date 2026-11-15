@@ -16,6 +16,9 @@ import (
 // be undone, so the real assertions run in a separate process.
 const childEnv = "STACKWARD_SANDBOX_CHILD"
 
+// netEnv set to "allow" makes the child apply Options{AllowNetwork: true}.
+const netEnv = "STACKWARD_SANDBOX_NET"
+
 func TestMain(m *testing.M) {
 	if dir := os.Getenv(childEnv); dir != "" {
 		os.Exit(child(dir))
@@ -38,7 +41,8 @@ func child(dir string) int {
 	}
 	defer func() { _ = ln.Close() }()
 
-	st := Apply(Options{})
+	allowNet := os.Getenv(netEnv) == "allow"
+	st := Apply(Options{AllowNetwork: allowNet})
 	println("status:", string(st.State), st.ABI, st.Network, st.Reason)
 	if st.State != Landlock {
 		return 3
@@ -69,7 +73,14 @@ func child(dir string) int {
 	err = exec.Command("/bin/sh", "-c", "echo marker > "+childFile).Run()
 	_, statErr := os.Stat(childFile)
 	expect("child processes inherit the sandbox", err != nil && errors.Is(statErr, os.ErrNotExist))
-	if st.Network {
+	if allowNet {
+		expect("AllowNetwork does not report network confinement", !st.Network)
+		c, err := net.Dial("tcp", ln.Addr().String())
+		if c != nil {
+			_ = c.Close()
+		}
+		expect("TCP connect stays allowed with AllowNetwork", err == nil)
+	} else if st.Network {
 		c, err := net.Dial("tcp", ln.Addr().String())
 		if c != nil {
 			_ = c.Close()
@@ -82,14 +93,21 @@ func child(dir string) int {
 	return 0
 }
 
-func TestApplyConfinesProcess(t *testing.T) {
+func TestApplyConfinesProcess(t *testing.T) { runChild(t, "") }
+
+// TestApplyConfinesProcessAllowNetwork shares the prefix so the CI step that
+// runs the cgo free sandbox test picks it up too.
+func TestApplyConfinesProcessAllowNetwork(t *testing.T) { runChild(t, "allow") }
+
+func runChild(t *testing.T, network string) {
+	t.Helper()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
 	cmd := exec.Command(exe, "-test.run=^$")
-	cmd.Env = append(os.Environ(), childEnv+"="+dir)
+	cmd.Env = append(os.Environ(), childEnv+"="+dir, netEnv+"="+network)
 	out, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError
 	switch {

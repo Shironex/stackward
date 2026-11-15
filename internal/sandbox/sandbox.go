@@ -39,6 +39,9 @@ type Status struct {
 type Options struct {
 	// Disabled skips the sandbox (reported as Disabled).
 	Disabled bool
+	// AllowNetwork keeps TCP bind and connect allowed and only removes
+	// filesystem write rights. probe needs outbound TCP; audit never does.
+	AllowNetwork bool
 }
 
 // Apply confines the current process where possible. It never fails the
@@ -47,5 +50,5 @@ func Apply(opts Options) Status {
 	if opts.Disabled {
 		return Status{State: Disabled, Reason: "turned off with --no-sandbox"}
 	}
-	return apply()
+	return apply(opts)
 }
