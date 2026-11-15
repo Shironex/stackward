@@ -166,7 +166,9 @@ audit report would only add unknown rows and change every golden fixture.
 They still return `checks.Result` and go through `checks.EvaluateChecks` and
 `report.Build`, so probe reports use the same levels, renderers and
 `report.v1` schema; the optional `probe` object in the report says what was
-probed. Probe golden scenarios live in `internal/probe/testdata/<scenario>/`
+probed. When a resolved address is loopback or one of this machine's own
+interface addresses (`probe.Options.LocalAddrs` is the test seam), probe
+warns before probing and sets the optional `probe.self_target` field. Probe golden scenarios live in `internal/probe/testdata/<scenario>/`
 (`go test ./internal/probe -update`).
 
 ## Report contract

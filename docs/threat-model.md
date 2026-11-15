@@ -93,7 +93,11 @@ them to one host:
 - it ignores proxy settings from the environment, so the answers come from
   the target itself;
 - it prints that probing a host you do not own may be illegal, and needs a
-  `y` on an interactive terminal or `--i-own-this` otherwise.
+  `y` on an interactive terminal or `--i-own-this` otherwise;
+- it warns on stderr, before probing, when the target resolves to loopback
+  (127.0.0.0/8, `::1`) or to an address of one of this machine's own
+  interfaces. The run then goes ahead, but it is not an outside view, and the
+  report carries `probe.self_target: true` and a note saying so.
 
 On Linux the same Landlock sandbox applies, with TCP left allowed: probe
 still cannot write anything but `--out`.
