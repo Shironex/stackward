@@ -1,0 +1,8 @@
+{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Name":"/coolify-proxy","Path":"/entrypoint.sh","Args":["traefik","--api.insecure=false"],
+ "State":{"Status":"running","Running":true},
+ "Config":{"User":"","Image":"traefik:v3.1","Env":["PATH=/usr/bin"],"Cmd":["traefik"],
+  "Labels":{"coolify.managed":"true","coolify.proxy":"true","traefik.enable":"true","traefik.http.middlewares.auth.basicauth.users":"admin:not-a-real-hash"}},
+ "HostConfig":{"Binds":["/var/run/docker.sock:/var/run/docker.sock:ro","/data/coolify/proxy:/traefik"],"Privileged":false,"CapAdd":null,"NetworkMode":"coolify","PidMode":"","IpcMode":"private","UsernsMode":"","SecurityOpt":["no-new-privileges:true"]},
+ "Mounts":[{"Type":"bind","Source":"/var/run/docker.sock","Destination":"/var/run/docker.sock","RW":false},{"Type":"bind","Source":"/data/coolify/proxy","Destination":"/traefik","RW":true}],
+ "NetworkSettings":{"Networks":{"coolify":{"IPAddress":"198.51.100.12"},"edge":{"IPAddress":"198.51.100.22"}},
+  "Ports":{"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"80"},{"HostIp":"::","HostPort":"80"}],"443/tcp":[{"HostIp":"0.0.0.0","HostPort":"443"}],"8080/tcp":null}}}

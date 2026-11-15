@@ -1,0 +1,6 @@
+{"Id":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","Name":"/tunnel","Path":"cloudflared","Args":["tunnel","run","--token","not-a-real-token"],
+ "State":{"Status":"running","Running":true},
+ "Config":{"User":"nonroot","Image":"cloudflare/cloudflared:latest","Env":["TUNNEL_TOKEN=not-a-real-token"],"Cmd":["tunnel","run","--token","not-a-real-token"],"Labels":{}},
+ "HostConfig":{"Binds":null,"Privileged":false,"CapAdd":null,"NetworkMode":"host","PidMode":"","IpcMode":"private","UsernsMode":"","SecurityOpt":null},
+ "Mounts":[],
+ "NetworkSettings":{"Networks":{"host":{}},"Ports":{}}}

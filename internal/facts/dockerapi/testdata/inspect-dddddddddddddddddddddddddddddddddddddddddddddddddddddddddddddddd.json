@@ -1,0 +1,6 @@
+{"Id":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Name":"/socket-proxy","Path":"haproxy","Args":[],
+ "State":{"Status":"running","Running":true},
+ "Config":{"User":"","Image":"tecnativa/docker-socket-proxy:0.3.0","Env":["CONTAINERS=1","POST=1","EXEC=0","LOG_LEVEL=info","SECRETS=not-a-bool-value"],"Cmd":null,"Labels":{}},
+ "HostConfig":{"Binds":["/var/run/docker.sock:/var/run/docker.sock:ro"],"Privileged":false,"CapAdd":null,"NetworkMode":"bridge","PidMode":"","IpcMode":"private","UsernsMode":"","SecurityOpt":null},
+ "Mounts":[{"Type":"bind","Source":"/var/run/docker.sock","Destination":"/var/run/docker.sock","RW":false}],
+ "NetworkSettings":{"Networks":{"bridge":{"IPAddress":"198.51.100.2"}},"Ports":{"2375/tcp":null}}}
