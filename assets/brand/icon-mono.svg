@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+<title id="title">stackward monochrome mark</title>
+<desc id="desc">Three stack layers and three separate cells, in one ink.</desc>
+<g fill="currentColor"><path d="M8 12H40V20H8ZM24 28H56V36H24ZM8 44H40V52H8Z"/><path d="M48 12H56V20H48ZM8 28H16V36H8ZM48 44H56V52H48Z"/></g>
+</svg>

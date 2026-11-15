@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+<title id="title">stackward</title>
+<desc id="desc">Three offset stack layers with separate dim cells representing uninspected coverage.</desc>
+<rect width="64" height="64" rx="12" fill="#102B2B"/><g fill="#72D6BC"><path d="M8 12H40V20H8ZM24 28H56V36H24ZM8 44H40V52H8Z"/></g><g fill="#497B70"><path d="M48 12H56V20H48ZM8 28H16V36H8ZM48 44H56V52H48Z"/></g>
+</svg>
