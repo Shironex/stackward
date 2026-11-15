@@ -33,10 +33,10 @@ Usage:
   stackward audit [flags]     audit this host (sudo gives full coverage)
   stackward explain [id]      explain a check, or list every check
   stackward version           print the version
-  stackward probe             (not in this build yet)
+  stackward probe <host>      check a host from outside (run from another machine)
   stackward tui [flags]       browse the findings in the terminal
 
-Run "stackward audit -h" or "stackward tui -h" for their flags.
+Run "stackward audit -h", "stackward probe -h" or "stackward tui -h" for their flags.
 
 Exit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.
 `
@@ -58,8 +58,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	case "tui":
 		return runTUI(args[1:], stdout, stderr)
 	case "probe":
-		fmt.Fprintf(stderr, "stackward %s: not in this build yet\n", args[0])
-		return report.ExitError
+		return runProbe(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		_, _ = io.WriteString(stdout, usage)
 		return report.ExitOK
