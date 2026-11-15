@@ -166,7 +166,7 @@ func latestRun(sys System) time.Time {
 // (read only) and falls back to parsing /etc/apt/apt.conf.d.
 func aptSettings(ctx context.Context, sys System) (aptConf, string, error) {
 	if res, err := sys.Run(ctx, "apt-config", "dump"); err == nil && res.ExitCode == 0 {
-		return ParseAptConf(string(res.Stdout)), "apt-config", nil
+		return parseAptConf(string(res.Stdout)), "apt-config", nil
 	}
 	entries, err := sys.ReadDir(aptConfDir)
 	if err != nil {
@@ -188,7 +188,7 @@ func aptSettings(ctx context.Context, sys System) (aptConf, string, error) {
 		sb.Write(b)
 		sb.WriteByte('\n')
 	}
-	return ParseAptConf(sb.String()), "files", nil
+	return parseAptConf(sb.String()), "files", nil
 }
 
 var aptConfName = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
@@ -222,10 +222,10 @@ func (c aptConf) list(key string) []string {
 	return out
 }
 
-// ParseAptConf parses the apt.conf format: "Key::Sub "value";" lines, nested
+// parseAptConf parses the apt.conf format: "Key::Sub "value";" lines, nested
 // "Key { Sub "value"; };" blocks, list elements as bare quoted strings in a
 // block, and //, /* */ and # comments. `apt-config dump` output is a subset.
-func ParseAptConf(text string) aptConf {
+func parseAptConf(text string) aptConf {
 	conf := aptConf{}
 	toks := tokenizeApt(text)
 	prefix := []string{""}
