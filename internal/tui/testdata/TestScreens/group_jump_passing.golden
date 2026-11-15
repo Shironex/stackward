@@ -1,24 +1,24 @@
- stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
  104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  115 of 115          +passing │ DETAIL                       1-17 of 64
+FINDINGS  115 of 115          +passing │ DETAIL                       1-17 of 65
 Firewall and exposure NET           14 │ NET-004  Firewall and exposure         
-› WARN    NET-004  tcp/443 · Exposure… │ Exposure: every listening socket and   
-  WARN    NET-004  tcp/80 · Exposure:… │ who can reach it                       
-  WARN    NET-004  tcp/8000 · Exposur… │ WARN · moderate severity               
-  UNKNOWN NET-003  SSH is not open to… │ subject port:tcp/443                   
-  UNKNOWN NET-009  Provider firewall … │                                        
-  INFO    NET-004  tcp/22 · Exposure:… │ tcp/443 is a published container port  
-  INFO    NET-004  tcp/6001 · Exposur… │ on wildcard and nothing filters it:    
-  INFO    NET-004  tcp/6002 · Exposur… │ DOCKER-USER has no filtering rules, and
-  INFO    NET-006  DOCKER-USER chain … │ UFW's input rules do not apply to      
-  PASS    NET-001  A host firewall is… │ published ports (see DKR-001)          
-  PASS    NET-002  UFW filters IPv6 w… │                                        
-  SKIP    NET-005  No public 80/443 r… │ EVIDENCE                               
-  SKIP    NET-007  ufw-docker is load… │   binds               0.0.0.0, ::      
+› WARN    NET-004  tcp/443 is a publi… │ rule Exposure: every listening socket  
+  WARN    NET-004  tcp/80 is a publis… │      and who can reach it              
+  WARN    NET-004  tcp/8000 is a publ… │ WARN · moderate severity               
+  UNKNOWN NET-003  SSH is open to any… │ subject port:tcp/443                   
+  UNKNOWN NET-009  the provider firew… │                                        
+  INFO    NET-004  tcp/22 (sshd) is p… │ tcp/443 is a published container port  
+  INFO    NET-004  tcp/6001 (docker-p… │ on wildcard and nothing filters it:    
+  INFO    NET-004  tcp/6002 (docker-p… │ DOCKER-USER has no filtering rules, and
+  INFO    NET-006  DOCKER-USER exists… │ UFW's input rules do not apply to      
+  PASS    NET-001  UFW is active with… │ published ports (see DKR-001)          
+  PASS    NET-002  UFW filters IPv6 (… │                                        
+  SKIP    NET-005  80/443 may be publ… │ EVIDENCE                               
+  SKIP    NET-007  UFW is not install… │   binds               0.0.0.0, ::      
   SKIP    NET-008  ufw-docker is not … │   class               wildcard         
 System SYS                           5 │   open_from_anywhere  yes              
-  UNKNOWN SYS-004  Clock is synchroni… │   processes           docker-proxy     
+  UNKNOWN SYS-004  not inspected: the… │   processes           docker-proxy     
 ────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    

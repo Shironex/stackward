@@ -1,24 +1,24 @@
- stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
  104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  19 of 115               /ssh │ DETAIL                       1-17 of 46
+FINDINGS  19 of 115               /ssh │ DETAIL                       1-17 of 47
 Firewall and exposure NET      2 of 14 │ NET-003  Firewall and exposure         
-› UNKNOWN NET-003 SSH is not open to … │ SSH is not open to anywhere when a     
-  INFO    NET-004 tcp/22 · Exposure: … │ private path exists                    
+› UNKNOWN NET-003 SSH is open to anyw… │ rule SSH is not open to anywhere when a
+  INFO    NET-004 tcp/22 (sshd) is pu… │      private path exists               
 SSH                                 16 │ UNKNOWN · high severity                
-  UNKNOWN SSH-001 Password authentica… │                                        
-  UNKNOWN SSH-002 Keyboard-interactiv… │ SSH is open to anywhere on tcp/22;     
-  UNKNOWN SSH-003 Root cannot log in … │ Tailscale facts are missing, so whether
-  UNKNOWN SSH-004 Empty passwords are… │ a private path exists is unknown       
-  UNKNOWN SSH-005 MaxAuthTries is low  │                                        
-  UNKNOWN SSH-006 Logins are limited … │ EVIDENCE                               
-  UNKNOWN SSH-007 X11 and agent forwa… │   open_from_anywhere  yes              
-  UNKNOWN SSH-008 No early drop-in sh… │   ssh_ports           [22]             
-  UNKNOWN SSH-009 Effective SSH confi… │   tailnet             unknown          
-  UNKNOWN SSH-010 sshd listens where … │                                        
-  UNKNOWN SSH-011 sshd reachable from… │ WHY IT MATTERS                         
-  UNKNOWN SSH-012 Host keys are stron… │   SSH open to the whole internet draws 
-  UNKNOWN SSH-013 Home, ~/.ssh and au… │   constant brute force traffic and     
+  UNKNOWN SSH-001 not inspected: the … │                                        
+  UNKNOWN SSH-002 not inspected: the … │ SSH is open to anywhere on tcp/22;     
+  UNKNOWN SSH-003 not inspected: the … │ Tailscale facts are missing, so whether
+  UNKNOWN SSH-004 not inspected: the … │ a private path exists is unknown       
+  UNKNOWN SSH-005 not inspected: the … │                                        
+  UNKNOWN SSH-006 not inspected: the … │ EVIDENCE                               
+  UNKNOWN SSH-007 not inspected: the … │   open_from_anywhere  yes              
+  UNKNOWN SSH-008 not inspected: the … │   ssh_ports           [22]             
+  UNKNOWN SSH-009 not inspected: the … │   tailnet             unknown          
+  UNKNOWN SSH-010 not inspected: the … │                                        
+  UNKNOWN SSH-011 not inspected: the … │ WHY IT MATTERS                         
+  UNKNOWN SSH-012 not inspected: the … │   SSH open to the whole internet draws 
+  UNKNOWN SSH-013 not inspected: the … │   constant brute force traffic and     
 ────────────────────────────────────────────────────────────────────────────────
  /ssh                                               enter keeps · esc clears    

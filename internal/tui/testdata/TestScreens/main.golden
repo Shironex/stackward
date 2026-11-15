@@ -1,24 +1,24 @@
- stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
  104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  94 of 115                    │ DETAIL                       1-17 of 49
+FINDINGS  94 of 115                    │ DETAIL                       1-17 of 50
 Secrets on disk SEC            4 of 11 │ SEC-001  Secrets on disk               
-› FAIL    SEC-001  …c3/.env · Platfor… │ Platform app .env files are readable by
-  FAIL    SEC-001  …i9/.env · Platfor… │ their owner only                       
-  WARN    SEC-004  …aml.bak · No stra… │ FAIL · high severity                   
-  WARN    SEC-004  …up.yaml · No stra… │ subject file:/data/coolify/applications
+› FAIL    SEC-001  …c3/.env · app .en… │ rule Platform app .env files are       
+  FAIL    SEC-001  …i9/.env · app .en… │      readable by their owner only      
+  WARN    SEC-004  …aml.bak · backup … │ FAIL · high severity                   
+  WARN    SEC-004  …up.yaml · backup … │ subject file:/data/coolify/applications
 Coolify and Dokploy PAAS        4 of 8 │         /a1b2c3/.env                   
-  FAIL    PAAS-003 tcp/8000 · Platfor… │                                        
-  UNKNOWN PAAS-004 No platform databa… │ app .env is readable by group or others
-  UNKNOWN PAAS-005 Projects do not sh… │ (mode 0644)                            
-  INFO    PAAS-001 …coolify · Self ho… │                                        
+  FAIL    PAAS-003 tcp/8000 · coolify… │                                        
+  UNKNOWN PAAS-004 not inspected: the… │ app .env is readable by group or others
+  UNKNOWN PAAS-005 not inspected: the… │ (mode 0644)                            
+  INFO    PAAS-001 …coolify · coolify… │                                        
 Firewall and exposure NET      9 of 14 │ EVIDENCE                               
-  WARN    NET-004  tcp/443 · Exposure… │   gid       0                          
-  WARN    NET-004  tcp/80 · Exposure:… │   kind      env                        
-  WARN    NET-004  tcp/8000 · Exposur… │   mode      0644                       
-  UNKNOWN NET-003  SSH is not open to… │   path      /data/coolify/applications/
-  UNKNOWN NET-009  Provider firewall … │             a1b2c3/.env                
-  INFO    NET-004  tcp/22 · Exposure:… │   platform  coolify                    
+  WARN    NET-004  tcp/443 is a publi… │   gid       0                          
+  WARN    NET-004  tcp/80 is a publis… │   kind      env                        
+  WARN    NET-004  tcp/8000 is a publ… │   mode      0644                       
+  UNKNOWN NET-003  SSH is open to any… │   path      /data/coolify/applications/
+  UNKNOWN NET-009  the provider firew… │             a1b2c3/.env                
+  INFO    NET-004  tcp/22 (sshd) is p… │   platform  coolify                    
 ────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    

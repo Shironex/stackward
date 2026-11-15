@@ -23,6 +23,9 @@ const (
 	// header (3 lines), the two rules and the footer.
 	chromeHeight = 6
 	gutter       = " │ "
+	// ruleLead marks the check title in the detail pane as the rule the
+	// result was measured against, not as the finding itself.
+	ruleLead = "rule "
 )
 
 // dims returns the list width, the detail width and the body height.
@@ -115,10 +118,14 @@ func (m Model) header() []string {
 		}
 	}
 	l1 := " " + st.brand.Render("stackward") + " " + st.quiet.Render(r.Tool.Version) + dot + label("host", orDash(host))
+	src := st.faint.Render(m.opts.Source + " ")
 	if osName := strings.TrimSpace(r.Host.OS); osName != "" {
-		l1 += dot + st.text.Render(osName)
+		withOS := l1 + dot + st.text.Render(osName)
+		if ansi.StringWidth(withOS)+2+ansi.StringWidth(src) <= m.width {
+			l1 = withOS
+		}
 	}
-	l1 = spread(l1, st.faint.Render(m.opts.Source+" "), m.width)
+	l1 = spreadKeepRight(l1, src, m.width)
 
 	root := st.text.Render("yes")
 	if !r.Coverage.Root {
@@ -221,6 +228,9 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 	badge := fmt.Sprintf("%-7s", strings.ToUpper(string(it.Level)))
 	id := fmt.Sprintf("%-*s", idw, it.ID)
 	subj := shortSubject(it.Subject)
+	if namesSubject(it.Message, subj) {
+		subj = "" // the sentence already starts with it
+	}
 	if subj != "" {
 		// Keep the tail of a long subject (the file name, the service):
 		// it is what tells two rows of the same check apart.
@@ -236,7 +246,7 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 		if subj != "" {
 			txt += subj + " · "
 		}
-		txt += it.Title
+		txt += rowText(it)
 		return st.selected.Render(fit(txt, w))
 	}
 	marker := "  "
@@ -251,7 +261,29 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 	if sel {
 		titleStyle = st.bold
 	}
-	return line + titleStyle.Render(it.Title)
+	return line + titleStyle.Render(rowText(it))
+}
+
+// rowText is what a list row says about a result: the result message, which
+// states what was found ("A container mounts the Docker socket"). The check
+// title states the good state and would read as the opposite of a fail, so
+// it is only the fallback for a result without a message; the detail pane
+// shows it as the rule.
+func rowText(it report.Item) string {
+	if it.Message != "" {
+		return it.Message
+	}
+	return it.Title
+}
+
+// namesSubject reports whether the message opens with the subject, so a row
+// can drop its subject column and give the sentence the room.
+func namesSubject(msg, subj string) bool {
+	if subj == "" {
+		return false
+	}
+	first, _, _ := strings.Cut(msg, " ")
+	return strings.TrimRight(first, ",:;") == subj
 }
 
 // shortSubject drops the kind prefix of a subject ("container:app/web"
@@ -324,8 +356,12 @@ func (m Model) detailContent(w int) string {
 	add := func(lines ...string) { b = append(b, lines...) }
 
 	add(st.brand.Render(it.ID) + st.faint.Render("  "+catalog.GroupName(it.Group)))
-	for _, l := range wrapText(it.Title, w) {
-		add(st.bold.Render(l))
+	for i, l := range wrapText(it.Title, w-len(ruleLead)) {
+		lead := strings.Repeat(" ", len(ruleLead))
+		if i == 0 {
+			lead = st.quiet.Render(ruleLead)
+		}
+		add(lead + st.bold.Render(l))
 	}
 	add(st.levelStyle(it.Level).Render(strings.ToUpper(string(it.Level))) +
 		st.faint.Render(" · ") + st.text.Render(string(it.Severity)) + st.quiet.Render(" severity"))
@@ -355,9 +391,9 @@ func (m Model) detailContent(w int) string {
 		}
 	}
 	section := func(name, body string) { sectionHead(st.section.Render(name), body) }
-	if len(it.Evidence) > 0 {
+	if ev := nonEmptyEvidence(it.Evidence); len(ev) > 0 {
 		add("", st.section.Render("EVIDENCE"))
-		add(m.evidenceLines(it.Evidence, w)...)
+		add(m.evidenceLines(ev, w)...)
 	}
 	fix, docs := it.Fix.Hint, it.Fix.Docs
 	if known {
@@ -369,7 +405,7 @@ func (m Model) detailContent(w int) string {
 		section("VERIFY BY HAND", e.Verify)
 		section("WHAT A FIX CAN BREAK", e.Breaks)
 		if e.NeedsRoot {
-			section("ROOT", "The full result needs sudo.")
+			section("ROOT", rootNote(m.rep.Coverage.Root))
 		}
 	}
 	section("MORE", docs)
@@ -377,6 +413,28 @@ func (m Model) detailContent(w int) string {
 		add("", st.faint.Render("This build's catalog does not know "+it.ID+"; showing the saved report's text."))
 	}
 	return strings.Join(b, "\n")
+}
+
+// nonEmptyEvidence drops the empty string values: a key with nothing after it
+// says nothing, and printing "" for it only adds noise.
+func nonEmptyEvidence(ev map[string]any) map[string]any {
+	out := make(map[string]any, len(ev))
+	for k, v := range ev {
+		if s, ok := v.(string); ok && s == "" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// rootNote is the ROOT section of a check that needs root: advice when this
+// run had none, a plain statement when it did.
+func rootNote(hadRoot bool) string {
+	if hadRoot {
+		return "This check needs root and this run had it."
+	}
+	return "The full result needs sudo."
 }
 
 // evidenceLines prints evidence as "key value" pairs, sorted by key, with
@@ -420,9 +478,6 @@ func (m Model) evidenceLines(ev map[string]any, w int) []string {
 func evidenceValue(v any) string {
 	switch x := v.(type) {
 	case string:
-		if x == "" {
-			return `""`
-		}
 		return x
 	case nil:
 		return "null"
@@ -557,6 +612,22 @@ func spread(left, right string, w int) string {
 		return fit(left, w)
 	}
 	return left + strings.Repeat(" ", w-lw-rw) + right
+}
+
+// spreadKeepRight is spread for a line whose right part must stay readable:
+// when both do not fit, the left part is cut with an ellipsis instead of the
+// right part being dropped. A right part that cannot fit beside a useful
+// stretch of the left one is dropped whole, never cut in the middle.
+func spreadKeepRight(left, right string, w int) string {
+	lw, rw := ansi.StringWidth(left), ansi.StringWidth(right)
+	if right == "" || lw+2+rw <= w {
+		return spread(left, right, w)
+	}
+	const minLeft = 24
+	if w-2-rw < minLeft {
+		return fit(left, w)
+	}
+	return fit(left, w-2-rw) + "  " + right
 }
 
 func padLines(lines []string, h int) []string {
