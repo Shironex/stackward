@@ -5,6 +5,8 @@ package profile
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/Shironex/stackward/internal/facts"
 )
@@ -73,12 +75,45 @@ func tailnetOf(v any) (running, known bool) {
 }
 
 // TunnelState reports what the Cloudflare Tunnel facts say, when they exist
-// and implement TunnelReporter.
+// and implement TunnelReporter. A running cloudflared container in the
+// Docker facts is a tunnel too, even when the process scan could not see
+// other users' processes.
 func TunnelState(f *facts.Facts) (present, known bool) {
-	if f == nil || f.Cloudflared == nil {
+	if f == nil {
+		return false, false
+	}
+	if TunnelContainers(f) > 0 {
+		return true, true
+	}
+	if f.Cloudflared == nil {
 		return false, false
 	}
 	return tunnelOf(f.Cloudflared)
+}
+
+// TunnelContainers counts running containers of the cloudflared image in
+// the Docker facts; zero when the Docker API was not read.
+func TunnelContainers(f *facts.Facts) int {
+	if f == nil || f.Docker == nil || f.Docker.API != "ok" {
+		return 0
+	}
+	n := 0
+	for _, c := range f.Docker.Containers {
+		if c.Running && IsTunnelImage(c.Image) {
+			n++
+		}
+	}
+	return n
+}
+
+// IsTunnelImage reports whether an image reference is cloudflared
+// (cloudflare/cloudflared, with any registry, tag or digest).
+func IsTunnelImage(ref string) bool {
+	ref, _, _ = strings.Cut(strings.ToLower(strings.TrimSpace(ref)), "@")
+	if i := strings.LastIndex(ref, ":"); i > strings.LastIndex(ref, "/") {
+		ref = ref[:i]
+	}
+	return path.Base(ref) == "cloudflared"
 }
 
 func tunnelOf(v any) (present, known bool) {

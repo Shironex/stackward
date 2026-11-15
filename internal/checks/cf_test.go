@@ -92,3 +92,31 @@ func TestCF005(t *testing.T) {
 		{"tunnel", &facts.Facts{Cloudflared: cfTunnel(1)}, "", Unknown},
 	})
 }
+
+// cfDocker is Docker facts with n running cloudflared containers and one
+// stopped one.
+func cfDocker(api string, n int) *facts.Docker {
+	d := &facts.Docker{Installed: true, API: api}
+	for range n {
+		d.Containers = append(d.Containers, facts.DockerContainer{Name: "tunnel", Image: "cloudflare/cloudflared:2026.10.0", Running: true})
+	}
+	d.Containers = append(d.Containers, facts.DockerContainer{Name: "old-tunnel", Image: "cloudflare/cloudflared:latest"})
+	return d
+}
+
+func TestCFCountsDockerContainers(t *testing.T) {
+	netCases(t, "CF-001", []netCase{
+		{"hidden processes, container seen", &facts.Facts{Cloudflared: cfHidden, Docker: cfDocker("ok", 1)}, "", Info},
+		{"hidden processes, docker denied", &facts.Facts{Cloudflared: cfHidden, Docker: cfDocker("denied", 1)}, "", Unknown},
+	})
+	netCases(t, "CF-002", []netCase{
+		{"hidden processes, two containers", &facts.Facts{Cloudflared: cfHidden, Docker: cfDocker("ok", 2)}, "", Pass},
+		{"hidden processes, one container", &facts.Facts{Cloudflared: cfHidden, Docker: cfDocker("ok", 1)}, "", Warn},
+		{"scan and docker see the same two", &facts.Facts{Cloudflared: cfTunnel(2), Docker: cfDocker("ok", 2)}, "", Pass},
+		{"only stopped containers, tunnel profile", &facts.Facts{Cloudflared: cfAbsent, Docker: cfDocker("ok", 0)}, profile.Tunnel, Fail},
+	})
+	r := netOne(t, "CF-002", &facts.Facts{Cloudflared: cfTunnel(1), Docker: cfDocker("ok", 2)}, "")
+	if r.Level != Pass || r.Evidence["connectors"] != 2 || r.Evidence["docker_containers"] != 2 {
+		t.Errorf("the larger container count wins, never the sum: %s %v", r.Level, r.Evidence)
+	}
+}
