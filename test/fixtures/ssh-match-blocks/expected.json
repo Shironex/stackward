@@ -300,7 +300,7 @@
       "level": "unknown",
       "severity": "info",
       "subject": "host",
-      "message": "2 Match blocks and no sshd -T: per connection settings are not confirmed (sshd -T unavailable: not root; run with sudo for full coverage)",
+      "message": "2 Match blocks and no sshd -T: per connection settings are not confirmed (sshd -T needs root)",
       "evidence": {
         "match_blocks": 2,
         "source": "files",

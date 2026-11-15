@@ -4,7 +4,7 @@
 - **OS:** Ubuntu 24.04.1 LTS, kernel -
 - **Collected:** 2026-03-01T12:00:00Z
 - **Profile:** unknown (inferred)
-- **Root:** no, run with sudo for full coverage
+- **Root:** no
 - **Sandbox:** unavailable (golden test)
 - **Coverage:** 104 checks, 106 results: 6 checked, 100 unknown, 0 skipped, root: no
 
@@ -23,7 +23,7 @@ No findings.
 
 ## Not inspected
 
-Not running as root: run with sudo for full coverage.
+Not root: 100 results could not be inspected; run with sudo for full coverage.
 
 <details><summary>100 checks not inspected</summary>
 
@@ -40,19 +40,19 @@ Not running as root: run with sudo for full coverage.
 
 | Check | Title | Subject | Reason |
 |---|---|---|---|
-| [SSH-001](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-001.md) | Password authentication is off | `host` | PasswordAuthentication unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-002](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-002.md) | Keyboard-interactive authentication is off | `host` | KbdInteractiveAuthentication unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-004](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-004.md) | Empty passwords are refused | `host` | PermitEmptyPasswords unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-005](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-005.md) | MaxAuthTries is low | `host` | MaxAuthTries unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-006](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-006.md) | Logins are limited with AllowUsers or AllowGroups | `host` | AllowUsers and AllowGroups unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-007](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-007.md) | X11 and agent forwarding are off | `host` | X11Forwarding or AllowAgentForwarding unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-008](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-008.md) | No early drop-in shadows a later hardening setting | `host` | could not check the drop-in order: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-009](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-009.md) | Effective SSH configuration fully confirmed | `host` | configuration only partly read: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
-| [SSH-010](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-010.md) | sshd listens where it is configured to | `host` | ListenAddress and Port unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
+| [SSH-001](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-001.md) | Password authentication is off | `host` | PasswordAuthentication unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-002](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-002.md) | Keyboard-interactive authentication is off | `host` | KbdInteractiveAuthentication unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-004](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-004.md) | Empty passwords are refused | `host` | PermitEmptyPasswords unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-005](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-005.md) | MaxAuthTries is low | `host` | MaxAuthTries unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-006](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-006.md) | Logins are limited with AllowUsers or AllowGroups | `host` | AllowUsers and AllowGroups unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-007](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-007.md) | X11 and agent forwarding are off | `host` | X11Forwarding or AllowAgentForwarding unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-008](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-008.md) | No early drop-in shadows a later hardening setting | `host` | could not check the drop-in order: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-009](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-009.md) | Effective SSH configuration fully confirmed | `host` | configuration only partly read: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
+| [SSH-010](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-010.md) | sshd listens where it is configured to | `host` | ListenAddress and Port unknown: could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
 | [SSH-011](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-011.md) | sshd reachable from anywhere takes keys only and bans brute force | `host` | not inspected: the listeners collector did not run |
-| [SSH-013](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-013.md) | Home, \~/.ssh and authorized\_keys are not writable by others | `user:root` | could not inspect /root: permission denied; run with sudo for full coverage |
-| [SSH-014](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-014.md) | Authorized keys are strong and not stale | `user:root` | could not inspect /root: permission denied; run with sudo for full coverage |
-| [SSH-015](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-015.md) | No weak key exchange, cipher or MAC algorithms | `host` | algorithm lists unknown (kexalgorithms, ciphers, macs): could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage |
+| [SSH-013](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-013.md) | Home, \~/.ssh and authorized\_keys are not writable by others | `user:root` | could not inspect /root: permission denied |
+| [SSH-014](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-014.md) | Authorized keys are strong and not stale | `user:root` | could not inspect /root: permission denied |
+| [SSH-015](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-015.md) | No weak key exchange, cipher or MAC algorithms | `host` | algorithm lists unknown (kexalgorithms, ciphers, macs): could not read /etc/ssh/sshd\_config.d/50-cloud-init.conf (permission denied) |
 | [SSH-016](https://github.com/Shironex/stackward/blob/main/docs/checks/SSH-016.md) | Tailscale SSH and OpenSSH are not both serving | `host` | not inspected: the tailscale collector did not run |
 
 **USR: Users and privilege**

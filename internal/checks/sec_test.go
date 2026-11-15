@@ -106,11 +106,11 @@ func TestSecChecks(t *testing.T) {
 	}
 }
 
-func TestSecDeniedSaysSudo(t *testing.T) {
+func TestSecDeniedNamesPathNotSudo(t *testing.T) {
 	s := secEmpty()
 	s.PaaSMainEnv = secScanOf([]string{facts.CoolifyMainEnv}, []string{facts.CoolifyMainEnv})
 	rs := checkPaaSMainEnv(Input{Facts: &facts.Facts{Secrets: s, Host: &facts.Host{}}})
-	if len(rs) != 1 || rs[0].Level != Unknown || !strings.Contains(rs[0].Message, "sudo") {
+	if len(rs) != 1 || rs[0].Level != Unknown || !strings.Contains(rs[0].Message, facts.CoolifyMainEnv) || strings.Contains(rs[0].Message, "sudo") {
 		t.Errorf("got %+v", rs)
 	}
 	s.PaaSMainEnv.Truncated = true

@@ -120,7 +120,8 @@ func TestText(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"root:      no, run with sudo for full coverage",
+		"root:      no",
+		"note:      not root: 1 result could not be inspected; run with sudo for full coverage",
 		"sandbox:   unavailable (test)",
 		"collector: ssh failed:",
 		"SYS  System  (1 passing or skipped not shown)",
@@ -212,5 +213,20 @@ func TestProbeReport(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), `"probe"`) {
 		t.Error("audit report has a probe section")
+	}
+}
+
+func TestNotRootNote(t *testing.T) {
+	r := &Report{Summary: Summary{Unknown: 3}}
+	if got := NotRootNote(r); got != "not root: 3 results could not be inspected; run with sudo for full coverage" {
+		t.Errorf("non root: %q", got)
+	}
+	r.Coverage.Root = true
+	if got := NotRootNote(r); got != "" {
+		t.Errorf("root run should have no note: %q", got)
+	}
+	r.Coverage.Root, r.Summary.Unknown = false, 0
+	if got := NotRootNote(r); got != "" {
+		t.Errorf("nothing unknown should have no note: %q", got)
 	}
 }

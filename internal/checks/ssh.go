@@ -68,16 +68,17 @@ func why(s *facts.SSH) string {
 			}
 		}
 	}
-	if s.SshdTError != "" {
+	// "not root" is said once by the report; every other reason adds detail.
+	if s.SshdTError != "" && s.SshdTError != "not root" {
 		parts = append(parts, "sshd -T unavailable: "+s.SshdTError)
+	}
+	if len(parts) == 0 && s.SshdTError == "not root" {
+		parts = append(parts, "sshd -T needs root")
 	}
 	if len(parts) == 0 {
 		parts = append(parts, "the configuration does not settle it")
 	}
 	msg := strings.Join(parts, "; ")
-	if s.SshdTError == "not root" {
-		msg += "; run with sudo for full coverage"
-	}
 	return msg
 }
 
@@ -809,7 +810,7 @@ func checkSSHFileModes(in Input) []Result {
 		ev := map[string]any{"home_mode": modeText(u.HomeMeta), "ssh_dir_mode": modeText(u.SSHDir), "key_files": map[string]string{}}
 		subj := "user:" + u.Name
 		if u.Error != "" {
-			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not inspect " + u.Error + notRootHint(in.Facts), Evidence: ev})
+			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not inspect " + u.Error, Evidence: ev})
 			continue
 		}
 		var fails, warns, unknowns []string
@@ -862,13 +863,6 @@ func checkSSHFileModes(in Input) []Result {
 	return out
 }
 
-func notRootHint(f *facts.Facts) string {
-	if !f.IsRoot() {
-		return "; run with sudo for full coverage"
-	}
-	return ""
-}
-
 func checkAuthorizedKeyTypes(in Input) []Result {
 	s, res := sshFacts(in)
 	if s == nil {
@@ -882,7 +876,7 @@ func checkAuthorizedKeyTypes(in Input) []Result {
 	for _, u := range s.Users {
 		subj := "user:" + u.Name
 		if u.Error != "" {
-			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not inspect " + u.Error + notRootHint(in.Facts),
+			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not inspect " + u.Error,
 				Evidence: map[string]any{"keys": 0, "weak": []string{}}})
 			continue
 		}
@@ -913,7 +907,7 @@ func checkAuthorizedKeyTypes(in Input) []Result {
 		case len(warns) > 0:
 			out = append(out, Result{Subject: subj, Level: Warn, Message: strings.Join(warns, "; "), Evidence: ev})
 		case len(unread) > 0:
-			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not read " + strings.Join(unread, "; ") + notRootHint(in.Facts), Evidence: ev})
+			out = append(out, Result{Subject: subj, Level: Unknown, Message: "could not read " + strings.Join(unread, "; "), Evidence: ev})
 		case n > 0:
 			out = append(out, Result{Subject: subj, Level: Pass, Message: fmt.Sprintf("%s, none weak", count(n, "authorized key")), Evidence: ev})
 		}

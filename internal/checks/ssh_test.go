@@ -116,8 +116,8 @@ func TestSSH001(t *testing.T) {
 		{"unreadable drop-in", sshNonRoot(), Unknown},
 	})
 	rs := runSSH(t, checkPasswordAuth, sshNonRoot())
-	if !strings.Contains(rs[0].Message, "50-cloud-init.conf (permission denied)") || !strings.Contains(rs[0].Message, "sudo") {
-		t.Errorf("unknown message should name the file and sudo: %q", rs[0].Message)
+	if !strings.Contains(rs[0].Message, "50-cloud-init.conf (permission denied)") || strings.Contains(rs[0].Message, "sudo") {
+		t.Errorf("unknown message should name the file and leave the sudo hint to the report: %q", rs[0].Message)
 	}
 }
 
@@ -368,8 +368,8 @@ func TestSSH013(t *testing.T) {
 	asUser := sshUsers(denied)
 	asUser.Source = "files" // run() marks only sshd -T facts as root
 	rs := runSSH(t, checkSSHFileModes, asUser)
-	if !strings.Contains(rs[0].Message, "sudo") {
-		t.Errorf("non root unknown should say sudo: %q", rs[0].Message)
+	if !strings.Contains(rs[0].Message, "/home/bob") || strings.Contains(rs[0].Message, "sudo") {
+		t.Errorf("non root unknown should name the path and leave the sudo hint to the report: %q", rs[0].Message)
 	}
 }
 

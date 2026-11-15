@@ -36,9 +36,6 @@ func checkPlatformBackups(in Input) []Result {
 		case !b.Readable:
 			r.Evidence["dir"] = b.Dir
 			r.Level, r.Message = Unknown, "could not list the platform backup folder: permission denied"
-			if !f.IsRoot() {
-				r.Message += "; run with sudo for full coverage"
-			}
 		case b.Files == 0:
 			r.Evidence["dir"] = b.Dir
 			r.Message = "platform backup folder is empty: no local evidence of platform database backups"

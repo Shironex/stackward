@@ -141,7 +141,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "host",
-      "message": "PasswordAuthentication unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "PasswordAuthentication unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "keyword": "PasswordAuthentication",
         "source": "files",
@@ -160,7 +160,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "host",
-      "message": "KbdInteractiveAuthentication unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "KbdInteractiveAuthentication unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "keyword": "KbdInteractiveAuthentication",
         "source": "files",
@@ -197,7 +197,7 @@
       "level": "unknown",
       "severity": "critical",
       "subject": "host",
-      "message": "PermitEmptyPasswords unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "PermitEmptyPasswords unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "keyword": "PermitEmptyPasswords",
         "source": "files",
@@ -216,7 +216,7 @@
       "level": "unknown",
       "severity": "low",
       "subject": "host",
-      "message": "MaxAuthTries unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "MaxAuthTries unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "keyword": "MaxAuthTries",
         "source": "files",
@@ -235,7 +235,7 @@
       "level": "unknown",
       "severity": "low",
       "subject": "host",
-      "message": "AllowUsers and AllowGroups unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "AllowUsers and AllowGroups unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "keyword": "AllowUsers and AllowGroups",
         "source": "files",
@@ -254,7 +254,7 @@
       "level": "unknown",
       "severity": "low",
       "subject": "host",
-      "message": "X11Forwarding or AllowAgentForwarding unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "X11Forwarding or AllowAgentForwarding unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "allowagentforwarding": "unknown",
         "match_some": [],
@@ -272,7 +272,7 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "could not check the drop-in order: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "could not check the drop-in order: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "unreadable": [
           "/etc/ssh/sshd_config.d/50-cloud-init.conf"
@@ -289,7 +289,7 @@
       "level": "unknown",
       "severity": "info",
       "subject": "host",
-      "message": "configuration only partly read: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "configuration only partly read: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "match_blocks": 0,
         "source": "files",
@@ -308,7 +308,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "host",
-      "message": "ListenAddress and Port unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "ListenAddress and Port unknown: could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "configured": [],
         "listening": [
@@ -386,7 +386,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "user:root",
-      "message": "could not inspect /root: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /root: permission denied",
       "evidence": {
         "home_mode": "",
         "key_files": {},
@@ -419,7 +419,7 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "user:root",
-      "message": "could not inspect /root: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /root: permission denied",
       "evidence": {
         "keys": 0,
         "weak": []
@@ -435,7 +435,7 @@
       "level": "unknown",
       "severity": "low",
       "subject": "host",
-      "message": "algorithm lists unknown (kexalgorithms, ciphers, macs): could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied); sshd -T unavailable: not root; run with sudo for full coverage",
+      "message": "algorithm lists unknown (kexalgorithms, ciphers, macs): could not read /etc/ssh/sshd_config.d/50-cloud-init.conf (permission denied)",
       "evidence": {
         "source": "files",
         "unknown": [

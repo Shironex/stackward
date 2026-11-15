@@ -1508,7 +1508,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "file:/data/coolify/applications",
-      "message": "could not inspect: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /data/coolify/applications: permission denied",
       "evidence": {
         "path": "/data/coolify/applications"
       },
@@ -1523,7 +1523,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "file:/data/coolify/services",
-      "message": "could not inspect: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /data/coolify/services: permission denied",
       "evidence": {
         "path": "/data/coolify/services"
       },
@@ -1538,7 +1538,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "file:/data/coolify/source/.env",
-      "message": "could not inspect: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /data/coolify/source/.env: permission denied",
       "evidence": {
         "path": "/data/coolify/source/.env"
       },
@@ -1554,7 +1554,7 @@
       "level": "unknown",
       "severity": "critical",
       "subject": "file:/data/coolify/ssh/keys",
-      "message": "could not inspect: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /data/coolify/ssh/keys: permission denied",
       "evidence": {
         "path": "/data/coolify/ssh/keys"
       },
@@ -1642,7 +1642,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "file:/data/coolify",
-      "message": "could not inspect: permission denied; run with sudo for full coverage",
+      "message": "could not inspect /data/coolify: permission denied",
       "evidence": {
         "path": "/data/coolify"
       },
@@ -1766,7 +1766,7 @@
       "level": "unknown",
       "severity": "info",
       "subject": "file:/data/coolify",
-      "message": "could not list the platform backup folder: permission denied; run with sudo for full coverage",
+      "message": "could not list the platform backup folder: permission denied",
       "evidence": {
         "days": -1,
         "dir": "/data/coolify/backups",
