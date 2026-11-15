@@ -503,17 +503,30 @@ ensure_sudo() {
 	fi
 }
 
-confirm() { # question default(y|n)
+# confirm QUESTION DEFAULT(y|n): ask until the answer is understood, at most
+# three times. Enter takes the default; y, yes mean yes; n, no mean no.
+# Anything else asks again, then cancels without changing anything.
+confirm() {
 	[ "$YES" = 1 ] || [ "$DRY" = 1 ] && return 0
 	[ -t 0 ] || return 0
 	if [ "$2" = y ]; then _hint="[Y/n]"; else _hint="[y/N]"; fi
-	printf '  %s %s ' "$1" "$_hint"
-	read -r _ans || _ans=""
-	case $_ans in
-	[Yy]*) return 0 ;;
-	[Nn]*) return 1 ;;
-	*) [ "$2" = y ] ;;
-	esac
+	_tries=0
+	while [ "$_tries" -lt 3 ]; do
+		printf '  %s %s ' "$1" "$_hint"
+		read -r _ans || _ans=""
+		_ans=$(printf '%s' "$_ans" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+		case $_ans in
+		y | yes) return 0 ;;
+		n | no) return 1 ;;
+		"")
+			[ "$2" = y ]
+			return
+			;;
+		esac
+		_tries=$((_tries + 1))
+		[ "$_tries" -ge 3 ] || printf '  Please answer y or n.\n'
+	done
+	fail_now "no answer understood; nothing was changed"
 }
 
 mkdir_record() { # dir: make it (and parents), remembering what we created
@@ -964,6 +977,9 @@ uninstall)
 		sum_add "stackward removed"
 		sum_add ""
 		sum_add "Removed  $REMOVED"
+		sum_add ""
+		sum_add 'Your shell may remember the old path:'
+		sum_add "run \`hash -r\` (bash) or open a new shell."
 	fi
 	sum_add "Log      $LOG_SHOWN"
 	summary_print "$GREEN"
