@@ -183,7 +183,7 @@ func checkRebootPolicy(in Input) []Result {
 		age := f.CollectedAt.Sub(f.Reboot.Since)
 		ev["days"] = int(age.Hours() / 24)
 		if age >= rebootOverdue && !u.AutomaticReboot {
-			return One(Warn, fmt.Sprintf("reboot pending for %d days and %s: pick a window or a manual routine", int(age.Hours()/24), policy), ev)
+			return One(Warn, fmt.Sprintf("reboot pending %s and %s: pick a window or a manual routine", daysAgo(int(age.Hours()/24)), policy), ev)
 		}
 	}
 	return One(Info, policy, ev)

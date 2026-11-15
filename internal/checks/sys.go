@@ -73,9 +73,9 @@ func checkRebootPending(in Input) []Result {
 	ev["since"] = r.Since.UTC().Format(time.RFC3339)
 	ev["days"] = days
 	if age >= rebootOverdue {
-		return One(Fail, fmt.Sprintf("reboot pending for %d days", days), ev)
+		return One(Fail, "reboot pending "+daysAgo(days), ev)
 	}
-	return One(Warn, fmt.Sprintf("reboot pending for %d days", days), ev)
+	return One(Warn, "reboot pending "+daysAgo(days), ev)
 }
 
 func checkRunningKernel(in Input) []Result {
@@ -145,4 +145,16 @@ func splitVersion(s string) []string {
 		}
 	}
 	return parts
+}
+
+// daysAgo words how long something has waited: "since today", "for 1 day",
+// "for 12 days".
+func daysAgo(days int) string {
+	switch days {
+	case 0:
+		return "since today"
+	case 1:
+		return "for 1 day"
+	}
+	return fmt.Sprintf("for %d days", days)
 }
