@@ -62,23 +62,20 @@ test('only documentation, private and tailnet IPv4 ranges are allowed', () => {
   for (const bad of ['8.8.8.8', '1.1.1.1', '198.51.99.1', '203.0.114.9']) assert.ok(!allowedIPv4(bad), bad);
 });
 
-test('the sample excerpt keeps the header, chosen groups and summary only', () => {
-  const report = [
-    'stackward v0.0.0-2026+dirty audit (stackward.report.v1)',
-    'host:      sha256:abc',
-    '',
-    'SYS  System  (4 passing or skipped not shown)',
-    '  WARN    SYS-003  Kernel [moderate]',
-    '',
-    'NET  Firewall and exposure',
-    '  FAIL    NET-002  IPv6 [high]',
-    '',
-    'summary: 1 fail, 1 warn',
-    'explain any check with: stackward explain <id>',
-  ].join('\n');
-  const out = excerpt(report, ['NET']);
-  assert.ok(out.startsWith('stackward dev audit (stackward.report.v1)\n'));
-  assert.ok(out.includes('NET-002') && !out.includes('SYS-003'));
-  assert.ok(out.includes('summary: 1 fail, 1 warn'));
-  assert.throws(() => excerpt('nothing here'));
+test('the sample excerpt drops passing and skipped results and evidence, and keeps the real summary', () => {
+  const doc = {
+    schema: 'stackward.report.v1',
+    tool: { name: 'stackward', version: 'v0.0.0-2026+dirty' },
+    summary: { fail: 1, warn: 0, unknown: 0, info: 0, pass: 1, skip: 1 },
+    results: [
+      { id: 'NET-002', level: 'fail', evidence: { ipv6: 'no' } },
+      { id: 'SYS-001', level: 'pass' },
+      { id: 'NET-007', level: 'skip' },
+    ],
+  };
+  const out = excerpt(doc);
+  assert.equal(out.tool.version, 'dev');
+  assert.deepEqual(out.results, [{ id: 'NET-002', level: 'fail' }]);
+  assert.deepEqual(out.summary, doc.summary);
+  assert.throws(() => excerpt({ results: [] }));
 });
