@@ -15,6 +15,12 @@
 #    --no-sandbox run matters most: it is what happens on kernels without
 #    Landlock, where nothing else stops a write.
 #
+# A process of the caller's own listens on a custom loopback port. Under
+# the sandbox ss cannot name any socket owner (Landlock scopes ptrace,
+# which reading /proc/<pid>/fd needs), so the owner in the sandboxed report
+# comes from the read only ownership snapshot stackward takes before the
+# sandbox; the strace check above covers that snapshot too.
+#
 # strace works under sudo with Landlock: the tracer is not sandboxed, and a
 # sandboxed tracee may be traced by a less restricted tracer. strace writes
 # its own output file, outside the sandboxed process.
@@ -28,6 +34,48 @@
 # openat2 are filtered by their flags below.
 WRITE_SYSCALLS="creat,truncate,ftruncate,unlink,unlinkat,rename,renameat,renameat2,mkdir,mkdirat,rmdir,link,linkat,symlink,symlinkat,mknod,mknodat,chmod,fchmod,fchmodat,chown,fchown,lchown,fchownat,utimes,utimensat,futimesat"
 
+# OWNED_PORT and OWNED_NAME: the custom listener. The name is set with
+# prctl so it does not depend on how python3 is installed.
+OWNED_PORT=47123
+OWNED_NAME=sw-owned
+OWNED_PID=
+
+owned_listener_up() {
+	owned_listener_down
+	python3 -c '
+import ctypes, socket, sys, time
+ctypes.CDLL(None).prctl(15, sys.argv[2].encode(), 0, 0, 0)
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", int(sys.argv[1])))
+s.listen(1)
+time.sleep(1800)
+' "$OWNED_PORT" "$OWNED_NAME" </dev/null >/dev/null 2>&1 &
+	OWNED_PID=$!
+	local _
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		ss -Htln "sport = :$OWNED_PORT" | grep -q . && return 0
+		sleep 1
+	done
+	die "the custom listener on 127.0.0.1:$OWNED_PORT did not start"
+}
+
+owned_listener_down() {
+	if [ -n "$OWNED_PID" ]; then
+		kill "$OWNED_PID" 2>/dev/null || true
+		wait "$OWNED_PID" 2>/dev/null || true
+		OWNED_PID=
+	fi
+}
+
+# expect_owner NAME: the report names OWNED_NAME as the owner of the
+# custom port and says process names were visible.
+expect_owner() {
+	local sel=".results[] | select(.id == \"NET-004\" and .subject == \"port:tcp/$OWNED_PORT\")"
+	expect field "$REPORT" "[$sel | .evidence.processes[]?] | join(\",\")" "$OWNED_NAME"
+	expect field "$REPORT" "[$sel | .evidence.processes_visible] | map(tostring) | join(\",\")" true
+}
+
 scenario_setup() {
 	require_docker
 	if ! command -v strace >/dev/null; then
@@ -36,6 +84,7 @@ scenario_setup() {
 	fi
 	bad_docker_up
 	ufw_up >/dev/null
+	owned_listener_up
 	# Let container start up writes (redis, dockerd) settle before the
 	# first snapshot.
 	sleep 5
@@ -115,9 +164,12 @@ scenario_verify() {
 	traced_audit read-only-sandbox
 	expect collector "$REPORT" docker ok
 	expect collector "$REPORT" firewall ok
+	expect collector "$REPORT" listeners ok
+	expect_owner
 	snapshot "$snaps/after-sandbox"
 
 	traced_audit read-only-no-sandbox --no-sandbox
+	expect_owner
 	snapshot "$snaps/after-no-sandbox"
 
 	local run diff
@@ -137,6 +189,7 @@ scenario_verify() {
 }
 
 scenario_cleanup() {
+	owned_listener_down
 	ufw_down
 	docker_cleanup
 }
