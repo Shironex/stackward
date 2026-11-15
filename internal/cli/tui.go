@@ -117,6 +117,11 @@ func prepareTUI(args []string, stdout, stderr io.Writer) (*tuiSession, int) {
 		return fail("%v", err)
 	}
 
+	var sys facts.System
+	if loadedRep == nil && loaded == nil {
+		sys = hostSystem(tf.noSandbox)
+	}
+
 	sb := sandbox.Apply(sandbox.Options{Disabled: tf.noSandbox})
 
 	rep := loadedRep
@@ -125,7 +130,7 @@ func prepareTUI(args []string, stdout, stderr io.Writer) (*tuiSession, int) {
 		if f == nil {
 			fmt.Fprintln(stderr, "stackward: auditing this host (read only)...")
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-			f = facts.Run(ctx, facts.NewHostSystem(), facts.Collectors(), facts.RunOptions{Timeout: tf.timeout})
+			f = facts.Run(ctx, sys, facts.Collectors(), facts.RunOptions{Timeout: tf.timeout})
 			stop()
 		}
 		rep, err = audit.Evaluate(f, audit.Options{

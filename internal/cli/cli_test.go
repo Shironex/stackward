@@ -187,3 +187,16 @@ func TestAuditMarkdown(t *testing.T) {
 		}
 	}
 }
+
+// TestHostSystemSnapshot: the socket ownership snapshot is taken only when
+// the sandbox will be applied; with --no-sandbox ss -p names owners itself.
+// Where /proc exists (Linux) the sandboxed path carries a snapshot.
+func TestHostSystemSnapshot(t *testing.T) {
+	if _, ok := hostSystem(true).(facts.SocketOwnerSource); ok {
+		t.Error("--no-sandbox must not take a snapshot")
+	}
+	_, ok := hostSystem(false).(facts.SocketOwnerSource)
+	if _, err := os.Stat("/proc/self/fd"); err == nil && !ok {
+		t.Error("with /proc present the sandboxed path must carry a snapshot")
+	}
+}
