@@ -14,19 +14,20 @@ import (
 // with container, listener and firewall facts owned by other collectors.
 //
 // They read those facts through three small views (paasContainer,
-// paasListener, paasFilter) filled by the read* hooks below. Listener and
-// firewall facts are mapped; the Docker facts are still a placeholder, so
-// readPaaSContainers reports them unavailable and the checks that need
-// containers fall back to listeners (PAAS-002) or return unknown
-// (PAAS-004), never pass. Tests swap the hooks to drive the checks over
-// fake views.
+// paasListener, paasFilter) filled by the read* hooks below. Without the
+// Docker API (no socket access) the container view is unavailable and the
+// checks that need containers fall back to listeners (PAAS-002) or return
+// unknown (PAAS-004, PAAS-005), never pass. Tests swap the hooks to drive
+// the checks over fake views.
 
 // paasContainer is the part of a container the PAAS checks need.
 type paasContainer struct {
-	Name   string
-	Image  string
-	Labels map[string]string
-	Ports  []paasPort
+	Name     string
+	Image    string
+	Labels   map[string]string
+	Ports    []paasPort
+	Project  string   // grouping project (Coolify project, compose, stack)
+	Networks []string // attached networks
 }
 
 // paasPort is one published port of a container.
@@ -55,15 +56,34 @@ const (
 )
 
 // Hooks reading facts owned by other collectors. A hook returns ok false
-// while it cannot read its domain: the Docker facts are still a
-// placeholder, so readPaaSContainers maps them when that collector lands.
+// when it cannot read its domain.
 var (
-	readPaaSContainers = func(*facts.Docker) ([]paasContainer, bool) { return nil, false }
+	readPaaSContainers = paasContainersFrom
 	readPaaSListeners  = paasListenersFrom
 	// viaDocker is true for ports Docker publishes (filtered only in the
 	// DOCKER-USER chain), false for host processes (filtered by INPUT).
 	readPaaSFilter = paasFilterFor
 )
+
+// paasContainersFrom maps the Docker facts. Not installed is a known empty
+// list; an API stackward could not read is not available.
+func paasContainersFrom(d *facts.Docker) ([]paasContainer, bool) {
+	if !d.Installed {
+		return []paasContainer{}, true
+	}
+	if d.API != "ok" {
+		return nil, false
+	}
+	out := make([]paasContainer, 0, len(d.Containers))
+	for _, c := range d.Containers {
+		pc := paasContainer{Name: c.Name, Image: c.Image, Labels: c.Labels, Project: c.Project, Networks: c.Networks}
+		for _, p := range c.Ports {
+			pc.Ports = append(pc.Ports, paasPort{HostIP: p.HostIP, HostPort: p.HostPort, ContainerPort: p.ContainerPort, Proto: p.Proto})
+		}
+		out = append(out, pc)
+	}
+	return out, true
+}
 
 // paasListenersFrom maps the listener facts.
 func paasListenersFrom(l *facts.Listeners) ([]paasListener, bool) {
@@ -121,6 +141,7 @@ func init() {
 	Register(Check{ID: "PAAS-002", Run: checkPaaSProxyExposure})
 	Register(Check{ID: "PAAS-003", Run: checkPaaSPanelPorts})
 	Register(Check{ID: "PAAS-004", Run: checkPaaSPublicDatabase})
+	Register(Check{ID: "PAAS-005", Run: checkPaaSDefaultNetwork})
 	Register(Check{ID: "PAAS-008", Run: checkPaaSSwarmPorts})
 }
 
@@ -133,8 +154,12 @@ func paasContainers(f *facts.Facts) ([]paasContainer, *Result) {
 	}
 	cs, ok := readPaaSContainers(f.Docker)
 	if !ok {
-		return nil, &Result{Level: Unknown, Message: "container facts are present but this build cannot read them for PaaS checks",
-			Evidence: map[string]any{"collector": paasDockerCollector}}
+		reason := f.Docker.APIReason
+		if reason == "" {
+			reason = "the Docker API was not read"
+		}
+		return nil, &Result{Level: Unknown, Message: "containers not inspected: " + reason,
+			Evidence: map[string]any{"collector": paasDockerCollector, "api": f.Docker.API}}
 	}
 	return cs, nil
 }
@@ -195,7 +220,7 @@ func paasPlatforms(p *facts.PaaS, containers []paasContainer) []paasPlatform {
 		} else if pl.Role == facts.RoleUnknown && seen.managed {
 			pl.Role = facts.RoleManaged
 		}
-		if seen.version != "" {
+		if seen.version != "" && seen.version != "latest" {
 			pl.Version = seen.version
 		}
 	}
@@ -600,18 +625,33 @@ func checkPaaSPublicDatabase(in Input) []Result {
 			continue
 		}
 		checked++
-		var exposed []string
+		var exposed, why []string
+		level := Warn
 		for _, p := range c.Ports {
-			if paasExposed(p.HostIP) {
-				exposed = append(exposed, paasPortLabel(p))
+			if !paasExposed(p.HostIP) {
+				continue
+			}
+			label := paasPortLabel(p)
+			exposed = append(exposed, label)
+			proto := p.Proto
+			if proto == "" {
+				proto = "tcp"
+			}
+			open, _, reason := forwardFilter(f, f.Docker, proto, p.HostIP, p.HostPort, p.ContainerPort)
+			why = append(why, label+": "+reason)
+			if open != triNo {
+				level = Fail
 			}
 		}
 		if len(exposed) == 0 {
 			continue
 		}
+		msg := fmt.Sprintf("%s database published on all interfaces: %s", owner, strings.Join(why, "; "))
+		if level == Warn {
+			msg = fmt.Sprintf("%s database published on all interfaces behind a forward filter; turn off public access or confirm from outside with probe: %s", owner, strings.Join(why, "; "))
+		}
 		out = append(out, Result{
-			Subject: "container:" + c.Name, Level: Fail,
-			Message:  fmt.Sprintf("%s database published on all interfaces: %s", owner, strings.Join(exposed, ", ")),
+			Subject: "container:" + c.Name, Level: level, Message: msg,
 			Evidence: map[string]any{"platform": owner, "image": c.Image, "exposed": exposed},
 		})
 	}
@@ -620,6 +660,77 @@ func checkPaaSPublicDatabase(in Input) []Result {
 			map[string]any{"checked": checked})
 	}
 	return out
+}
+
+// paasDefaultNetworks are the networks each platform attaches every app to
+// unless the project gets its own destination: Coolify's "coolify"
+// destination network and Dokploy's "dokploy-network".
+var paasDefaultNetworks = map[string]string{
+	facts.PlatformCoolify: "coolify",
+	facts.PlatformDokploy: "dokploy-network",
+}
+
+// isPaaSInternal is the platform's own container (panel, its database
+// and cache, realtime, sentinel), which shares the default network by
+// design.
+func isPaaSInternal(c paasContainer) bool {
+	repo, _ := paasSplitImage(c.Image)
+	return strings.HasPrefix(c.Name, "coolify") && c.Labels["coolify.managed"] != "true" ||
+		strings.HasPrefix(c.Name, "dokploy") || strings.HasPrefix(repo, "coollabsio/") || repo == "dokploy/dokploy"
+}
+
+// PAAS-005: apps of different projects should not share the platform's
+// default network (DKR-030 judges every network; this names the platform
+// setting behind it).
+func checkPaaSDefaultNetwork(in Input) []Result {
+	f := in.Facts
+	if f.PaaS == nil {
+		return []Result{NotInspected(f, "paas")}
+	}
+	containers, why := paasContainers(f)
+	platforms := paasPlatforms(f.PaaS, containers)
+	if len(platforms) == 0 {
+		return One(Skip, "no Coolify or Dokploy installation found", nil)
+	}
+	if why != nil {
+		return []Result{*why}
+	}
+	level := Pass
+	var parts []string
+	ev := map[string]any{"networks": []string{}, "projects": []string{}}
+	var nets, allProjects []string
+	for _, pl := range platforms {
+		network := paasDefaultNetworks[pl.Name]
+		seen := map[string]bool{}
+		var projects []string
+		for _, c := range containers {
+			if !paasContains(c.Networks, network) || isPaaSProxy(c) || isPaaSInternal(c) || paasOwner(c, platforms) != pl.Name {
+				continue
+			}
+			key := c.Project
+			if key == "" {
+				key = c.Name
+			}
+			if !seen[key] {
+				seen[key] = true
+				projects = append(projects, key)
+			}
+		}
+		sort.Strings(projects)
+		nets = append(nets, network)
+		allProjects = append(allProjects, projects...)
+		if len(projects) > 1 {
+			level = Warn
+			parts = append(parts, fmt.Sprintf("%d %s projects share the %s network (%s)", len(projects), pl.Name, network, strings.Join(capList(projects), ", ")))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s network %s holds apps of %d project(s)", pl.Name, network, len(projects)))
+		}
+	}
+	ev["networks"], ev["projects"] = nets, capList(allProjects)
+	if level == Warn {
+		return One(Warn, strings.Join(parts, "; ")+": any app can reach the others' services by name", ev)
+	}
+	return One(Pass, strings.Join(parts, "; "), ev)
 }
 
 // Docker Swarm ports: 2377/tcp management, 7946/tcp and udp node

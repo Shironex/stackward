@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no, run with sudo for full coverage
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 103 checks, 105 results: 6 checked, 99 unknown, 0 skipped, root: no
+- **Coverage:** 104 checks, 106 results: 6 checked, 100 unknown, 0 skipped, root: no
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 0 |
 | warn | 0 |
-| unknown | 99 |
+| unknown | 100 |
 | info | 0 |
 | pass | 6 |
 | skip | 0 |
@@ -25,7 +25,7 @@ No findings.
 
 Not running as root: run with sudo for full coverage.
 
-<details><summary>99 checks not inspected</summary>
+<details><summary>100 checks not inspected</summary>
 
 **SYS: System**
 
@@ -187,6 +187,7 @@ Not running as root: run with sudo for full coverage.
 | [PAAS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-002.md) | Platform proxy is not published on all interfaces behind a tunnel | `host` | not inspected: the paas collector did not run |
 | [PAAS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-003.md) | Platform panel ports are not open to the world | `host` | not inspected: the paas collector did not run |
 | [PAAS-004](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-004.md) | No platform database is published publicly | `host` | not inspected: the paas collector did not run |
+| [PAAS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-005.md) | Projects do not share the platform default network | `host` | not inspected: the paas collector did not run |
 | [PAAS-008](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-008.md) | Docker Swarm ports are restricted to cluster peers | `host` | not inspected: the paas collector did not run |
 
 **BAK: Backups**

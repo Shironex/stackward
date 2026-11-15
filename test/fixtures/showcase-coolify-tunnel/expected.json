@@ -17,11 +17,11 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 103,
-    "results": 145,
-    "checked": 113,
-    "unknown": 25,
-    "skipped": 7,
+    "checks": 104,
+    "results": 146,
+    "checked": 114,
+    "unknown": 24,
+    "skipped": 8,
     "root": true,
     "sandbox": {
       "state": "unavailable",
@@ -85,10 +85,10 @@
   "summary": {
     "fail": 4,
     "warn": 3,
-    "unknown": 25,
+    "unknown": 24,
     "info": 9,
-    "pass": 97,
-    "skip": 7
+    "pass": 98,
+    "skip": 8
   },
   "results": [
     {
@@ -2540,9 +2540,9 @@
       "level": "info",
       "severity": "info",
       "subject": "file:/data/coolify",
-      "message": "coolify detected, role panel",
+      "message": "coolify detected, role panel, version 4.0.0",
       "evidence": {
-        "containers_read": false,
+        "containers_read": true,
         "denied": [],
         "evidence": [
           "path:/data/coolify",
@@ -2551,9 +2551,10 @@
         "platform": "coolify",
         "role": "panel",
         "sources": [
-          "disk"
+          "disk",
+          "containers"
         ],
-        "version": ""
+        "version": "4.0.0"
       },
       "fix": {
         "hint": "Nothing to fix; this records the platform for the other checks.",
@@ -2564,15 +2565,10 @@
       "id": "PAAS-002",
       "group": "PAAS",
       "title": "Platform proxy is not published on all interfaces behind a tunnel",
-      "level": "pass",
+      "level": "skip",
       "severity": "high",
       "subject": "host",
-      "message": "nothing listens on 80 or 443",
-      "evidence": {
-        "exposed": [],
-        "profile": "unknown",
-        "published": []
-      },
+      "message": "no platform proxy container found",
       "fix": {
         "hint": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure."
       }
@@ -2639,15 +2635,33 @@
       "id": "PAAS-004",
       "group": "PAAS",
       "title": "No platform database is published publicly",
-      "level": "unknown",
+      "level": "pass",
       "severity": "critical",
       "subject": "host",
-      "message": "container facts are present but this build cannot read them for PaaS checks",
+      "message": "no platform database publishes a port publicly (0 checked)",
       "evidence": {
-        "collector": "docker"
+        "checked": 0
       },
       "fix": {
         "hint": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PAAS-005",
+      "group": "PAAS",
+      "title": "Projects do not share the platform default network",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "coolify network coolify holds apps of 0 project(s)",
+      "evidence": {
+        "networks": [
+          "coolify"
+        ],
+        "projects": []
+      },
+      "fix": {
+        "hint": "Give each project its own destination (Coolify: a new destination network per project; Dokploy: an isolated network per compose project) and attach the platform proxy to each."
       }
     },
     {
