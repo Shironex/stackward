@@ -86,9 +86,22 @@ export function escapeMarkdown(text) {
     .replace(/([\\`*_[\]{}|#])/g, '\\$1');
 }
 
-/** Escaped prose with check ids turned into links (or code when not in the catalog). */
+/**
+ * Catalog prose as Markdown. Inline code spans pass through untouched so they
+ * render literally (typographic punctuation never reaches them). Outside code,
+ * the text is escaped, check ids become links (or code when not in the
+ * catalog), and command flags such as --token are wrapped in code so the
+ * Markdown renderer cannot turn their double hyphen into a dash.
+ */
 export function proseWithIds(text, known) {
-  return escapeMarkdown(text).replace(/\b([A-Z]{2,4}-\d{3})\b/g, (id) => (known.has(id) ? `[${id}](${url(checkRoute(id))})` : `\`${id}\``));
+  const plain = (chunk) =>
+    escapeMarkdown(chunk)
+      .replace(/\b([A-Z]{2,4}-\d{3})\b/g, (id) => (known.has(id) ? `[${id}](${url(checkRoute(id))})` : `\`${id}\``))
+      .replace(/(?<![\w-])(--[a-z][\w-]*)/g, '`$1`');
+  return String(text)
+    .split(/(`[^`\n]+`)/)
+    .map((part, i) => (i % 2 === 1 ? part : plain(part)))
+    .join('');
 }
 
 function yamlString(value) {

@@ -13,6 +13,9 @@ export default defineConfig({
   site: SITE,
   base: BASE,
   trailingSlash: 'always',
+  // Smart punctuation would turn a command flag such as --token into an en
+  // dash in prose, so it stays off.
+  markdown: { smartypants: false },
   integrations: [
     starlight({
       title: 'stackward',
