@@ -42,6 +42,13 @@ jobs:
         run: |
           ver=$(awk '/^## /{print $2; exit}' CHANGELOG.md)
           sh scripts/release-notes.sh "v$ver" >/dev/null
+      - name: changelog step must stay enabled
+        # goreleaser loads --release-notes inside its changelog step; disabling
+        # that step publishes a release with an empty body.
+        run: |
+          if awk '/^changelog:/{f=1;next} /^[^ #]/{f=0} f && /^[ ]+disable:/' .goreleaser.yaml | grep -q .; then
+            echo "changelog.disable is set in .goreleaser.yaml: the release notes would be dropped"; exit 1
+          fi
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
@@ -95,3 +102,14 @@ jobs:
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-checksums: dist/checksums.txt
+      - name: release body is the changelog section
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+          want=$(head -c 200 "$RUNNER_TEMP/release-notes.md" | tr -d '[:space:]')
+          got=$(printf '%s' "$body" | head -c 400 | tr -d '[:space:]')
+          case "$got" in
+          *"$(printf '%s' "$want" | head -c 60)"*) echo "release body matches CHANGELOG.md" ;;
+          *) echo "release body does not hold the CHANGELOG.md section"; exit 1 ;;
+          esac
