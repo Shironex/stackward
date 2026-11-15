@@ -79,7 +79,9 @@ type Options struct {
 	Version    string
 	Sandbox    sandbox.Status
 	SourceKind string
-	// Vetoes are policies that may refuse a planned step.
+	// Vetoes are policies that may refuse a planned step, such as the
+	// lockout guard (LockoutVeto). The never touched list always applies
+	// and needs no entry here.
 	Vetoes []Veto
 }
 
@@ -165,7 +167,12 @@ func skipped(g Generator, kind, reason string) Skipped {
 	return Skipped{ID: g.ID, Title: g.Title, Fixes: append([]string{}, g.Fixes...), Kind: kind, Reason: redact.String(reason)}
 }
 
+// vetoed asks the never touched list first, then every policy in vetoes,
+// and returns the first reason to refuse s.
 func vetoed(vetoes []Veto, s Step) string {
+	if reason := NeverTouchedVeto(s); reason != "" {
+		return reason
+	}
 	for _, v := range vetoes {
 		if reason := v(s); reason != "" {
 			return reason

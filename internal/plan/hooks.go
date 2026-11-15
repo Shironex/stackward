@@ -22,10 +22,10 @@ type Reader interface {
 }
 
 // Authorize runs the generator's Authorize on s, after the checks every
-// step shares. Apply calls it on every selected step before it changes
-// anything, and undo on every step of a run journal, so a hand edited
-// plan or journal can name no other path, content or command than the
-// generator's own code would.
+// step shares (the never touched list among them). Apply calls it on
+// every selected step before it changes anything, and undo on every step
+// of a run journal, so a hand edited plan or journal can name no other
+// path, content or command than the generator's own code would.
 func Authorize(s Step) error {
 	g, ok := Lookup(s.ID)
 	if !ok {
@@ -36,6 +36,11 @@ func Authorize(s Step) error {
 	}
 	if len(s.Fixes) == 0 || !subset(s.Fixes, g.Fixes) {
 		return fmt.Errorf("step %s: fixes %v are not among %v", s.ID, s.Fixes, g.Fixes)
+	}
+	// The never touched list again: the plan was judged when it was
+	// built, but the file may have been edited since.
+	if err := checkNeverTouched(s); err != nil {
+		return err
 	}
 	for _, e := range s.Edits {
 		if e.Redacted {
