@@ -157,7 +157,7 @@ func TestUpdatesCollector(t *testing.T) {
 	sys.cmds["apt-config dump"] = CmdResult{Stdout: []byte(aptDump)}
 	sys.cmds["systemctl is-enabled apt-daily-upgrade.timer"] = CmdResult{Stdout: []byte("enabled\n")}
 	sys.cmds["systemctl is-active apt-daily-upgrade.timer"] = CmdResult{Stdout: []byte("inactive\n"), ExitCode: 3}
-	sys.cmds["apt-get -s -o Debug::NoLocking=true upgrade"] = CmdResult{Stdout: []byte("Inst a [1] (2 Debian-Security:12/bookworm-security [amd64])\n")}
+	sys.cmds["apt-get "+strings.Join(aptSimulateArgs, " ")] = CmdResult{Stdout: []byte("Inst a [1] (2 Debian-Security:12/bookworm-security [amd64])\n")}
 	stamp := time.Date(2026, 3, 1, 6, 0, 0, 0, time.UTC)
 	for _, p := range []string{"var/lib/apt/periodic/unattended-upgrades-stamp", "var/lib/apt/periodic/update-success-stamp"} {
 		sys.files[p].ModTime = stamp
