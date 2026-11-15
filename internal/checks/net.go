@@ -167,9 +167,11 @@ func checkUFWIPv6(in Input) []Result {
 	return One(Pass, "UFW has IPV6=no, and the host has no global IPv6 address", ev)
 }
 
-// sshPorts returns the TCP ports sshd listens on. Without process names
-// (not root, or ssh.socket activation, where systemd holds the socket) it
-// falls back to port 22.
+// sshPorts returns the TCP ports sshd listens on. Under the sandbox the
+// names come from the socket ownership snapshot taken before it. Without
+// process names (not root, a snapshot that could not be taken, or
+// ssh.socket activation, where systemd holds the socket) it falls back to
+// port 22.
 func sshPorts(l *facts.Listeners) []int {
 	ports := map[int]bool{}
 	for _, s := range l.Sockets {

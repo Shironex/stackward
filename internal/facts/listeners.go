@@ -22,11 +22,16 @@ type Listeners struct {
 	// parsing when ss is missing; no process names then).
 	Source string `json:"source"`
 	// ProcessesVisible is true when process names of every user could be
-	// seen (ss run as root, and it named at least one owner). Without root
-	// only the caller's own processes are named, and under the Landlock
-	// sandbox none are, so an empty Processes list proves nothing.
-	ProcessesVisible bool       `json:"processes_visible"`
-	Sockets          []Listener `json:"sockets"`
+	// seen (run as root, and at least one owner was named). Without root
+	// only the caller's own processes are named, so an empty Processes
+	// list proves nothing.
+	ProcessesVisible bool `json:"processes_visible"`
+	// OwnersSource is how the owning processes were named: "ss" (ss -p),
+	// "snapshot" (the socket ownership snapshot taken before the Landlock
+	// sandbox, which stops ss from reading other processes'
+	// /proc/<pid>/fd) or "none". Empty in facts from older versions.
+	OwnersSource string     `json:"owners_source,omitempty"`
+	Sockets      []Listener `json:"sockets"`
 	// Addresses are the interface addresses. Nil means they could not be
 	// read; AddressesSource says how they were read ("ip" or "proc", the
 	// latter IPv6 only).
@@ -46,6 +51,9 @@ type Listener struct {
 	Port      int    `json:"port"`
 	// Processes are process names only, never command lines.
 	Processes []string `json:"processes,omitempty"`
+	// Inode is the socket's inode number, used only to join the socket
+	// ownership snapshot at collection time; it is not kept in facts.
+	Inode uint64 `json:"-"`
 }
 
 // InterfaceAddr is one address configured on an interface.
@@ -118,10 +126,12 @@ func (l Listener) HasProcess(name string) bool {
 // PublishedByContainer reports whether a container publishes the
 // listener's port: docker-proxy holds it, or no process name is known for
 // the socket and a container the Docker API listed publishes the same
-// protocol and port. Process names are missing without root and under the
-// Landlock sandbox, which scopes ptrace access and so stops ss from reading
-// other processes' /proc/<pid>/fd; the Docker API still says which ports
-// containers publish.
+// protocol and port. Process names are missing without root, and under the
+// Landlock sandbox when the ownership snapshot taken before it could not
+// be read (the sandbox scopes ptrace access and so stops ss from reading
+// other processes' /proc/<pid>/fd); the Docker API still says which ports
+// containers publish, and Docker without the userland proxy publishes
+// ports with no owning process at all.
 func (l Listener) PublishedByContainer(d *Docker) bool {
 	if l.HasProcess("docker-proxy") {
 		return true
@@ -171,14 +181,18 @@ func (listenersCollector) NeedsRoot() bool { return false }
 
 // Collect runs (read only):
 //
-//	ss -Htulnp           listening TCP and bound UDP sockets with process names
+//	ss -Htulnpe          listening TCP and bound UDP sockets with process
+//	                     names and socket inodes
 //	ip -j addr show      interface addresses
 //
 // and falls back to /proc/net/{tcp,tcp6,udp,udp6} and /proc/net/if_inet6.
+// Sockets ss names no owner for are joined by inode to the socket
+// ownership snapshot the System carries, when it has one (see
+// SocketOwners).
 func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) error {
 	var errs []error
 	l := &Listeners{}
-	res, err := sys.Run(ctx, "ss", "-Htulnp")
+	res, err := sys.Run(ctx, "ss", "-Htulnpe")
 	switch {
 	case err == nil && res.ExitCode == 0:
 		socks, perr := ParseSS(res.Stdout)
@@ -186,7 +200,6 @@ func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) e
 			errs = append(errs, perr)
 		}
 		l.Source, l.Sockets = "ss", socks
-		l.ProcessesVisible = sys.Identity().Root && anyProcess(socks)
 	default:
 		if err == nil {
 			err = fmt.Errorf("ss exited %d: %s", res.ExitCode, firstLine(res.Stderr))
@@ -200,6 +213,10 @@ func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) e
 		}
 		l.Source, l.Sockets = "proc", socks
 	}
+	owners := socketOwnersOf(sys)
+	l.OwnersSource = joinOwners(l.Sockets, owners)
+	l.ProcessesVisible = sys.Identity().Root && l.OwnersSource != "none" &&
+		(l.OwnersSource != "snapshot" || !owners.Truncated)
 
 	if r, aerr := sys.Run(ctx, "ip", "-j", "addr", "show"); aerr == nil && r.ExitCode == 0 {
 		addrs, perr := ParseIPAddrJSON(r.Stdout)
@@ -222,10 +239,32 @@ func (listenersCollector) Collect(ctx context.Context, sys System, out *Facts) e
 	return errors.Join(errs...)
 }
 
-// anyProcess reports whether ss named the owner of at least one socket.
-// Run as root it names nearly every one; none at all means the names were
-// hidden (the Landlock sandbox stops ss from reading /proc/<pid>/fd of
-// processes outside it), so an empty Processes list proves nothing.
+// joinOwners fills the process names of sockets without any from the
+// snapshot, matched by inode, and says where the names came from. Run as
+// root ss names nearly every owner; none at all means the names were hidden
+// (the Landlock sandbox stops ss from reading /proc/<pid>/fd of processes
+// outside it), which is what the snapshot taken before the sandbox is for.
+func joinOwners(socks []Listener, owners *SocketOwners) string {
+	bySS := anyProcess(socks)
+	filled := false
+	for i := range socks {
+		if len(socks[i].Processes) > 0 {
+			continue
+		}
+		if names := owners.Names(socks[i].Inode); names != nil {
+			socks[i].Processes, filled = names, true
+		}
+	}
+	switch {
+	case filled:
+		return "snapshot"
+	case bySS:
+		return "ss"
+	}
+	return "none"
+}
+
+// anyProcess reports whether at least one socket has an owner name.
 func anyProcess(socks []Listener) bool {
 	for _, s := range socks {
 		if len(s.Processes) > 0 {
@@ -259,7 +298,8 @@ func firstLine(b []byte) string {
 	return s
 }
 
-// ParseSS parses `ss -Htulnp` output (no header). Lines it cannot read are
+// ParseSS parses `ss -Htulnp` or `ss -Htulnpe` output (no header); with -e
+// the socket inode ("ino:12345") is kept too. Lines it cannot read are
 // skipped and reported in the error; the rest is kept.
 func ParseSS(b []byte) ([]Listener, error) {
 	var out []Listener
@@ -289,6 +329,7 @@ func ParseSS(b []byte) ([]Listener, error) {
 		l := Listener{Proto: proto, Address: addr, Interface: iface, Port: port}
 		if len(f) > 6 {
 			l.Processes = parseSSUsers(strings.Join(f[6:], " "))
+			l.Inode = parseSSInode(f[6:])
 		}
 		out = append(out, l)
 	}
@@ -374,6 +415,18 @@ func parseSSUsers(s string) []string {
 	return out
 }
 
+// parseSSInode finds the "ino:12345" field ss -e prints.
+func parseSSInode(fields []string) uint64 {
+	for _, f := range fields {
+		if v, ok := strings.CutPrefix(f, "ino:"); ok {
+			if ino, err := strconv.ParseUint(v, 10, 64); err == nil {
+				return ino
+			}
+		}
+	}
+	return 0
+}
+
 // readProcNet parses the /proc/net socket tables.
 func readProcNet(sys System) ([]Listener, error) {
 	var out []Listener
@@ -439,7 +492,12 @@ func ParseProcNet(b []byte, proto string) ([]Listener, error) {
 			bad++
 			continue
 		}
-		out = append(out, Listener{Proto: proto, Address: addr, Port: port})
+		l := Listener{Proto: proto, Address: addr, Port: port}
+		// sl local remote st tx:rx tr:when retrnsmt uid timeout inode
+		if len(f) > 9 {
+			l.Inode, _ = strconv.ParseUint(f[9], 10, 64)
+		}
+		out = append(out, l)
 	}
 	var err error
 	if bad > 0 {
