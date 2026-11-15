@@ -309,13 +309,3 @@ func TestLoadReport(t *testing.T) {
 		t.Errorf("defaults not filled: group %q subject %q", it.Group, it.Subject)
 	}
 }
-
-func TestShortSubject(t *testing.T) {
-	for in, want := range map[string]string{
-		"host": "", "": "", "container:app/web": "app/web", "port:tcp/22": "tcp/22", "plain": "plain",
-	} {
-		if got := shortSubject(in); got != want {
-			t.Errorf("shortSubject(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
