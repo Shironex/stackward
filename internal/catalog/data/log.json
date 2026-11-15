@@ -1,0 +1,47 @@
+{
+  "group": "LOG",
+  "checks": [
+    {
+      "id": "LOG-001",
+      "title": "journald has a size cap",
+      "severity": "low",
+      "rationale": "Without SystemMaxUse the journal may use 10 percent of the filesystem, up to 4G. On a small VPS that is a large share of the disk, and a log flood can fill it.",
+      "verify": "systemd-analyze cat-config systemd/journald.conf; journalctl --disk-usage",
+      "fix": "Add a drop-in /etc/systemd/journald.conf.d/size.conf with `[Journal]` and `SystemMaxUse=1G`, then restart systemd-journald."
+    },
+    {
+      "id": "LOG-002",
+      "title": "Proxy access logs are rotated",
+      "severity": "low",
+      "rationale": "A reverse proxy access log grows with traffic and is never trimmed by the proxy itself. A log over 1 GiB with no logrotate rule is a future full disk. Only the usual /var/log locations of nginx, Caddy, Traefik, Apache and HAProxy are inspected; container logs are not.",
+      "verify": "ls -lh /var/log/nginx /var/log/caddy /var/log/traefik; ls /etc/logrotate.d",
+      "fix": "Add a logrotate rule (use copytruncate when the proxy cannot reopen its log).",
+      "breaks": "copytruncate can lose a few lines written during the copy."
+    },
+    {
+      "id": "LOG-003",
+      "title": "Journal disk use",
+      "severity": "info",
+      "rationale": "Shows how much disk the journal uses now so it can be compared with the cap in LOG-001.",
+      "verify": "journalctl --disk-usage",
+      "fix": "None; informational."
+    },
+    {
+      "id": "LOG-004",
+      "title": "A metrics agent is present",
+      "severity": "info",
+      "rationale": "Without metrics and an alert for disk and SSH logins you find out about problems from users. Informational: the usual agents (node exporter, Alloy, Netdata, Telegraf, Zabbix, Datadog) are looked for; agents that run as containers or in a PaaS are not detected.",
+      "verify": "systemctl list-units '*exporter*' '*netdata*' '*alloy*'",
+      "fix": "Add monitoring with an alert for disk usage and SSH logins."
+    },
+    {
+      "id": "LOG-005",
+      "title": "The journal survives a reboot",
+      "severity": "moderate",
+      "rationale": "A volatile journal lives in /run and is erased at every reboot, including the reboot after a compromise or a crash, which is when the logs are needed. Persistent when Storage=persistent or Storage=auto with /var/log/journal present.",
+      "verify": "systemd-analyze cat-config systemd/journald.conf; ls -d /var/log/journal",
+      "fix": "Create /var/log/journal (or set Storage=persistent in a drop-in) and restart systemd-journald.",
+      "breaks": "Logs then use disk space; set a cap (LOG-001)."
+    }
+  ]
+}

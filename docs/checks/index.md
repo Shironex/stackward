@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-3 checks in the catalog.
+28 checks in the catalog.
 
 ## System (SYS)
 
@@ -13,3 +13,48 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [SYS-001](SYS-001.md) | info | Distribution is one stackward is tested on |
 | [SYS-002](SYS-002.md) | moderate | No reboot pending |
 | [SYS-003](SYS-003.md) | moderate | Running kernel is the newest installed |
+| [SYS-004](SYS-004.md) | moderate | Clock is synchronized |
+| [SYS-005](SYS-005.md) | moderate | Disks have free space |
+
+## Users and privilege (USR)
+
+| Id | Severity | Check |
+|---|---|---|
+| [USR-001](USR-001.md) | critical | Only root has uid 0 |
+| [USR-002](USR-002.md) | critical | No login account has an empty password |
+| [USR-003](USR-003.md) | moderate | Cloud default account is locked down |
+| [USR-004](USR-004.md) | high | sudoers is root owned and NOPASSWD entries are deliberate |
+| [USR-005](USR-005.md) | moderate | Docker group has no extra members |
+| [USR-006](USR-006.md) | low | Login accounts are used |
+| [USR-007](USR-007.md) | info | Root recovery path is known |
+
+## Updates (UPD)
+
+| Id | Severity | Check |
+|---|---|---|
+| [UPD-001](UPD-001.md) | high | Automatic security updates are enabled |
+| [UPD-002](UPD-002.md) | moderate | Unattended upgrades ran recently |
+| [UPD-003](UPD-003.md) | high | Unattended upgrades include the security pocket |
+| [UPD-004](UPD-004.md) | low | Reboot policy is a decision |
+| [UPD-005](UPD-005.md) | high | Release is within standard support |
+| [UPD-006](UPD-006.md) | high | No pending security updates |
+
+## Kernel settings (KRN)
+
+| Id | Severity | Check |
+|---|---|---|
+| [KRN-001](KRN-001.md) | high | IPv4 forwarding is on where Docker runs |
+| [KRN-002](KRN-002.md) | moderate | Reverse path filter is loose where Docker or Tailscale run |
+| [KRN-003](KRN-003.md) | low | Network sysctls match the hardening baseline |
+| [KRN-004](KRN-004.md) | low | Kernel hardening sysctls match the baseline |
+| [KRN-005](KRN-005.md) | low | IPv6 router advertisements are not switched off by a profile |
+
+## Logs and monitoring (LOG)
+
+| Id | Severity | Check |
+|---|---|---|
+| [LOG-001](LOG-001.md) | low | journald has a size cap |
+| [LOG-002](LOG-002.md) | low | Proxy access logs are rotated |
+| [LOG-003](LOG-003.md) | info | Journal disk use |
+| [LOG-004](LOG-004.md) | info | A metrics agent is present |
+| [LOG-005](LOG-005.md) | moderate | The journal survives a reboot |
