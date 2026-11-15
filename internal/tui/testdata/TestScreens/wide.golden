@@ -4,29 +4,29 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 FINDINGS  105 of 141                                      │ DETAIL                                            1-25 of 59
 Docker DKR                                       17 of 53 │ DKR-002  Docker                                             
-› FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
-  FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
-  FAIL    DKR-020  shop/web · Containers do not run as r… │                                                             
-  FAIL    DKR-030  blog/db · Projects do not share netwo… │ Docker API on TCP without tlsverify (tcp://0.0.0.0:2375,    
-  FAIL    DKR-030  shop/web · Projects do not share netw… │ 2375/any): anyone who reaches it is root                    
-  WARN    DKR-010  coolify-proxy · No container mounts t… │                                                             
-  WARN    DKR-010  socket-proxy · No container mounts th… │ EVIDENCE                                                    
-  WARN    DKR-011  socket-proxy · Socket proxies do not … │   listeners     2375/any                                    
-  WARN    DKR-020  coolify-proxy · Containers do not run… │   published_by  none                                        
-  WARN    DKR-020  socket-proxy · Containers do not run … │   tcp_hosts     tcp://0.0.0.0:2375                          
-  WARN    DKR-022  shop/web · No dangerous added capabil… │   tlsverify     false                                       
-  WARN    DKR-023  tunnel · No host network, PID or IPC … │                                                             
-  WARN    DKR-024  shop/web · Containers keep seccomp an… │ WHY IT MATTERS                                              
-  WARN    DKR-031  Container logs rotate                  │   The Docker API is root on the host. A daemon listening on 
-  WARN    DKR-032  tunnel · Infrastructure containers ru… │   TCP (conventionally 2375) without tlsverify lets anyone   
-  WARN    DKR-034  Docker Engine is supported upstream    │   who reaches the port start a privileged container that    
-  UNKNOWN DKR-001  coolify-proxy · Published container p… │   mounts the host filesystem. Scanners look for 2375 all    
+› FAIL    DKR-002  Docker API on TCP without tlsverify (… │ rule Docker API is not on TCP without TLS                   
+  FAIL    DKR-012  shop/web · shop-web-1 mounts host /et… │ FAIL · critical severity                                    
+  FAIL    DKR-020  shop/web · shop-web-1 runs as root an… │                                                             
+  FAIL    DKR-030  blog/db · database blog-db-1 shares e… │ Docker API on TCP without tlsverify (tcp://0.0.0.0:2375,    
+  FAIL    DKR-030  shop/web · shop-web-1 shares edge wit… │ 2375/any): anyone who reaches it is root                    
+  WARN    DKR-010  coolify-proxy mounts the Docker socke… │                                                             
+  WARN    DKR-010  socket-proxy mounts the Docker socket… │ EVIDENCE                                                    
+  WARN    DKR-011  socket-proxy · socket proxy socket-pr… │   listeners     2375/any                                    
+  WARN    DKR-020  coolify-proxy runs as root and is rea… │   published_by  none                                        
+  WARN    DKR-020  socket-proxy runs as root              │   tcp_hosts     tcp://0.0.0.0:2375                          
+  WARN    DKR-022  shop/web · shop-web-1 adds NET_ADMIN   │   tlsverify     false                                       
+  WARN    DKR-023  tunnel uses the host network           │                                                             
+  WARN    DKR-024  shop/web · shop-web-1 is reachable fr… │ WHY IT MATTERS                                              
+  WARN    DKR-031  json-file container logs have no max-… │   The Docker API is root on the host. A daemon listening on 
+  WARN    DKR-032  tunnel runs cloudflare/cloudflared:la… │   TCP (conventionally 2375) without tlsverify lets anyone   
+  WARN    DKR-034  Docker Engine 27 left upstream suppor… │   who reaches the port start a privileged container that    
+  UNKNOWN DKR-001  coolify-proxy publishes on all interf… │   mounts the host filesystem. Scanners look for 2375 all    
 System SYS                                              5 │   day. Even a loopback listener gives every local user and  
-  UNKNOWN SYS-001  Distribution is one stackward is test… │   every host network container root. stackward reads the    
-  UNKNOWN SYS-002  No reboot pending                      │   hosts in daemon.json and the effective ExecStart of       
-  UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
-  UNKNOWN SYS-004  Clock is synchronized                  │   from the shared listener facts (ss or /proc, no root      
-  UNKNOWN SYS-005  Disks have free space                  │   needed). This check can fail without access to the Docker 
+  UNKNOWN SYS-001  not inspected: the os collector did n… │   every host network container root. stackward reads the    
+  UNKNOWN SYS-002  not inspected: the os collector did n… │   hosts in daemon.json and the effective ExecStart of       
+  UNKNOWN SYS-003  not inspected: the os collector did n… │   docker.service, and the listening sockets on 2375 and 2376
+  UNKNOWN SYS-004  not inspected: the clock collector di… │   from the shared listener facts (ss or /proc, no root      
+  UNKNOWN SYS-005  not inspected: the disk collector did… │   needed). This check can fail without access to the Docker 
 SSH                                                    16 │   socket. A port on 2375 or 2376 that a container publishes 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            
