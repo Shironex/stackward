@@ -31,6 +31,7 @@ type planFlags struct {
 	timeout      time.Duration
 	showHostname bool
 	noSandbox    bool
+	accounts     plan.AccountChoices
 }
 
 // runPlan audits the host (or loads a saved report or facts file) with the
@@ -49,6 +50,9 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	fs.DurationVar(&pf.timeout, "timeout", facts.DefaultTimeout, "time limit for each collector")
 	fs.BoolVar(&pf.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&pf.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
+	fs.StringVar(&pf.accounts.Admin, "admin-user", "", "plan admin-user: create this admin account (sudo, no password)")
+	fs.StringVar(&pf.accounts.AdminKeysFrom, "admin-keys-from", "", "the existing account whose authorized_keys the admin account gets (copied on the host)")
+	fs.StringVar(&pf.accounts.PaaS, "paas-user", "", "plan paas-user: create this account for the platform to log in as")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward plan [flags]\n\nWrite down the changes that would fix the findings: file edits as diffs,\ncommands, a risk class and an undo for every step. Nothing on the host\nchanges. Part of the upcoming 0.2; apply is not released yet.\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -69,6 +73,9 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	}
 	if pf.jsonOut && pf.emitScript {
 		return fail("give --json or --emit-script, not both")
+	}
+	if err := checkAccountFlags(pf.accounts); err != nil {
+		return fail("%v", err)
 	}
 	prof, profSet, err := profile.Parse(pf.profile)
 	if err != nil {
@@ -132,7 +139,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	p := plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep)}, rep, plan.Options{
+	p := plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: pf.accounts}, rep, plan.Options{
 		Version: version.String(), Sandbox: sb, SourceKind: planSource(pf),
 		Vetoes: []plan.Veto{plan.LockoutVeto(apply.GuardInput(f, sess))},
 	})
@@ -154,6 +161,23 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		return fail("writing the plan: %v", err)
 	}
 	return report.ExitOK
+}
+
+// checkAccountFlags refuses account names stackward would not use, and a
+// key source without the account it is for.
+func checkAccountFlags(a plan.AccountChoices) error {
+	for _, f := range [][2]string{{"--admin-user", a.Admin}, {"--admin-keys-from", a.AdminKeysFrom}, {"--paas-user", a.PaaS}} {
+		if f[1] == "" {
+			continue
+		}
+		if err := plan.ValidAccountName(f[1]); err != nil {
+			return fmt.Errorf("%s: %w", f[0], err)
+		}
+	}
+	if a.AdminKeysFrom != "" && a.Admin == "" {
+		return errors.New("--admin-keys-from names the keys for --admin-user; give both")
+	}
+	return nil
 }
 
 // planSession reads the session plan runs in (a variable, so tests never

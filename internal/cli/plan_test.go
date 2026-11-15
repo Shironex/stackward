@@ -111,7 +111,7 @@ func TestPlanFromReport(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errs)
 	}
 	p := decodePlan(t, []byte(out))
-	if p.Source.Kind != plan.FromReport || p.Source.Facts || len(p.Steps) != 0 || len(p.Skipped) != 3 {
+	if p.Source.Kind != plan.FromReport || p.Source.Facts || len(p.Steps) != 0 || len(p.Skipped) != len(plan.Generators()) {
 		t.Fatalf("report alone: %+v", p)
 	}
 	for _, s := range p.Skipped {
