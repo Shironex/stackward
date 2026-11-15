@@ -3302,7 +3302,7 @@
       "level": "info",
       "severity": "info",
       "subject": "host",
-      "message": "metrics agent found: node_exporter",
+      "message": "metrics agent found: node_exporter (process)",
       "evidence": {
         "agents": [
           "node_exporter"

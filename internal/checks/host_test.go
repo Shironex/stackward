@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -374,6 +375,44 @@ func TestLOG(t *testing.T) {
 			{"none", journalFacts(nil), Info},
 			{"found", journalFacts(func(j *facts.Journal) { j.Agents = []string{"netdata"} }), Info},
 		})
+		agentMsg := func(f *facts.Facts) string {
+			f.CollectedAt = now
+			return checkMonitoringAgent(Input{Facts: f})[0].Message
+		}
+		withContainer := func(image string, running bool) *facts.Facts {
+			f := journalFacts(nil)
+			f.Docker = &facts.Docker{Containers: []facts.DockerContainer{{Name: "mon", Image: image, Running: running}}}
+			return f
+		}
+		for image, want := range map[string]string{
+			"grafana/alloy:v1.4.2":                      "alloy (container mon)",
+			"docker.io/grafana/alloy@sha256:abc":        "alloy (container mon)",
+			"quay.io/prometheus/node-exporter:v1.8.0":   "node_exporter (container mon)",
+			"prom/node-exporter":                        "node_exporter (container mon)",
+			"registry.example.com:5000/netdata/netdata": "netdata (container mon)",
+			"gcr.io/datadoghq/agent:7":                  "datadog-agent (container mon)",
+			"timberio/vector:0.40-alpine":               "vector (container mon)",
+			"nginx:1.27":                                "no metrics agent found",
+			"example.com/grafana/alloy-config-tool:1":   "no metrics agent found",
+			"example.com/team/not-telegraf-but-similar": "no metrics agent found",
+		} {
+			if got := agentMsg(withContainer(image, true)); !strings.Contains(got, want) {
+				t.Errorf("image %s: %q, want %q", image, got, want)
+			}
+		}
+		if got := agentMsg(withContainer("grafana/alloy", false)); !strings.Contains(got, "no metrics agent found") {
+			t.Errorf("stopped container counted: %q", got)
+		}
+		viaProcess := journalFacts(nil)
+		viaProcess.Listeners = &facts.Listeners{Sockets: []facts.Listener{{Proto: "tcp", Port: 9100, Processes: []string{"node_exporter"}}}}
+		if got := agentMsg(viaProcess); !strings.Contains(got, "node_exporter (process)") {
+			t.Errorf("process: %q", got)
+		}
+		both := journalFacts(func(j *facts.Journal) { j.Agents = []string{"alloy"} })
+		both.Docker = &facts.Docker{Containers: []facts.DockerContainer{{Name: "mon", Image: "grafana/alloy", Running: true}}}
+		if got := agentMsg(both); got != "metrics agent found: alloy (container mon)" {
+			t.Errorf("merged: %q", got)
+		}
 	})
 	t.Run("005", func(t *testing.T) {
 		runLevels(t, checkJournalPersistent, []levelCase{
