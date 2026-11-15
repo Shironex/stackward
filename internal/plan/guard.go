@@ -93,6 +93,9 @@ func ProveAccess(s Step, in GuardInput) (Proof, error) {
 // proveChange is ProveAccess for change c of step id.
 func proveChange(id string, c change, in GuardInput) (Proof, error) {
 	p := Proof{Narrows: c.narrows()}
+	if err := banSpares(id, c.access, in.Source); err != nil {
+		return p, err
+	}
 	if len(p.Narrows) == 0 {
 		return p, nil
 	}

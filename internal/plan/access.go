@@ -30,6 +30,12 @@ type Access struct {
 	// be the proven second way in: create an account, log in as it, and
 	// only then lock the old one. An unknown applier is refused.
 	ApplierStays bool
+	// Bans is true when the step starts banning SSH clients (a fail2ban
+	// jail). The lockout guard then requires the session that plans or
+	// applies to come from one of IgnoredSources (CIDR or addresses),
+	// so a failed login from the owner's own address cannot ban it.
+	Bans           bool
+	IgnoredSources []string
 }
 
 // narrowingSSHD are the sshd keywords that decide who can log in, how and
@@ -118,9 +124,9 @@ func (c change) disables(name string) bool { return slices.Contains(c.access.Dis
 func (c change) removesKeys(name string) bool { return slices.Contains(c.access.RemovesKeys, name) }
 
 // NeedsProof reports whether step s is access-critical and closes or
-// narrows a way in, so applying it needs the lockout guard's proof from
-// the live host.
+// narrows a way in, or starts banning clients, so applying it needs the
+// lockout guard's proof from the live host.
 func NeedsProof(s Step) bool {
 	c, ok := changeOf(s)
-	return ok && len(c.narrows()) > 0
+	return ok && (len(c.narrows()) > 0 || c.access.Bans)
 }
