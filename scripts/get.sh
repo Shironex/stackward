@@ -6,6 +6,12 @@
 #   less get.sh
 #   sh get.sh -d "$HOME/.local/bin"
 #
+# While only pre-releases exist there is no "latest" release: fetch get.sh
+# from the tag instead and pass the same tag with -v:
+#
+#   curl -fsSLO https://github.com/Shironex/stackward/releases/download/v0.1.0-rc.1/get.sh
+#   sh get.sh -v v0.1.0-rc.1 -d "$HOME/.local/bin"
+#
 # What it does:
 #   1. detects your OS and CPU (linux or darwin, amd64 or arm64)
 #   2. downloads the release archive and checksums.txt over HTTPS
@@ -18,10 +24,12 @@
 #
 # Options:
 #   -d DIR      install directory (default: current directory)
-#   -v VERSION  release tag such as v0.1.0 (default: the latest release)
+#   -v VERSION  release tag such as v0.1.0 or v0.1.0-rc.1 (default: the latest
+#               stable release; a pre-release is only installed when named)
 #   -h          show this help
 #
 # Environment:
+#   STACKWARD_VERSION   same as -v; the flag wins
 #   STACKWARD_BASE_URL  repository URL to download from (default below);
 #                       for mirrors and tests. Signature identity checks
 #                       always expect the official repository workflow.
@@ -33,7 +41,7 @@ BASE_URL="${STACKWARD_BASE_URL:-https://github.com/$REPO}"
 SIGNER_ISSUER="https://token.actions.githubusercontent.com"
 
 dest="."
-version=""
+version="${STACKWARD_VERSION:-}"
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'get.sh: error: %s\n' "$*" >&2; exit 1; }
@@ -70,8 +78,12 @@ esac
 # Version: an explicit tag, or whatever the latest release redirects to.
 if [ -z "$version" ]; then
 	final=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$BASE_URL/releases/latest") ||
-		die "could not look up the latest release"
+		die "could not look up the latest stable release; if only pre-releases exist, name a tag with -v, for example -v v0.1.0-rc.1"
 	version=${final##*/}
+	case "$version" in
+	v[0-9]*) ;;
+	*) die "there is no stable release yet; name a tag with -v, for example -v v0.1.0-rc.1 (see $BASE_URL/releases)" ;;
+	esac
 fi
 case "$version" in
 v[0-9]*) ;;
