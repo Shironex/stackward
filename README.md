@@ -101,9 +101,26 @@ The newest release is [`v0.1.0`](https://github.com/Shironex/stackward/releases/
 Every release holds Linux archives for amd64 and arm64,
 archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
-provenance, and `get.sh`.
+provenance, `install.sh` and `get.sh`.
 
-Download, check and run:
+The guided way is `install.sh`: install, update and uninstall with a step by
+step display, a checksum check before anything is written, and `apt` on
+Debian and Ubuntu. Download it, read it, run it:
+
+```sh
+curl -fsSLO https://github.com/Shironex/stackward/releases/latest/download/install.sh
+less install.sh
+sudo sh install.sh
+```
+
+Once you have read it, the one-line form is
+`curl -fsSL https://github.com/Shironex/stackward/releases/latest/download/install.sh | sudo sh`:
+it downloads the same script from the latest release and runs it as root, and
+the script checks the SHA-256 (and the cosign signature when cosign is
+installed) before it installs anything. Options, `update` and `uninstall`:
+[docs/install.md](docs/install.md#install-script).
+
+To do every step by hand instead, download, check and run:
 
 ```sh
 VERSION=v0.1.0
