@@ -2,6 +2,7 @@ package plan
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -25,8 +26,18 @@ func init() {
 		Risk:  Networking,
 		OptIn: true,
 		Plan:  planDockerLogRotation,
+
+		Authorize:        authorizeDockerLogRotation,
+		Check:            checkDockerLogRotation,
+		CommandsOnChange: true,
 	})
 }
+
+var (
+	dockerRestart  = []string{"systemctl", "restart", "docker"}
+	dockerRemove   = []string{"rm", "-f", daemonJSON}
+	dockerValidate = []string{"dockerd", "--validate", "--config-file"}
+)
 
 func planDockerLogRotation(in Input) Outcome {
 	if out, need := checkGate(in, []string{"DKR-031"}); !need {
@@ -65,26 +76,26 @@ func planDockerLogRotation(in Input) Outcome {
 	touches = append(touches, "service:docker")
 	undo := Undo{
 		Description: "Put the previous daemon.json back (its content is the old side of this step's diff; apply also keeps a copy under /var/backups/stackward/<run-id>/) and restart Docker.",
-		Commands:    []Command{cmd("load the previous configuration", "systemctl", "restart", "docker")},
+		Commands:    []Command{cmd("load the previous configuration", dockerRestart...)},
 	}
 	if action == Create {
 		undo = Undo{
 			Description: "Remove daemon.json, which did not exist before, and restart Docker.",
 			Commands: []Command{
-				cmd("remove the file this step created", "rm", "-f", daemonJSON),
-				cmd("load the default configuration", "systemctl", "restart", "docker"),
+				cmd("remove the file this step created", dockerRemove...),
+				cmd("load the default configuration", dockerRestart...),
 			},
 		}
 	}
 	edit := newEdit(daemonJSON, action, "0644", old, nw)
 	// Docker 23 and later can check a configuration file without starting.
-	edit.Validate = []string{"dockerd", "--validate", "--config-file"}
+	edit.Validate = append([]string{}, dockerValidate...)
 	return Outcome{Step: &Step{
 		Restarts: []string{"docker"},
 		Touches:  touches,
 		Edits:    []FileEdit{edit},
 		Commands: []Command{
-			cmd("load the new log settings", "systemctl", "restart", "docker"),
+			cmd("load the new log settings", dockerRestart...),
 		},
 		Undo: undo,
 		Notes: []string{
@@ -137,4 +148,47 @@ func mergeLogRotation(old string) (string, []string, error) {
 		return "", nil, err
 	}
 	return string(out), touched, nil
+}
+
+// authorizeDockerLogRotation merges the plan's old side again and refuses
+// any new content the merge would not produce. The old side itself is
+// pinned by old_sha256 and, at apply time, by the file on the host.
+func authorizeDockerLogRotation(s Step) error {
+	e, err := wantOneEdit(s, daemonJSON, Create, Replace)
+	if err != nil {
+		return err
+	}
+	nw, _, err := mergeLogRotation(e.Old)
+	if err != nil {
+		return fmt.Errorf("%s: the old content cannot be merged: %w", daemonJSON, err)
+	}
+	if nw == e.Old {
+		return fmt.Errorf("%s already sets json-file rotation; the step changes nothing", daemonJSON)
+	}
+	if err := wantContent(e, nw); err != nil {
+		return err
+	}
+	if err := wantValidate(e, dockerValidate); err != nil {
+		return err
+	}
+	if err := wantRestarts(s, "docker"); err != nil {
+		return err
+	}
+	if err := wantCommands("commands", s.Commands, dockerRestart); err != nil {
+		return err
+	}
+	if e.Action == Create {
+		return wantCommands("undo", s.Undo.Commands, dockerRemove, dockerRestart)
+	}
+	return wantCommands("undo", s.Undo.Commands, dockerRestart)
+}
+
+// checkDockerLogRotation: applied when daemon.json holds the planned
+// content. Docker is only restarted by a run that changed the file.
+func checkDockerLogRotation(r Reader, s Step) (bool, string, error) {
+	ok, err := FileHolds(r, daemonJSON, s.Edits[0].NewSHA256)
+	if err != nil || !ok {
+		return false, "", err
+	}
+	return true, daemonJSON + " already holds the planned content", nil
 }
