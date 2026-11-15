@@ -42,7 +42,7 @@
       "additionalProperties": false,
       "required": ["name", "source"],
       "properties": {
-        "name": { "enum": ["unknown", "tunnel", "public-web", "tailnet-only", "paas-panel"] },
+        "name": { "description": "Ingress profile. mixed is inferred only (a tunnel plus public web ports) and is not a --profile value.", "enum": ["unknown", "tunnel", "public-web", "tailnet-only", "paas-panel", "mixed"] },
         "source": { "enum": ["inferred", "flag"] }
       }
     },
