@@ -70,7 +70,7 @@ func TestAuditText(t *testing.T) {
 	if code != report.ExitFindings {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"host:      db1.example.com", "profile:   tunnel (flag)", "FAIL    SYS-002"} {
+	for _, want := range []string{"host:      db1.example.com", "profile:   tunnel (flag)", "-- FAIL (", "rule: No reboot pending"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in\n%s", want, out)
 		}
