@@ -1,0 +1,127 @@
+---
+title: CrowdSec and fail2ban behind a tunnel
+description: How intrusion prevention decides who to ban, why a firewall ban does nothing when every request arrives through a tunnel, and where to enforce bans instead.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+import CrowdSecTunnel from '../../../components/diagrams/CrowdSecTunnel.astro';
+
+<Step slug="crowdsec-and-fail2ban" />
+
+Intrusion prevention reads logs, spots abuse, and bans the source address. It
+works well on a server that faces the internet directly. Put a tunnel in front
+and the source address changes, and with it what a ban can touch.
+
+## Why it is dangerous
+
+Both tools have two halves:
+
+- **fail2ban** watches log files through jails. A jail bans an address after
+  `maxretry` failures within `findtime`, for `bantime`, and never bans
+  addresses listed in `ignoreip`.
+- **CrowdSec** splits detection from enforcement. The security engine parses
+  logs and makes decisions; remediation components (bouncers) fetch those
+  decisions from its local API and act on them. A **firewall bouncer** blocks
+  addresses in iptables or nftables, which suits services like SSH. A **proxy
+  bouncer** (for example in Traefik) blocks requests at the HTTP layer.
+
+Behind a Cloudflare Tunnel, every web request reaches the proxy from
+`cloudflared` on the server itself, over loopback or a Docker network. The
+visitor's address only exists inside the request, in the `CF-Connecting-IP`
+header that Cloudflare adds. So:
+
+1. A **firewall bouncer** sees only local connections. Its bans never match
+   anything, and it is useless for web traffic behind a tunnel.
+2. If the logs show the Docker gateway as the client and no parser reads the
+   real address from the header, every request looks like it comes from a
+   **private address**, and a whitelist that covers private ranges (a common
+   default) discards those events. Nothing is ever detected.
+3. A real IP parser written for **one** Docker gateway address breaks when a
+   new network becomes the route; requests from the new gateway are treated as
+   private again.
+
+<CrowdSecTunnel />
+
+## What an attacker can actually do
+
+Nothing special, and that is the point: the attacker does what they would do
+anyway (credential stuffing on a login form, scanning for admin paths, brute
+forcing an API) and your intrusion prevention, which you believe is active,
+never stops them. Fast scanners finish their whole run before a ban with a
+long update interval reaches the bouncer.
+
+On the SSH side the risk is the reverse: if SSH is public and no fail2ban jail
+or CrowdSec scenario covers it, password guessing runs unthrottled. And if
+your own tailnet address is not in `ignoreip`, a few typos can ban you.
+
+## See it on your own server
+
+CrowdSec engine, bouncers and when each last pulled decisions:
+
+```sh
+systemctl is-active crowdsec
+sudo cscli bouncers list
+sudo cscli metrics
+```
+
+Which parsers and whitelists are installed:
+
+```sh
+sudo cscli parsers list
+```
+
+fail2ban jails, and the settings of the SSH jail:
+
+```sh
+sudo fail2ban-client status
+sudo fail2ban-client status sshd
+sudo fail2ban-client get sshd ignoreip
+```
+
+## What the fix changes
+
+- **Enforce bans where the real address is known.** Behind a tunnel, use a
+  proxy bouncer in Traefik (or Caddy, nginx) instead of, or next to, the
+  firewall bouncer. It reads the client address from the request and blocks
+  it there.
+- **Parse the real client address** from `CF-Connecting-IP` when the request
+  comes from any private range (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16),
+  not from one hard coded gateway.
+- **Pull decisions often.** A stream mode bouncer with a short interval makes
+  a ban land in seconds, not minutes.
+- **Cover SSH** with a fail2ban jail (or the CrowdSec SSH scenario) whenever it
+  is reachable from the internet, on the port sshd really uses, and add your
+  tailnet range to `ignoreip`.
+
+With the ban enforced at the proxy and the real address parsed, a detected
+scanner is actually blocked, which is what you believed was happening.
+
+## What the fix can break
+
+- A real IP parser that trusts the header from **any** source lets a direct
+  visitor forge it. Trust `CF-Connecting-IP` only when the request arrives
+  from the tunnel (a private address) and the origin is closed to the public.
+- A proxy bouncer that cannot reach the CrowdSec local API fails open or
+  closed depending on its settings. Allow the API port from the Docker ranges
+  and check `cscli bouncers list` after network changes.
+- Aggressive jails ban people behind shared addresses (offices, mobile
+  carriers). Start with longer `findtime` and modest `bantime`.
+
+<Aside type="note" title="Not a replacement for closing ports">
+Banning is a second layer. A port that is not reachable cannot be brute
+forced; see [the only way in](/stackward/learn/private-ingress/).
+</Aside>
+
+## Checks that cover it
+
+<Checks ids={['CS-001', 'CS-002', 'CS-003', 'CS-004', 'CS-005', 'CS-008', 'CS-010', 'CS-011']} />
+
+## Sources
+
+- CrowdSec docs, [remediation components](https://docs.crowdsec.net/u/bouncers/intro/): bouncers act on decisions from the local API.
+- CrowdSec docs, [firewall bouncer](https://docs.crowdsec.net/u/bouncers/firewall/): iptables, nftables, ipset and pf; suited to services like SSH.
+- CrowdSec docs, [whitelists](https://docs.crowdsec.net/docs/log_processor/whitelist/intro/): parser whitelists discard events.
+- Cloudflare docs, [HTTP headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/): `CF-Connecting-IP` carries the client address to the origin.
+- Debian manpage, [jail.conf(5)](https://manpages.debian.org/bookworm/fail2ban/jail.conf.5.en.html): `ignoreip`, `bantime`, `findtime`, `maxretry`.

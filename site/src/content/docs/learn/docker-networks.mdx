@@ -1,0 +1,93 @@
+---
+title: Shared Docker networks
+description: Why putting every project on one Docker network lets one compromised app reach every database, and how per project networks fix it.
+---
+
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+import SharedNetwork from '../../../components/diagrams/SharedNetwork.astro';
+
+<Step slug="docker-networks" />
+
+Docker networks are the walls between your projects. A database that is never
+published to the internet can still be wide open to every other container that
+shares its network.
+
+## Why it is dangerous
+
+Docker's documentation says containers connected to the same user defined
+bridge network effectively expose all ports to each other. No `ports:` entry is
+needed. Containers started without a network go onto the default `bridge`
+network, which Docker itself calls a risk, because unrelated containers end up
+together.
+
+Self hosting platforms make this easy to get wrong: many setups attach every
+app to one shared network so the reverse proxy can reach them, and the
+databases come along.
+
+<SharedNetwork />
+
+## What an attacker can actually do
+
+Picture two projects on one server: a small side project with an outdated
+dependency, and a customer app with a Postgres database. Both sit on the
+platform's shared network. An attacker who breaks into the side project's
+container can open a TCP connection to the customer database by its container
+name. If that database uses a weak or default password, or trusts its network
+(`trust` authentication, Redis without a password), the customer data is gone,
+through a project the customer never heard of.
+
+The broken in app becomes a pivot. The internet facing firewall played no part,
+because this traffic never left the host.
+
+## See it on your own server
+
+List networks and their members:
+
+```sh
+docker network ls
+docker network inspect --format '{{.Name}}: {{range .Containers}}{{.Name}} {{end}}' $(docker network ls -q)
+```
+
+Group containers by project label to see whether two projects share a network:
+
+```sh
+docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Networks}}'
+```
+
+The reverse proxy joining many networks is expected; that is its job. A
+database sharing a network with another project's app is the finding.
+
+## What the fix changes
+
+- **One network per project.** Compose already creates a project network by
+  default; keep each stack on its own and do not attach apps to a global
+  shared network.
+- **Attach the proxy to each project network** instead of putting projects on
+  the proxy's network. The proxy can reach every app; the apps cannot reach
+  each other.
+- **Give databases their own internal network** if only one app talks to them.
+  Compose's `internal: true` also cuts that network off from the outside.
+
+After the change, a compromised container can only reach its own project's
+services, which is the blast radius you would expect.
+
+## What the fix can break
+
+- Apps that talked to another project's service by container name lose that
+  connection. Make the dependency explicit: put both on a dedicated shared
+  network for just that pair, or go through the proxy.
+- In Coolify, moving a resource to a different network or destination changes
+  how the proxy reaches it; redeploy and test the route.
+- Containers attached to an `internal` network cannot reach the internet
+  (package mirrors, external APIs) through it.
+
+## Checks that cover it
+
+<Checks ids={['DKR-030', 'PAAS-005']} />
+
+## Sources
+
+- Docker docs, [bridge network driver](https://docs.docker.com/engine/network/drivers/bridge/): containers on the same user defined bridge expose all ports to each other; the default bridge is a risk; user defined bridges isolate better.
+- Docker docs, [networking in Compose](https://docs.docker.com/compose/how-tos/networking/): the default per project network.
+- Docker docs, [Compose file networks, internal](https://docs.docker.com/reference/compose-file/networks/#internal).

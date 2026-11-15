@@ -1,0 +1,150 @@
+---
+title: Tailscale and tunnels as the only way in
+description: Close the server's public address, let visitors in through a tunnel and admins in over a tailnet, and avoid the two traps that silently reopen it.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+import Ingress from '../../../components/diagrams/Ingress.astro';
+
+<Step slug="private-ingress" />
+
+The strongest firewall rule is having nothing to allow. A common self hosting
+design closes every inbound port: visitors arrive through a Cloudflare Tunnel,
+admins arrive over Tailscale, and the server's public address answers nothing.
+
+## Why it is dangerous
+
+Every listening port on a public address is attack surface: SSH, the reverse
+proxy, a panel, a forgotten database. Rate limits, a web application firewall
+and Cloudflare Access only help if traffic actually passes through them. If
+the origin also answers on its public address, anyone who learns that address
+can skip all of it. That is the **origin bypass**.
+
+Two tools remove the need for open inbound ports:
+
+- **Cloudflare Tunnel.** `cloudflared` runs on the server and makes
+  outbound only connections to Cloudflare. Requests for your hostnames come
+  back down those connections. Cloudflare documents that you can then block
+  all ingress and allow only egress from cloudflared.
+- **Tailscale.** A WireGuard based private network. Each device gets an
+  address in `100.64.0.0/10` on the `tailscale0` interface, so SSH and admin
+  panels can listen there and nowhere else.
+
+<Ingress />
+
+The design is strong. The traps are in keeping it true:
+
+1. **A logged out tailnet.** If the Tailscale node is in `NeedsLogin` or
+   `Stopped`, the `tailscale0` interface carries nothing. Every firewall rule
+   scoped to it is dead, and if public SSH was closed, so is your way in.
+   Tailscale node keys expire after 180 days by default unless you disable
+   expiry for that device, which Tailscale suggests for trusted servers.
+2. **The proxy still published on all interfaces.** If Traefik is published
+   as `80:80` and `443:443`, the tunnel works and the origin bypass is open at
+   the same time. See [the firewall page](/stackward/learn/firewall-and-docker/)
+   for why UFW does not close it.
+
+## What an attacker can actually do
+
+With the origin bypass open, an attacker who finds the server's address
+(certificate transparency logs, old DNS records, scanning a provider's address
+range) sends requests straight to it. Cloudflare Access, which you put in
+front of an admin panel, is not in the path, so the panel's own login is the
+only lock. WAF rules and rate limits do not apply either.
+
+With Tailscale silently logged out and public SSH closed, nobody attacks you,
+but you cannot get in until you use the provider's console. With Tailscale
+logged out and public SSH still open "for now", the server is exactly as
+exposed as before you started, while everyone believes it is private.
+
+Tailscale **Funnel** is a third, deliberate way to publish: it routes traffic
+from the whole internet to a local service on the node. That is fine when you
+meant it and a surprise when you did not.
+
+## See it on your own server
+
+Is Tailscale running, and does the node key expire?
+
+```sh
+tailscale status
+tailscale status --json | grep -E '"BackendState"|"KeyExpiry"'
+```
+
+`BackendState` should be `Running`. A `KeyExpiry` value on a server means it
+will drop off the tailnet on that date.
+
+Is anything published through Funnel or Serve?
+
+```sh
+tailscale funnel status
+tailscale serve status
+```
+
+Is the tunnel connector running?
+
+```sh
+docker ps --filter ancestor=cloudflare/cloudflared --format '{{.Names}}\t{{.Status}}'
+systemctl is-active cloudflared
+```
+
+Where is the proxy listening? On a tunnel setup it should be `127.0.0.1`:
+
+```sh
+sudo ss -tlnp | grep -E ':(80|443)\b'
+docker ps --format '{{.Names}}\t{{.Ports}}' | grep -E ':(80|443)->'
+```
+
+Which firewall rules depend on the tailnet?
+
+```sh
+sudo ufw status verbose | grep -i tailscale0
+```
+
+## What the fix changes
+
+1. **Prove the private path first.** With Tailscale `Running` and key expiry
+   disabled for this node, open a new SSH session over the tailnet address and
+   keep it open.
+2. **Allow SSH on `tailscale0` only**, then remove the public SSH rule. Now
+   password guessing bots cannot even reach the port.
+3. **Publish the proxy on loopback**: `127.0.0.1:443:443`, or no published
+   ports at all if `cloudflared` runs in the proxy's Docker network. The origin
+   now answers nothing on its public address, so every visitor passes through
+   Cloudflare.
+4. **Run two connectors** for the tunnel, so a restart does not take the site
+   down.
+5. **Remove `80/443 allow` rules** that a tunnel setup no longer needs.
+
+<Aside type="danger" title="Lockout order">
+Close public SSH only after a new login over the tailnet has worked, and only
+while you know how to reach the provider's console. stackward 0.2 plans to do
+this step as a transaction with a rollback timer and a confirmation from a
+fresh session; 0.1 only tells you where you stand.
+</Aside>
+
+## What the fix can break
+
+- **Access when the tailnet is down.** Tailscale outages, an expired key or a
+  stopped daemon leave the console as your only way in. Disable key expiry for
+  servers and keep the console login in a password manager.
+- **Platform connections.** A PaaS that manages this server over SSH needs its
+  own path (its address allowed, or the tailnet).
+- **Let's Encrypt HTTP challenges** need port 80 from the internet. Behind a
+  tunnel, Cloudflare terminates TLS for visitors; use DNS challenges or
+  Cloudflare origin certificates if the proxy still needs its own.
+- **Apps that redirect to HTTPS themselves** can loop behind a tunnel that
+  already terminates TLS. Turn the app's own redirect off.
+
+## Checks that cover it
+
+<Checks ids={['TS-001', 'TS-002', 'TS-003', 'TS-004', 'CF-002', 'CF-003', 'NET-003', 'NET-005', 'PAAS-002']} />
+
+## Sources
+
+- Cloudflare docs, [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/): cloudflared creates outbound only connections; block all ingress and allow only egress.
+- Tailscale docs, [key expiry](https://tailscale.com/docs/features/access-control/key-expiry): 180 day default, disabling expiry for trusted servers.
+- Tailscale docs, [Funnel](https://tailscale.com/docs/features/tailscale-funnel): routes internet traffic to a local service.
+- Tailscale docs, [CLI reference](https://tailscale.com/docs/reference/tailscale-cli) and [tailscale funnel](https://tailscale.com/docs/reference/tailscale-cli/funnel): `status --json`, `funnel status`.
+- Docker docs, [port publishing](https://docs.docker.com/engine/network/port-publishing/): binding a published port to `127.0.0.1`.

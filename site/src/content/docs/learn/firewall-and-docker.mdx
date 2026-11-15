@@ -1,0 +1,141 @@
+---
+title: The firewall, and how Docker walks past UFW
+description: Why a UFW deny rule does not close a port that Docker published, how to see what is really exposed, and the fixes that work.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+import DockerUfw from '../../../components/diagrams/DockerUfw.astro';
+
+<Step slug="firewall-and-docker" />
+
+This is the trap that surprises the most people. You enable UFW, deny
+everything incoming, check `ufw status`, and believe the server is closed.
+Then a database you published with Docker is reachable from the internet
+anyway.
+
+## Why it is dangerous
+
+A host firewall decides what reaches the server. On Ubuntu and Debian the
+usual front end is UFW, which writes iptables or nftables rules. By default UFW
+is disabled, so step one is simply that it might be off.
+
+Step two is Docker. When you publish a port (`ports: "5432:5432"` in Compose,
+or `-p 5432:5432`), Docker binds it on **all host addresses**, `0.0.0.0` and
+`[::]`, unless you name an address. Docker's own documentation calls this
+insecure by default: the port is open to the outside world, not just to the
+host.
+
+And UFW does not see that traffic. Docker's documentation says Docker and ufw
+are incompatible: traffic to a published container port is diverted before it
+reaches the ufw rules. The packet is rewritten on the way in and routed to the
+container through the FORWARD chain, while UFW's rules for incoming traffic sit
+on the INPUT chain.
+
+<DockerUfw />
+
+## What an attacker can actually do
+
+Internet wide scanners look for database and admin ports all day. A Postgres,
+Redis or MongoDB container published on `0.0.0.0` is found the same way an
+SSH port is. If it has a weak password, a default password, or no password
+(Redis without `requirepass`, an admin panel still on its setup page), the
+attacker reads or deletes the data, and in some cases uses the service's own
+features to run commands inside the container. From there, the next step
+depends on everything else on this list: a mounted Docker socket, a root user,
+a shared network.
+
+None of this needs a vulnerability. It needs one published port and the
+belief that the firewall covers it.
+
+## See it on your own server
+
+What is the firewall doing?
+
+```sh
+sudo ufw status verbose
+```
+
+Look for `Status: active` and `Default: deny (incoming)`. UFW also has a
+policy for **routed** traffic; Docker's forwarded traffic is the routed kind.
+
+What is actually listening, and on which address?
+
+```sh
+sudo ss -tlnup
+```
+
+`0.0.0.0:5432` or `[::]:5432` means every address. `127.0.0.1:5432` means only
+this machine. An address in `100.64.0.0/10` is a Tailscale address.
+
+Which container ports does Docker publish? This format string prints names and
+ports only, never environment variables:
+
+```sh
+docker ps --format 'table {{.Names}}\t{{.Ports}}'
+```
+
+`0.0.0.0:5432->5432/tcp` is published to the world. `127.0.0.1:5432->5432/tcp`
+is not.
+
+Is anything filtering Docker's traffic before Docker's own rules?
+
+```sh
+sudo iptables -S DOCKER-USER
+```
+
+A chain with only a `-j RETURN` line filters nothing.
+
+<Aside type="danger" title="ufw status is not evidence">
+A UFW rule list says what UFW would do with traffic for the host. It says
+nothing about published container ports. The only proof that a port is closed
+is a connection attempt from another machine that fails. That is what
+[the outside view](/stackward/learn/outside-view/) is about.
+</Aside>
+
+## What the fix changes
+
+Pick the fix that matches what the port is for.
+
+- **Bind to loopback.** If only the host (or the reverse proxy) needs the
+  port, publish it as `127.0.0.1:5432:5432`. Docker then listens on loopback
+  only, and there is nothing for the firewall to miss. This is the fix Docker's
+  documentation gives.
+- **Do not publish at all.** Containers on the same Docker network reach each
+  other by name without published ports. Put apps behind the reverse proxy and
+  publish nothing but the proxy.
+- **Bind to the tailnet address** for admin tools you reach over Tailscale.
+- **Filter in DOCKER-USER.** Docker leaves the DOCKER-USER chain for your own
+  rules, processed before Docker's. Tools such as ufw-docker write rules there
+  so UFW style policy applies to published ports again.
+
+The first two remove the exposure instead of guarding it, which is why they
+come first.
+
+## What the fix can break
+
+- **Loopback binding** cuts off anything that reached the port from outside on
+  purpose: a desktop database client, a monitoring server, another host. Reach
+  it over an SSH tunnel or Tailscale instead.
+- **DOCKER-USER rules** apply to all forwarded container traffic. A rule that
+  is too broad can also drop traffic you need, such as connections that arrive
+  over the tailnet; ufw-docker needs explicit route rules for that.
+- **Turning off Docker's iptables management** (`"iptables": false`) is not a
+  fix. Published ports can then stop working, or be wide open, depending on
+  what other rules exist.
+- **Enabling UFW** over SSH without an allow rule for your SSH port locks you
+  out. Allow SSH first.
+
+## Checks that cover it
+
+<Checks ids={['NET-001', 'NET-002', 'NET-004', 'NET-006', 'NET-007', 'NET-008', 'DKR-001', 'DKR-033']} />
+
+## Sources
+
+- Docker docs, [packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/): "Docker and ufw" are incompatible; published container traffic is diverted before the ufw rules.
+- Docker docs, [port publishing](https://docs.docker.com/engine/network/port-publishing/): ports publish to `0.0.0.0` and `[::]` by default, publishing is insecure by default, and binding to `127.0.0.1` limits access to the host.
+- Docker docs, [iptables chains](https://docs.docker.com/engine/network/firewall-iptables/): the DOCKER-USER chain is processed before Docker's chains.
+- Ubuntu manpage, [ufw(8)](https://manpages.ubuntu.com/manpages/noble/man8/ufw.8.html): `status verbose`, default policies for incoming, outgoing and routed, and `route` rules.
+- Ubuntu Server docs, [firewalls](https://ubuntu.com/server/docs/how-to/security/firewalls/): ufw is disabled by default.
+- man7.org, [ss(8)](https://man7.org/linux/man-pages/man8/ss.8.html): `-t -u -l -n -p` options.

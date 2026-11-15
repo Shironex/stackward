@@ -1,0 +1,108 @@
+---
+title: The outside view with probe
+description: Why some things can only be verified from another machine, how to check your own server from outside without scanning anyone, and what stackward probe will do.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="outside-view" />
+
+Everything on the earlier pages was seen from inside the server. That view has
+blind spots. The final answer to "is this port closed" comes from outside:
+try to connect, and see whether anything answers.
+
+## Why it matters
+
+From inside, a server cannot see:
+
+- **The provider's firewall.** Many VPS providers offer a network firewall in
+  front of the server. It acts before any rule on the host, which makes it a
+  useful second layer, and it is invisible from the host.
+- **What the internet really reaches.** Docker rules, UFW rules, IPv6 and the
+  provider network all combine. Reading each of them is evidence; a failed
+  connection from outside is proof.
+- **Whether the tunnel path works and the direct path does not.** The goal of
+  [the only way in](/stackward/learn/private-ingress/) is that your hostname
+  answers through the tunnel and your raw address answers nothing. Only an
+  outside request shows both.
+
+## What an attacker can actually do
+
+Attackers only ever have the outside view. They do not read your UFW rules;
+they connect. Whatever answers on your public addresses, over IPv4 and IPv6,
+is your real attack surface, whatever the configuration files say. Checking
+from outside means seeing your server the way they do, before they do.
+
+## See it from another machine
+
+<Aside type="danger" title="Only your own servers">
+Probing a host you do not own or have no permission to test may be illegal
+where you live. Check only servers you run, and only single addresses, never
+ranges.
+</Aside>
+
+From your laptop (not the server), try single TCP connections to a few ports.
+`nc -z` connects and closes without sending data:
+
+```sh
+# Replace 198.51.100.20 with your server's public address.
+for port in 22 80 443 2375 3000 5432 6379 8000 8080; do
+  nc -z -w 3 198.51.100.20 "$port" && echo "open $port" || echo "closed $port"
+done
+```
+
+On a tunnel setup, the raw address should answer nothing on 80 and 443, while
+the hostname should answer through Cloudflare:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 https://198.51.100.20/ -k
+curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 https://app.example.com/
+```
+
+The first command should time out or be refused. The second should return a
+normal status code. Repeat for IPv6 if the server has a global IPv6 address
+(`2001:db8::20` in this example): firewalls are often configured for one
+family and forgotten for the other.
+
+## What stackward probe will do
+
+`stackward probe` is **planned** for the next wave and is not in the current
+build. The design:
+
+- Runs on another machine (Linux, macOS or Windows builds).
+- Plain TCP connects, over IPv4 and IPv6, to a short fixed list of ports:
+  SSH, 80 and 443 on the raw address, the Docker API (2375, 2376), common
+  panel and dashboard ports, and common database ports. No range scanning.
+- An optional hostname check over HTTPS, to confirm the tunnel path answers.
+- Prints a warning that probing hosts you do not own may be illegal, and needs
+  `--i-own-this` to run without a prompt.
+- Cross checks with the audit: a raw address that answers on 443 while the
+  audit says ingress is a tunnel is an origin bypass.
+
+On the host, the audit's `NET-009` result is always `unknown` for this reason:
+the provider firewall cannot be seen from inside.
+
+## What fixing changes, and what it can break
+
+The outside view does not fix anything; it tells you which earlier page to go
+back to. An open 5432 is the [firewall page](/stackward/learn/firewall-and-docker/),
+an answering origin is [the only way in](/stackward/learn/private-ingress/), an
+open 8000 is [the platform page](/stackward/learn/coolify-and-dokploy/).
+
+Adding a provider firewall is worth doing as a second layer. It can break
+anything you forgot was reached from outside: a monitoring service, a backup
+job pulling from another host, or your own SSH if the provider firewall is
+the first thing you change. Allow SSH there first.
+
+## Checks that cover it
+
+<Checks ids={['PRB-001', 'PRB-002', 'PRB-003', 'PRB-004', 'PRB-005', 'PRB-006', 'NET-009', 'CF-005']} />
+
+## Sources
+
+- OpenBSD manual, [nc(1)](https://man.openbsd.org/nc.1): `-z` scans for listening daemons without sending data, `-w` timeout.
+- curl docs, [curl(1)](https://curl.se/docs/manpage.html): `-w` write out, `--max-time`.
+- Cloudflare docs, [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/): outbound only connections, so the origin needs no open inbound port.
+- RFC Editor, [RFC 5737](https://www.rfc-editor.org/rfc/rfc5737) and [RFC 3849](https://www.rfc-editor.org/rfc/rfc3849): the documentation address ranges used in these examples.

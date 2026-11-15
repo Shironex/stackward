@@ -1,0 +1,77 @@
+---
+title: Start here
+description: A learning path through the security of a self hosted Docker server, in twelve short runbooks, from SSH to the outside view.
+prev: false
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import { PHASES, TOPICS } from '../../../lib/learn.mjs';
+import { url as siteUrl } from '../../../lib/site.mjs';
+
+These pages teach how a typical self hosted server is attacked and defended:
+one Linux VPS, Docker, a platform such as Coolify or Dokploy, a reverse proxy,
+a tunnel or Tailscale in front. You do not need stackward to use them. Each
+one ends with the stackward checks that look for the problem, so you can test
+what you learned on your own server.
+
+## How each topic works
+
+Every topic answers the same six questions, in the same order:
+
+1. **Why it is dangerous.** The mechanism, in plain words.
+2. **What an attacker can actually do.** A concrete, generic scenario. No
+   exploit code and no attack steps: only what becomes possible.
+3. **See it on your own server.** Commands that only read. They change
+   nothing and are safe on a production box.
+4. **What the fix changes.** The setting, and why it stops the scenario.
+5. **What the fix can break.** Every fix has a cost. Read this before you
+   apply one.
+6. **Checks that cover it**, and the **sources** behind every claim.
+
+<Aside type="caution" title="Read before you fix">
+The "see it" commands only read. The fixes do change your server, and some of
+them (SSH and firewall changes) can lock you out. Keep a second session open
+and know how to reach your provider's console before you change access.
+stackward 0.1 never applies fixes for you; guided hardening with a rollback
+timer is planned for 0.2.
+</Aside>
+
+## The path
+
+The order matters. Access comes first, because every other fix depends on you
+still being able to log in. Docker comes next, because it changes what the
+firewall means. The outside view comes last, because it is how you prove the
+rest worked.
+
+<div class="path not-content">
+  {PHASES.map((phase) => (
+    <section class="path-phase" aria-label={phase.title}>
+      <h3>{phase.title}</h3>
+      <p class="path-phase-text">{phase.text}</p>
+      <ol>
+        {TOPICS.map((t, i) => ({ t, n: i + 1 }))
+          .filter(({ t }) => t.phase === phase.id)
+          .map(({ t, n }) => (
+            <li value={n}>
+              <span class="path-n" aria-hidden="true">{String(n).padStart(2, '0')}</span>
+              <div>
+                <a href={siteUrl(`learn/${t.slug}`)}>{t.title}</a>
+                <p>{t.summary} <span class="path-min">About {t.minutes} min.</span></p>
+              </div>
+            </li>
+          ))}
+      </ol>
+    </section>
+  ))}
+</div>
+
+Words you do not know are in the [glossary](/stackward/learn/glossary/).
+
+## Ground rules for the examples
+
+- Addresses come from the ranges reserved for documentation (`192.0.2.0/24`,
+  `198.51.100.0/24`, `203.0.113.0/24`), the Tailscale range `100.64.0.0/10`
+  and `example.com`. None of them is a real server.
+- Commands assume Ubuntu 22.04 or later, or Debian 12 or later, which is
+  what stackward is tested on.
+- Commands that need root say `sudo`. Reading as root is still reading.

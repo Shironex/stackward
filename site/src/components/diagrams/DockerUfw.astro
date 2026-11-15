@@ -1,0 +1,39 @@
+---
+import Figure from './Figure.astro';
+---
+
+<Figure caption="UFW keeps its rules in the INPUT path, which handles traffic for the host itself. A published container port is rewritten in PREROUTING and leaves through FORWARD instead, where Docker's own chains decide. DOCKER-USER is the place Docker leaves for your filtering.">
+  <svg viewBox="0 0 720 300" role="img" aria-labelledby="dufw-t dufw-d">
+    <title id="dufw-t">Two paths through the Linux firewall</title>
+    <desc id="dufw-d">A packet arrives from the internet and passes PREROUTING, where Docker rewrites the destination of published ports. Packets for the host go to the INPUT chain, where UFW rules apply, then to host services such as sshd. Packets for a published container go to the FORWARD chain, through DOCKER-USER and Docker's chains, to the container. UFW's INPUT rules never see them.</desc>
+    <defs>
+      <marker id="dufw-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-fill-ink3"></path></marker>
+      <marker id="dufw-af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-fill-fail"></path></marker>
+    </defs>
+    <rect x="10" y="125" width="110" height="50" rx="4" class="d-box"></rect>
+    <text x="65" y="148" text-anchor="middle" class="d-label">Internet</text>
+    <text x="65" y="164" text-anchor="middle" class="d-small">203.0.113.7</text>
+    <path d="M120 150H172" class="d-line" marker-end="url(#dufw-a)"></path>
+    <rect x="175" y="115" width="140" height="70" rx="4" class="d-box-strong"></rect>
+    <text x="245" y="142" text-anchor="middle" class="d-label">PREROUTING</text>
+    <text x="245" y="160" text-anchor="middle" class="d-small">Docker rewrites the</text>
+    <text x="245" y="174" text-anchor="middle" class="d-small">destination of :5432</text>
+    <path d="M315 135C345 135 345 70 377 70" class="d-line" marker-end="url(#dufw-a)"></path>
+    <path d="M315 165C345 165 345 230 377 230" class="d-line-fail" marker-end="url(#dufw-af)"></path>
+    <rect x="380" y="40" width="160" height="60" rx="4" class="d-box-mint"></rect>
+    <text x="460" y="65" text-anchor="middle" class="d-label">INPUT</text>
+    <text x="460" y="84" text-anchor="middle" class="d-text-mint">UFW rules live here</text>
+    <path d="M540 70H592" class="d-line" marker-end="url(#dufw-a)"></path>
+    <rect x="595" y="45" width="115" height="50" rx="4" class="d-box"></rect>
+    <text x="652" y="68" text-anchor="middle" class="d-label">Host</text>
+    <text x="652" y="84" text-anchor="middle" class="d-small">sshd, the proxy</text>
+    <rect x="380" y="200" width="160" height="60" rx="4" class="d-box-fail"></rect>
+    <text x="460" y="225" text-anchor="middle" class="d-label">FORWARD</text>
+    <text x="460" y="244" text-anchor="middle" class="d-code">DOCKER-USER, DOCKER</text>
+    <path d="M540 230H592" class="d-line-fail" marker-end="url(#dufw-af)"></path>
+    <rect x="595" y="205" width="115" height="50" rx="4" class="d-box"></rect>
+    <text x="652" y="228" text-anchor="middle" class="d-label">Container</text>
+    <text x="652" y="244" text-anchor="middle" class="d-small">postgres :5432</text>
+    <text x="345" y="290" class="d-text-fail">This path never meets a UFW deny rule</text>
+  </svg>
+</Figure>

@@ -1,0 +1,136 @@
+---
+title: Coolify and Dokploy specifics
+description: "What a self hosting platform adds to the attack surface: panel ports, publicly published databases, the proxy, Swarm ports, the SSH keys it holds and how it logs in."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+
+<Step slug="coolify-and-dokploy" />
+
+Platforms like Coolify and Dokploy turn a VPS into a small Heroku. They also
+run a control panel with root level power over every app, and they make some
+risky things one click away. Everything on the earlier pages applies; this page
+covers what is specific to them.
+
+## Why it is dangerous
+
+**The panel is the keys to everything.** Whoever logs into the panel can
+deploy any container, read every app's environment variables and open a
+terminal on managed servers. Its ports are documented:
+
+| Platform | Port | What it is |
+|---|---|---|
+| Coolify | 8000/tcp | dashboard |
+| Coolify | 6001/tcp | real time updates |
+| Coolify | 6002/tcp | web terminal |
+| Coolify, Dokploy | 80, 443/tcp | the proxy (Traefik) |
+| Dokploy | 3000/tcp | web interface |
+
+Coolify's firewall guide says that once the dashboard works through a domain
+on its proxy, you can close public access to 8000, 6001 and 6002. The same
+reasoning applies to Dokploy's port 3000. These ports are published by Docker, so [UFW will not close them for
+you](/stackward/learn/firewall-and-docker/).
+
+**Databases one toggle from public.** Platforms let you mark a database
+"publicly available", which publishes its port on every address.
+
+**The proxy dashboard.** Traefik's `api.insecure` setting serves its API and
+dashboard on an entry point named `traefik`, created on port 8080 if not
+configured otherwise. Traefik's docs say it is not recommended in production.
+
+**Swarm ports.** Multi server setups built on Docker Swarm need 2377/tcp between managers, 7946/tcp and udp for node discovery
+and 4789/udp for overlay traffic. Those are meant for cluster peers only.
+
+**Keys and logins.** A platform that manages other servers stores an SSH
+private key for each. And it logs into them, often as root.
+
+## What an attacker can actually do
+
+- An exposed panel with a weak password, or a known vulnerability in an
+  unpatched panel version, gives an attacker the ability to deploy a container
+  of their choice on your server. That container can mount the host, which is
+  [root on the host](/stackward/learn/docker-socket/).
+- A publicly published database is found by the same scans as any other
+  open port; a weak password means the data is read or ransomed.
+- A Traefik dashboard on 8080 shows every route and backend: a map for the
+  next step.
+- Open Swarm ports let outside hosts talk to the cluster's control and overlay
+  traffic, which was never meant to face the internet.
+- A readable platform key folder gives keys to every managed server.
+
+## See it on your own server
+
+Which platform ports answer on all interfaces?
+
+```sh
+sudo ss -tlnup | grep -E ':(3000|6001|6002|8000|8080|2377|7946|4789)\b'
+docker ps --format 'table {{.Names}}\t{{.Ports}}'
+```
+
+Databases with published ports (look for `0.0.0.0:5432`, `:3306`, `:6379`,
+`:27017`):
+
+```sh
+docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}' | grep -Ei 'postgres|mysql|mariadb|mongo|redis|valkey|clickhouse'
+```
+
+Permissions on the platform's SSH key folder (Coolify keeps its data under
+`/data/coolify`):
+
+```sh
+sudo find /data/coolify -maxdepth 2 -type d -name '*ssh*' -printf '%m %u:%g %p\n' 2>/dev/null
+```
+
+How does the platform log into this server? Look at root's authorized keys
+comments only:
+
+```sh
+sudo awk '{print $NF}' /root/.ssh/authorized_keys
+```
+
+## What the fix changes
+
+- **Reach the panel privately.** Over the tailnet, or through a domain behind
+  Cloudflare Access, then close 8000, 6001 and 6002 (Coolify) or 3000
+  (Dokploy) to the public. A panel nobody can reach cannot be brute forced or
+  exploited.
+- **Turn off "publicly available"** on databases. Reach them over the tailnet
+  or an SSH tunnel.
+- **Never run Traefik with `api.insecure`** in production; protect the
+  dashboard with authentication or leave it off.
+- **Restrict Swarm ports** to the cluster's own addresses at the provider
+  firewall.
+- **Use a non root user** for platform connections. Coolify documents managing
+  a server through a non root user with sudo, which lets you set
+  `PermitRootLogin no` everywhere.
+- **Keep the key folder at `700`** and the platform updated.
+
+## What the fix can break
+
+- Closing panel ports before the domain route works locks you out of the
+  panel. Keep a tailnet path to it first, and note that some panels force a
+  redirect to HTTPS that loops behind a tunnel.
+- Database clients and BI tools that used the public port need a tunnel or
+  the tailnet.
+- Moving the platform to a non root user needs its sudo rules in place first;
+  follow the platform's guide.
+
+<Aside type="note" title="Platform layouts change">
+Paths, ports and labels here come from each platform's documentation at the
+time of writing. stackward's platform checks report unknown, not pass, when a
+platform's layout is not what they expect.
+</Aside>
+
+## Checks that cover it
+
+<Checks ids={['PAAS-001', 'PAAS-002', 'PAAS-003', 'PAAS-004', 'PAAS-006', 'PAAS-008', 'SEC-003', 'SEC-004']} />
+
+## Sources
+
+- Coolify docs, [firewall](https://coolify.io/docs/core/infrastructure/servers/firewall): ports 8000, 6001, 6002, 22, 80, 443, and closing the panel ports once the domain works.
+- Coolify docs, [non root user](https://coolify.io/docs/core/infrastructure/servers/non-root-user).
+- Dokploy docs, [installation](https://docs.dokploy.com/docs/core/installation): ports 80, 443 and 3000.
+- Traefik docs, [API and dashboard](https://doc.traefik.io/traefik/reference/install-configuration/api-dashboard/): `api.insecure`, not recommended in production; and the [v3.0 API page](https://doc.traefik.io/traefik/v3.0/operations/api/) for the 8080 default.
+- Docker docs, [swarm tutorial](https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts): ports 2377, 7946 and 4789.

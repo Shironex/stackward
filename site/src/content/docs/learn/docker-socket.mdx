@@ -1,0 +1,128 @@
+---
+title: The Docker socket
+description: Why anyone who can talk to the Docker daemon controls the whole host, why a read only socket mount does not help, and what to do instead.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Step from '../../../components/Step.astro';
+import Checks from '../../../components/Checks.astro';
+import SocketRoot from '../../../components/diagrams/SocketRoot.astro';
+
+<Step slug="docker-socket" />
+
+The Docker daemon is a root process that does what its clients ask. Its front
+door is a Unix socket, `/var/run/docker.sock`. Whoever can talk to that socket
+is, for practical purposes, root on the host.
+
+## Why it is dangerous
+
+Docker's own security page puts it plainly: the daemon needs root privileges
+(unless you opted in to rootless mode), so only trusted users should be allowed
+to control it. Its post install guide warns that the `docker` group grants
+root level privileges to its members. Remote access is the same risk over the
+network: Docker's documentation says a daemon that accepts remote connections
+can let remote non root users gain root on the host, and that remote access
+without TLS is not recommended.
+
+There are three common ways to hand that power out without meaning to:
+
+1. **Mounting the socket into a container**, so a dashboard, an updater or a
+   CI runner can manage other containers. Reverse proxies and PaaS agents do
+   this too. Mounting it **read only** (`:ro`) does not help: the flag stops
+   the container from replacing the socket file, not from sending API requests
+   through it.
+2. **Adding users to the `docker` group** so they can skip `sudo`.
+3. **Exposing the daemon on TCP**, port 2375 without TLS, or 2376 with TLS but
+   without checking client certificates.
+
+<SocketRoot />
+
+## What an attacker can actually do
+
+Say a web app container has the socket mounted, and the app has a bug that
+lets an attacker run code inside it (an upload handler, a template injection,
+a vulnerable dependency). Without the socket, the attacker is stuck in one
+container. With it, they can ask the daemon to start a new container with the
+host's root filesystem mounted. That is the documented, normal behaviour of
+the API, not a vulnerability, and it gives them every file and every secret on
+the host, and every other container.
+
+The same holds for a user in the `docker` group whose password or key leaks,
+and for anyone on the internet who finds port 2375 open.
+
+## See it on your own server
+
+Socket permissions and group members:
+
+```sh
+ls -l /var/run/docker.sock
+getent group docker
+```
+
+Expect `srw-rw----` owned by `root:docker`. A socket writable by "other" is a
+fail. Every name in the `docker` group is a root equivalent account.
+
+Which containers mount the socket? This prints names and mounts only:
+
+```sh
+docker ps -q | xargs docker inspect --format '{{.Name}} {{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' | grep -E 'docker\.sock|:/var/run |:/run '
+```
+
+Mounting a parent directory such as `/var/run` or `/run` counts too: the socket
+is inside it.
+
+Is the daemon listening on TCP?
+
+```sh
+sudo ss -tlnp | grep -E ':(2375|2376)\b'
+grep -s hosts /etc/docker/daemon.json
+systemctl cat docker.service | grep -E 'ExecStart|-H '
+```
+
+<Aside type="caution" title="docker inspect prints secrets">
+A plain `docker inspect` prints each container's environment variables and
+command line, which often hold passwords and tunnel tokens. Use a
+`--format` filter like the one above, and never paste raw inspect output into
+an issue or a chat. stackward drops `Config.Env` and the command line before
+it parses anything.
+</Aside>
+
+## What the fix changes
+
+- **Remove the mount** from containers that do not truly need it. Most apps
+  never do.
+- **Use a socket proxy** for tools that only need to read (a dashboard, an
+  update notifier). A socket proxy sits between the tool and the socket and
+  allows only the API endpoints and methods you switch on, typically GET on
+  containers and nothing that creates, executes or deletes. The tool can then
+  see containers but cannot start a new one.
+- **Empty the `docker` group** of people who do not need it, and use `sudo`
+  for the occasional command.
+- **Close TCP access.** Remove `-H tcp://` and any `hosts` entry for TCP. To
+  manage a remote daemon, use SSH (`DOCKER_HOST=ssh://user@host`), which
+  Docker documents as a protected way in, or TLS with client certificates.
+
+Each fix removes the path from "code execution in a container" or "one leaked
+account" to "root on the host".
+
+## What the fix can break
+
+- Tools that legitimately manage containers (a PaaS agent, the reverse proxy
+  reading container labels, a self hosted CI runner) stop working without the
+  socket. For those, use a socket proxy with the minimum permissions, and
+  accept that a tool that must create containers is a root equivalent and
+  deserves root level care.
+- People removed from the `docker` group need `sudo docker`, and their
+  scripts need updating.
+- Closing TCP breaks remote clients that used it. Move them to SSH first.
+
+## Checks that cover it
+
+<Checks ids={['DKR-002', 'DKR-003', 'DKR-010', 'DKR-011', 'USR-005']} />
+
+## Sources
+
+- Docker docs, [Docker security](https://docs.docker.com/engine/security/): the daemon attack surface; only trusted users should control the daemon.
+- Docker docs, [Linux post installation steps](https://docs.docker.com/engine/install/linux-postinstall/): the docker group grants root level privileges.
+- Docker docs, [remote access for the daemon](https://docs.docker.com/engine/daemon/remote-access/): remote non root users can gain root; remote access without TLS is not recommended; ports 2375 and 2376.
+- Docker docs, [protect the Docker daemon socket](https://docs.docker.com/engine/security/protect-access/): SSH and TLS; anyone with the keys has root on the daemon's host.
