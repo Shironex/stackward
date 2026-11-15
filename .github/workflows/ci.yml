@@ -31,6 +31,14 @@ jobs:
           fi
       - name: go vet
         run: go vet ./...
+      - name: stackward-guard
+        # Safety model in code: no filesystem writes, program starts or
+        # network use outside the allowlist (internal/lint/guard/allowlist.go),
+        # and no test file over 1000 lines of code. A plain go run instead of
+        # a golangci-lint module plugin: no custom golangci-lint build to
+        # keep in step with the pinned version, and the same command runs
+        # locally.
+        run: go run ./internal/lint/guard/cmd ./...
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
