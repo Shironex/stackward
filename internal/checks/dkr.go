@@ -14,9 +14,9 @@ import (
 // DKR checks read what the docker collector gathers (facts/docker.go).
 // Without access to the Docker socket every DKR check is unknown, never a
 // pass. DKR-002 and DKR-003 may still fail on evidence from files (a TCP
-// host in the daemon config, a listening port, a world writable socket),
-// because hiding those behind "unknown" would hide the worst findings.
-// DKR-001 needs firewall facts too and lands with the exposure slice.
+// host in the daemon config, a listening port from the listener facts, a
+// world writable socket), because hiding those behind "unknown" would hide
+// the worst findings.
 
 const dockerCollector = "docker"
 
@@ -259,10 +259,7 @@ func checkDaemonTCP(in Input) []Result {
 			hosts = append(hosts, h.Addr)
 		}
 	}
-	listeners := []string{}
-	for _, l := range d.TCP {
-		listeners = append(listeners, fmt.Sprintf("%d/%s", l.Port, l.Bind))
-	}
+	listeners, tcpKnown := dockerPortListeners(in.Facts, d)
 	ev := map[string]any{"tcp_hosts": hosts, "listeners": listeners, "tlsverify": dd.TLSVerify}
 	if !dd.TLSVerify && (len(hosts) > 0 || len(listeners) > 0) {
 		what := strings.Join(append(append([]string{}, hosts...), listeners...), ", ")
@@ -271,13 +268,50 @@ func checkDaemonTCP(in Input) []Result {
 	if d.API != "ok" {
 		return apiUnknown(d)
 	}
-	if d.Daemon == nil || dd.ConfigError != "" || !d.TCPRead {
-		return One(Unknown, "could not read the daemon config and /proc/net/tcp to rule out a TCP listener", ev)
+	if d.Daemon == nil || dd.ConfigError != "" || !tcpKnown {
+		return One(Unknown, "could not read the daemon config and the listening sockets to rule out a TCP listener", ev)
 	}
 	if len(hosts) > 0 || len(listeners) > 0 {
 		return One(Pass, "Docker API on TCP requires TLS client certificates (tlsverify)", ev)
 	}
 	return One(Pass, "Docker API listens only on the Unix socket", ev)
+}
+
+// dockerAPIPorts are the ports the Docker daemon uses for its TCP API.
+var dockerAPIPorts = map[int]bool{2375: true, 2376: true}
+
+// dockerPortListeners lists TCP sockets on the Docker API ports as
+// "port/bind" (bind is loopback, any or specific), from the shared listener
+// facts, which ss and /proc give without root. Facts files from builds
+// before the listener facts carried Docker's own /proc read; that is the
+// fallback. known is false when neither was read.
+func dockerPortListeners(f *facts.Facts, d *facts.Docker) (out []string, known bool) {
+	out = []string{}
+	if l := f.Listeners; l != nil {
+		seen := map[string]bool{}
+		for _, s := range l.Sockets {
+			if s.Proto != "tcp" || !dockerAPIPorts[s.Port] {
+				continue
+			}
+			bind := "specific"
+			switch s.Class() {
+			case facts.BindLoopback:
+				bind = "loopback"
+			case facts.BindWildcard:
+				bind = "any"
+			}
+			if k := fmt.Sprintf("%d/%s", s.Port, bind); !seen[k] {
+				seen[k] = true
+				out = append(out, k)
+			}
+		}
+		sort.Strings(out)
+		return out, true
+	}
+	for _, t := range d.TCP {
+		out = append(out, fmt.Sprintf("%d/%s", t.Port, t.Bind))
+	}
+	return out, d.TCPRead
 }
 
 // DKR-003: the socket must not be world writable.
