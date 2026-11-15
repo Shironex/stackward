@@ -44,6 +44,7 @@ type probeFlags struct {
 	iOwnThis  bool
 	noSandbox bool
 	all       bool
+	plain     bool
 }
 
 func runProbe(args []string, stdout, stderr io.Writer) int {
@@ -61,6 +62,7 @@ func runProbe(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&pf.iOwnThis, "i-own-this", false, "confirm you own the host or may test it (required when not on a terminal)")
 	fs.BoolVar(&pf.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
 	fs.BoolVar(&pf.all, "all", false, "text output: list passing and skipped results too")
+	fs.BoolVar(&pf.plain, "plain", false, "text output: no colors, Unicode or box lines, as when piped (NO_COLOR drops only colors)")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward probe <host-or-ip> [flags]\n\n")
 		fmt.Fprintf(stderr, "Run from another machine: plain TCP connects to a short fixed port list over\nIPv4 and IPv6, an SSH banner read, an HTTP check of the raw IP and an\noptional HTTPS check of --hostname. One host only; ranges are refused.\n\nFlags:\n")
@@ -134,6 +136,8 @@ func runProbe(args []string, stdout, stderr io.Writer) int {
 		defer func() { _ = outFile.Close() }()
 		w = outFile
 	}
+	textOpts := textOptions(stdout, outFile != nil, pf.plain)
+	textOpts.Passing = pf.all
 	// Probe needs outbound TCP, so only file writes are taken away.
 	sb := sandbox.Apply(sandbox.Options{Disabled: pf.noSandbox, AllowNetwork: true})
 
@@ -156,7 +160,7 @@ func runProbe(args []string, stdout, stderr io.Writer) int {
 	if pf.format == "json" {
 		err = report.WriteJSON(w, rep)
 	} else {
-		err = report.WriteText(w, rep, report.TextOptions{Color: outFile == nil && colorOK(stdout), Passing: pf.all})
+		err = report.WriteText(w, rep, textOpts)
 	}
 	if err != nil {
 		return fail("writing report: %v", err)
