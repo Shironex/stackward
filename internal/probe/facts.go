@@ -107,6 +107,11 @@ type Facts struct {
 	// ResolveError is set when the target name did not resolve at all.
 	ResolveError string    `json:"resolve_error,omitempty"`
 	Addresses    []Address `json:"addresses"`
+	// SelfTarget is true when a resolved address is loopback or belongs to a
+	// local interface: the run is then not an outside view.
+	SelfTarget bool `json:"self_target,omitempty"`
+	// SelfAddresses are the resolved addresses that matched.
+	SelfAddresses []string `json:"self_addresses,omitempty"`
 	// Truncated is true when the name resolved to more addresses per family
 	// than probe tries.
 	Truncated bool       `json:"truncated,omitempty"`

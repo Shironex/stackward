@@ -48,10 +48,14 @@ type Report struct {
 type Probe struct {
 	Target string `json:"target"`
 	// Hostname is the --hostname checked over HTTPS, if any.
-	Hostname  string         `json:"hostname,omitempty"`
-	Addresses []ProbeAddress `json:"addresses"`
-	Families  []ProbeFamily  `json:"families"`
-	Ports     []ProbePort    `json:"ports"`
+	Hostname string `json:"hostname,omitempty"`
+	// SelfTarget is true when the target is the machine probe ran on
+	// (loopback or a local interface address): the results are then not an
+	// outside view.
+	SelfTarget bool           `json:"self_target,omitempty"`
+	Addresses  []ProbeAddress `json:"addresses"`
+	Families   []ProbeFamily  `json:"families"`
+	Ports      []ProbePort    `json:"ports"`
 	// Notes are caveats the reader needs (for example a skipped TLS
 	// verification or an address family this machine cannot reach).
 	Notes []string `json:"notes,omitempty"`
