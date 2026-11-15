@@ -472,3 +472,52 @@ func TestImageRef(t *testing.T) {
 		}
 	}
 }
+
+// TestDKR002PublishedSocketProxy is the real run: a socket proxy container
+// publishes 2375 on 127.0.0.1 through docker-proxy. That is not dockerd on
+// TCP and must not read "anyone who reaches it is root".
+func TestDKR002PublishedSocketProxy(t *testing.T) {
+	sock := []facts.DockerMount{{Type: "bind", Source: "/var/run/docker.sock", Target: "/var/run/docker.sock", ReadOnly: true}}
+	proxy := func(bind string, flags map[string]string) facts.DockerContainer {
+		return app("socket-proxy", func(c *facts.DockerContainer) {
+			c.Image = "tecnativa/docker-socket-proxy:0.3"
+			c.Mounts, c.Flags = sock, flags
+			c.Ports = []facts.DockerPort{{ContainerPort: 2375, Proto: "tcp", HostIP: bind, HostPort: 2375}}
+		})
+	}
+	host := func(addr string, c facts.DockerContainer, procs ...string) *facts.Facts {
+		f := dockerHost(c)
+		f.Docker.TCPRead = false
+		f.Listeners = &facts.Listeners{Source: "ss", ProcessesVisible: true, Sockets: []facts.Listener{netSock("tcp", addr, 2375, procs...)}}
+		return f
+	}
+	readOnly := map[string]string{"CONTAINERS": "1", "INFO": "1", "POST": "0"}
+	cases := []struct {
+		name    string
+		f       *facts.Facts
+		want    Level
+		mention string
+	}{
+		{"read only proxy on loopback", host("127.0.0.1", proxy("127.0.0.1", readOnly), "docker-proxy"), Info, "CONTAINERS, INFO"},
+		{"proxy with POST on loopback", host("127.0.0.1", proxy("127.0.0.1", map[string]string{"POST": "1"}), "docker-proxy"), Warn, "POST"},
+		{"proxy on all interfaces", host("0.0.0.0", proxy("", readOnly), "docker-proxy"), Fail, "other hosts"},
+		{"raw socket relay on loopback", host("127.0.0.1", app("relay", func(c *facts.DockerContainer) {
+			c.Mounts = sock
+			c.Ports = []facts.DockerPort{{ContainerPort: 2375, Proto: "tcp", HostIP: "127.0.0.1", HostPort: 2375}}
+		}), "docker-proxy"), Warn, "mounts the Docker socket"},
+		{"dockerd itself on loopback", host("127.0.0.1", app("web"), "dockerd"), Fail, "loopback only"},
+		{"dockerd itself on any", host("0.0.0.0", app("web"), "dockerd"), Fail, "anyone who reaches it is root"},
+	}
+	for _, tc := range cases {
+		rs := checkDaemonTCP(Input{Facts: tc.f})
+		if got := only(t, rs); got != tc.want || !strings.Contains(rs[0].Message, tc.mention) {
+			t.Errorf("%s: got %s %q, want %s mentioning %q", tc.name, got, rs[0].Message, tc.want, tc.mention)
+		}
+	}
+	// docker-proxy seen, but the API is not readable: unknown, not a fail.
+	f := host("127.0.0.1", proxy("127.0.0.1", readOnly), "docker-proxy")
+	f.Docker.API, f.Docker.APIReason = "denied", "permission denied"
+	if got := only(t, checkDaemonTCP(Input{Facts: f})); got != Unknown {
+		t.Errorf("denied API: %s", got)
+	}
+}

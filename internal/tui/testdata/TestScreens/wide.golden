@@ -2,7 +2,7 @@
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
  104 checks, 141 results  6 fail  10 warn  89 unknown  0 info  34 pass  2 skip                           mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  105 of 141                                      │ DETAIL                                            1-25 of 44
+FINDINGS  105 of 141                                      │ DETAIL                                            1-25 of 53
 Docker DKR                                       17 of 53 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
   FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
@@ -11,22 +11,22 @@ Docker DKR                                       17 of 53 │ DKR-002  Docker
   FAIL    DKR-030  blog/db · Projects do not share netwo… │ 2375/any): anyone who reaches it is root                    
   FAIL    DKR-030  shop/web · Projects do not share netw… │                                                             
   WARN    DKR-010  coolify-proxy · No container mounts t… │ EVIDENCE                                                    
-  WARN    DKR-010  socket-proxy · No container mounts th… │   listeners  2375/any                                       
-  WARN    DKR-011  socket-proxy · Socket proxies do not … │   tcp_hosts  tcp://0.0.0.0:2375                             
-  WARN    DKR-020  socket-proxy · Containers do not run … │   tlsverify  false                                          
-  WARN    DKR-022  shop/web · No dangerous added capabil… │                                                             
-  WARN    DKR-023  tunnel · No host network, PID or IPC … │ WHY IT MATTERS                                              
-  WARN    DKR-024  shop/web · Containers keep seccomp an… │   The Docker API is root on the host. A daemon listening on 
-  WARN    DKR-031  Container logs rotate                  │   TCP (conventionally 2375) without tlsverify lets anyone   
-  WARN    DKR-032  tunnel · Infrastructure containers ru… │   who reaches the port start a privileged container that    
-  WARN    DKR-034  Docker Engine is supported upstream    │   mounts the host filesystem. Scanners look for 2375 all    
-  UNKNOWN DKR-001  coolify-proxy · Published container p… │   day. Even a loopback listener gives every local user and  
-System SYS                                              5 │   every host network container root. stackward reads the    
-  UNKNOWN SYS-001  Distribution is one stackward is test… │   hosts in daemon.json and the effective ExecStart of       
-  UNKNOWN SYS-002  No reboot pending                      │   docker.service, and the listening sockets on 2375 and 2376
-  UNKNOWN SYS-003  Running kernel is the newest installed │   from the shared listener facts (ss or /proc, no root      
-  UNKNOWN SYS-004  Clock is synchronized                  │   needed). This check can fail without access to the Docker 
-  UNKNOWN SYS-005  Disks have free space                  │   socket.                                                   
-SSH                                                    16 │                                                             
+  WARN    DKR-010  socket-proxy · No container mounts th… │   listeners     2375/any                                    
+  WARN    DKR-011  socket-proxy · Socket proxies do not … │   published_by  none                                        
+  WARN    DKR-020  socket-proxy · Containers do not run … │   tcp_hosts     tcp://0.0.0.0:2375                          
+  WARN    DKR-022  shop/web · No dangerous added capabil… │   tlsverify     false                                       
+  WARN    DKR-023  tunnel · No host network, PID or IPC … │                                                             
+  WARN    DKR-024  shop/web · Containers keep seccomp an… │ WHY IT MATTERS                                              
+  WARN    DKR-031  Container logs rotate                  │   The Docker API is root on the host. A daemon listening on 
+  WARN    DKR-032  tunnel · Infrastructure containers ru… │   TCP (conventionally 2375) without tlsverify lets anyone   
+  WARN    DKR-034  Docker Engine is supported upstream    │   who reaches the port start a privileged container that    
+  UNKNOWN DKR-001  coolify-proxy · Published container p… │   mounts the host filesystem. Scanners look for 2375 all    
+System SYS                                              5 │   day. Even a loopback listener gives every local user and  
+  UNKNOWN SYS-001  Distribution is one stackward is test… │   every host network container root. stackward reads the    
+  UNKNOWN SYS-002  No reboot pending                      │   hosts in daemon.json and the effective ExecStart of       
+  UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
+  UNKNOWN SYS-004  Clock is synchronized                  │   from the shared listener facts (ss or /proc, no root      
+  UNKNOWN SYS-005  Disks have free space                  │   needed). This check can fail without access to the Docker 
+SSH                                                    16 │   socket. A port on 2375 or 2376 held by docker-proxy is a  
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            
