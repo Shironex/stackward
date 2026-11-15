@@ -64,6 +64,11 @@ jobs:
       - name: self audit on the runner
         run: |
           set -euo pipefail
+          # Runner images delete apt's binary caches; a real server keeps
+          # them (apt update rebuilds them). Without them apt-get -s must
+          # reparse the lists, which needs a temporary file the sandbox
+          # refuses, so build them once like a server has them.
+          sudo apt-cache gencaches
           bin=dist/stackward-linux-amd64
           "$bin" version
           set +e
@@ -79,6 +84,45 @@ jobs:
           grep -A4 '"sandbox"' report.json
           if grep -q '"state": "failed"' report.json; then
             echo "sandbox failed to apply"; exit 1
+          fi
+      - name: collectors work under the sandbox
+        # A command that needs to write (ufw status opens /run/ufw.lock)
+        # dies under the Landlock sandbox and leaves its collector partial,
+        # which turns whole check groups unknown on real hosts. Run the same
+        # audit as root without the sandbox and fail when a collector ends
+        # worse with it, or reports a command that exited non zero only
+        # under it. Unsupported kernels report the sandbox as unavailable
+        # and are skipped.
+        run: |
+          set -euo pipefail
+          bin=dist/stackward-linux-amd64
+          state="$(jq -r '.coverage.sandbox.state' report.json)"
+          echo "sandbox state: $state"
+          if [ "$state" != "landlock" ]; then
+            echo "sandbox not applied on this runner; nothing to compare"; exit 0
+          fi
+          set +e
+          sudo "$bin" audit --json --no-sandbox > report-nosandbox.json; code=$?
+          set -e
+          [ "$code" -le 1 ]
+          summary='[.coverage.collectors[] | {key: .name, value: {status, error: (.error // "")}}] | from_entries'
+          jq "$summary" report.json > with.json
+          jq "$summary" report-nosandbox.json > without.json
+          jq -r -n --slurpfile w with.json --slurpfile wo without.json '
+            $w[0] | to_entries[] | select(.value.status != "skipped")
+            | "\(.key): sandbox \(.value.status), no sandbox \($wo[0][.key].status // "missing")"'
+          bad="$(jq -r -n --slurpfile w with.json --slurpfile wo without.json '
+            $w[0] | to_entries[]
+            | select(
+                (.value.status == "partial" or .value.status == "failed")
+                and (($wo[0][.key].status // "") == "ok"
+                     or ((.value.error | test("exit(ed)? -?[0-9]+"))
+                         and (($wo[0][.key].error // "") | test("exit(ed)? -?[0-9]+") | not))))
+            | "\(.key): \(.value.error)"')"
+          if [ -n "$bad" ]; then
+            echo "collectors that break only under the sandbox:"
+            echo "$bad"
+            exit 1
           fi
 
   gitleaks:
