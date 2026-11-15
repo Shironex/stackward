@@ -124,6 +124,25 @@ const (
 	dockerConfigRP = ".docker/config.json"
 )
 
+// IsPaaSKeyName reports whether a file in a platform SSH key folder can be a
+// private key. Coolify keeps each key as ssh_key@<id> and takes a flock on
+// ssh_key@<id>.lock beside it while writing; Dokploy keeps <name>_rsa and
+// <name>_rsa.pub. Public halves, lock files and the ssh client's own files
+// are not keys.
+func IsPaaSKeyName(name string) bool {
+	lower := strings.ToLower(name)
+	for _, suffix := range []string{".pub", ".lock", ".tmp"} {
+		if strings.HasSuffix(lower, suffix) {
+			return false
+		}
+	}
+	switch {
+	case strings.HasPrefix(lower, "known_hosts"), lower == "config", lower == "authorized_keys":
+		return false
+	}
+	return true
+}
+
 // homeSkipDirs are never descended into when looking for keys: they are
 // large and hold dependencies, not a user's keys.
 var homeSkipDirs = map[string]bool{
@@ -197,7 +216,7 @@ func (secretsCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	s.PaaSSSHKeys = scanPaths(sys, keyDirs)
 	for _, d := range keyDirs {
 		files := scanTrees(sys, []rootOf{{d.path, d.platform}}, 1, func(_ string, e fs.DirEntry) (string, bool) {
-			return "key", e.Type().IsRegular() && !strings.HasSuffix(e.Name(), ".pub")
+			return "key", e.Type().IsRegular() && IsPaaSKeyName(e.Name())
 		}, nil)
 		s.PaaSSSHKeys.Files = append(s.PaaSSSHKeys.Files, files.Files...)
 		s.PaaSSSHKeys.Denied = appendUnique(s.PaaSSSHKeys.Denied, files.Denied...)

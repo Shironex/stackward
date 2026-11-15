@@ -26,7 +26,7 @@
       "id": "SEC-003",
       "title": "Platform SSH key folder is closed to other users",
       "severity": "critical",
-      "rationale": "The platform keeps the private SSH keys of every server it manages in one folder, usually for root logins. Anyone who can read it owns every managed server.",
+      "rationale": "The platform keeps the private SSH keys of every server it manages in one folder, usually for root logins. Anyone who can read it owns every managed server. Only files that can be keys are judged: public halves (.pub), the lock files Coolify takes beside each key (ssh_key@ID.lock) and the ssh client's known_hosts and config are skipped.",
       "verify": "stat -c '%a %U:%G' /data/coolify/ssh/keys; ls -l /data/coolify/ssh/keys",
       "fix": "chmod 700 the folder and chmod 600 every key in it.",
       "needs_root": true
