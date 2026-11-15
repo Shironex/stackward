@@ -1,0 +1,17 @@
+{
+  "name": "stackward-showcase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-bin": "node build-bin.mjs",
+    "capture": "node build-bin.mjs && showcase capture && showcase frame",
+    "record": "node build-bin.mjs && showcase record",
+    "all": "node build-bin.mjs && showcase all"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@lydell/node-pty": "1.2.0-beta.18",
+    "@noctcore/showcase-kit": "0.3.1",
+    "playwright": "1.65.0"
+  }
+}
