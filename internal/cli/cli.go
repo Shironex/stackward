@@ -103,6 +103,9 @@ type auditFlags struct {
 	showHostname bool
 	noSandbox    bool
 	all          bool
+	info         bool
+	group        bool
+	plain        bool
 }
 
 func runAudit(args []string, stdout, stderr io.Writer) int {
@@ -120,7 +123,10 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	fs.DurationVar(&af.timeout, "timeout", facts.DefaultTimeout, "time limit for each collector")
 	fs.BoolVar(&af.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&af.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
-	fs.BoolVar(&af.all, "all", false, "text and md output: list passing and skipped results too")
+	fs.BoolVar(&af.all, "all", false, "text and md output: list passing and skipped results too (text: and every info result in full)")
+	fs.BoolVar(&af.info, "info", false, "text output: list every info result in full instead of one line each")
+	fs.BoolVar(&af.group, "group", false, "text output: lay results out by check group instead of fail, warn, unknown, info")
+	fs.BoolVar(&af.plain, "plain", false, "text output: no colors, Unicode or box lines, as when piped (NO_COLOR drops only colors)")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -170,6 +176,8 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		defer func() { _ = outFile.Close() }()
 		w = outFile
 	}
+	textOpts := textOptions(stdout, outFile != nil, af.plain)
+	textOpts.Passing, textOpts.Info, textOpts.Group = af.all, af.info, af.group
 	var loaded *facts.Facts
 	if af.factsFile != "" {
 		loaded, err = loadFacts(af.factsFile)
@@ -214,7 +222,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	case "md":
 		err = report.WriteMarkdown(w, rep, report.MarkdownOptions{Passing: af.all})
 	default:
-		err = report.WriteText(w, rep, report.TextOptions{Color: outFile == nil && colorOK(stdout), Passing: af.all})
+		err = report.WriteText(w, rep, textOpts)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "stackward audit: writing report: %v\n", err)
@@ -243,11 +251,6 @@ func loadFacts(path string) (*facts.Facts, error) {
 	}
 	defer func() { _ = fh.Close() }()
 	return facts.Load(fh)
-}
-
-// colorOK reports whether w is a terminal and NO_COLOR is unset.
-func colorOK(w io.Writer) bool {
-	return colorEnv() && isTerminal(w)
 }
 
 func runExplain(args []string, stdout, stderr io.Writer) int {
