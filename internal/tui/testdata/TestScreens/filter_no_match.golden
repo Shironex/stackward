@@ -1,8 +1,8 @@
  stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
  profile public-web (inferred) · sandbox unavailable · root yes                 
- 101 results  3 fail  5 warn  65 unknown  7 info  17 pass  4 skip               
+ 111 results  3 fail  5 warn  75 unknown  7 info  17 pass  4 skip               
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  0 of 101                /zzz │ DETAIL                                 
+FINDINGS  0 of 111                /zzz │ DETAIL                                 
                                        │                                        
  No result matches "zzz".              │                                        
  esc clears the filter                 │                                        

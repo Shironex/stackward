@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no, run with sudo for full coverage
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 6 checked, 86 unknown, 0 skipped (90 checks), root: no
+- **Coverage:** 6 checked, 96 unknown, 0 skipped (100 checks), root: no
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 0 |
 | warn | 0 |
-| unknown | 86 |
+| unknown | 96 |
 | info | 0 |
 | pass | 6 |
 | skip | 0 |
@@ -25,7 +25,7 @@ No findings.
 
 Not running as root: run with sudo for full coverage.
 
-<details><summary>86 checks not inspected</summary>
+<details><summary>96 checks not inspected</summary>
 
 **SYS: System**
 
@@ -118,6 +118,21 @@ Not running as root: run with sudo for full coverage.
 | [CF-003](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-003.md) | The proxy is not reachable on a public address while ingress is the tunnel | `host` | not inspected: the cloudflared collector did not run |
 | [CF-004](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-004.md) | The tunnel token is not a command line argument | `host` | not inspected: the cloudflared collector did not run |
 | [CF-005](https://github.com/Shironex/stackward/blob/main/docs/checks/CF-005.md) | The origin IP does not answer on 80/443 from outside (probe) | `host` | not inspected: the cloudflared collector did not run |
+
+**CS: CrowdSec and fail2ban**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [CS-001](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-001.md) | CrowdSec runs when installed | `host` | not inspected: the crowdsec collector did not run |
+| [CS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-002.md) | A bouncer is registered and pulling decisions | `host` | not inspected: the crowdsec collector did not run |
+| [CS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-003.md) | Behind a tunnel, an L7 bouncer enforces bans | `host` | not inspected: the crowdsec collector did not run |
+| [CS-004](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-004.md) | Private range whitelists do not swallow tunnel traffic | `host` | not inspected: the crowdsec collector did not run |
+| [CS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-005.md) | The proxy access log is acquired | `host` | not inspected: the crowdsec collector did not run |
+| [CS-006](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-006.md) | The CrowdSec local API is not on a wildcard address | `host` | not inspected: the crowdsec collector did not run |
+| [CS-007](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-007.md) | The firewall bouncer also protects Docker published ports | `host` | not inspected: the crowdsec collector did not run |
+| [CS-008](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-008.md) | The proxy bouncer refreshes decisions often | `host` | not inspected: the crowdsec collector did not run |
+| [CS-010](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-010.md) | Public SSH has brute force protection on the right port | `host` | not inspected: the listeners collector did not run |
+| [CS-011](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-011.md) | fail2ban ignores the tailnet range when Tailscale is used | `host` | not inspected: the fail2ban collector did not run |
 
 **UPD: Updates**
 

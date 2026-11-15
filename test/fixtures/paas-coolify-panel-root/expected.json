@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 90,
-    "results": 101,
+    "checks": 100,
+    "results": 111,
     "checked": 32,
-    "unknown": 65,
+    "unknown": 75,
     "skipped": 4,
     "root": true,
     "sandbox": {
@@ -53,7 +53,7 @@
   "summary": {
     "fail": 3,
     "warn": 5,
-    "unknown": 65,
+    "unknown": 75,
     "info": 7,
     "pass": 17,
     "skip": 4
@@ -1153,6 +1153,173 @@
       },
       "fix": {
         "hint": "See CF-003: bind the proxy to loopback and close 80/443 in the provider firewall"
+      }
+    },
+    {
+      "id": "CS-001",
+      "group": "CS",
+      "title": "CrowdSec runs when installed",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable and start the service: systemctl enable crowdsec, then systemctl start crowdsec",
+        "docs": "https://docs.crowdsec.net/"
+      }
+    },
+    {
+      "id": "CS-002",
+      "group": "CS",
+      "title": "A bouncer is registered and pulling decisions",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API",
+        "docs": "https://docs.crowdsec.net/u/bouncers/intro"
+      }
+    },
+    {
+      "id": "CS-003",
+      "group": "CS",
+      "title": "Behind a tunnel, an L7 bouncer enforces bans",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use the proxy bouncer (or the Cloudflare bouncer) together with a parser that reads the real client address"
+      }
+    },
+    {
+      "id": "CS-004",
+      "group": "CS",
+      "title": "Private range whitelists do not swallow tunnel traffic",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add an s02-enrich parser that sets source_ip from Cf-Connecting-Ip when the logged source is in any of 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (use IpInRange, not one literal address)",
+        "docs": "https://docs.crowdsec.net/docs/whitelist/intro"
+      }
+    },
+    {
+      "id": "CS-005",
+      "group": "CS",
+      "title": "The proxy access log is acquired",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable the proxy access log (JSON for Traefik) and add an acquisition entry with labels type set to the proxy (traefik, caddy, nginx)"
+      }
+    },
+    {
+      "id": "CS-006",
+      "group": "CS",
+      "title": "The CrowdSec local API is not on a wildcard address",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set api.server.listen_uri to 127.0.0.1:8080 (or the Docker bridge address) and allow that port from Docker ranges only"
+      }
+    },
+    {
+      "id": "CS-007",
+      "group": "CS",
+      "title": "The firewall bouncer also protects Docker published ports",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add DOCKER-USER to iptables_chains (or forward to nftables_hooks) in the firewall bouncer config, then restart the bouncer"
+      }
+    },
+    {
+      "id": "CS-008",
+      "group": "CS",
+      "title": "The proxy bouncer refreshes decisions often",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use stream mode with an update interval of 10 to 15 seconds"
+      }
+    },
+    {
+      "id": "CS-010",
+      "group": "CS",
+      "title": "Public SSH has brute force protection on the right port",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo)",
+      "evidence": {
+        "crowdsec_sshd": false,
+        "fail2ban_sshd": "unknown",
+        "ssh_ports": [
+          22
+        ],
+        "ssh_public": "yes"
+      },
+      "fix": {
+        "hint": "Enable an sshd jail with port set to the real sshd port, or install the crowdsecurity/sshd collection"
+      }
+    },
+    {
+      "id": "CS-011",
+      "group": "CS",
+      "title": "fail2ban ignores the tailnet range when Tailscale is used",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the fail2ban collector did not run",
+      "evidence": {
+        "collector": "fail2ban",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add 100.64.0.0/10 (and fd7a:115c:a1e0::/48) to ignoreip in jail.local [DEFAULT]"
       }
     },
     {
