@@ -132,6 +132,12 @@ type NFTables struct {
 	// UFWChains is true when the ruleset holds UFW's ufw-user-input chain
 	// (iptables-nft hosts), which exists only while UFW is loaded.
 	UFWChains bool `json:"ufw_chains,omitempty"`
+	// DockerUser is true when the ip family holds a DOCKER-USER chain
+	// (iptables-nft hosts), and DockerUserRules are its rules in nft's
+	// own syntax ("ip saddr 10.0.0.0/8 counter return"), rendered from the
+	// JSON listing. They matter when iptables itself could not be listed.
+	DockerUser      bool     `json:"docker_user,omitempty"`
+	DockerUserRules []string `json:"docker_user_rules,omitempty"`
 }
 
 // NFTTable is one nftables table.
@@ -258,9 +264,9 @@ func (firewallCollector) Collect(ctx context.Context, sys System, out *Facts) er
 
 	fw.Firewalld = collectFirewalld(ctx, sys)
 
-	fw.DockerUser = dockerUserState(ipt)
+	fw.DockerUser = dockerUserState(ipt, nft)
 	fw.DockerBackend = dockerBackend(nft, ipt)
-	fw.UFWDocker = collectUFWDocker(sys, ufw, ipt)
+	fw.UFWDocker = collectUFWDocker(sys, ufw, ipt, nft)
 
 	out.Firewall = fw
 	return errors.Join(errs...)
@@ -488,6 +494,9 @@ func ParseNFTJSON(b []byte) (*NFTables, error) {
 			if c.Name == ufwUserInputChain {
 				n.UFWChains = true
 			}
+			if c.Name == dockerUserChain && c.Family == "ip" {
+				n.DockerUser = true
+			}
 			if c.Hook != "" {
 				idx[key{c.Family, c.Table, c.Name}] = len(n.Chains)
 				n.Chains = append(n.Chains, NFTChain{Family: c.Family, Table: c.Table, Name: c.Name, Hook: c.Hook, Policy: c.Policy})
@@ -499,6 +508,9 @@ func ParseNFTJSON(b []byte) (*NFTables, error) {
 			}
 			if json.Unmarshal(obj["rule"], &r) != nil {
 				continue
+			}
+			if r.Chain == dockerUserChain && r.Family == "ip" {
+				n.DockerUserRules = append(n.DockerUserRules, renderNFTRule(r.Expr))
 			}
 			i, ok := idx[key{r.Family, r.Table, r.Chain}]
 			if !ok {
@@ -621,9 +633,22 @@ func ParseIptablesS(b []byte) *Iptables {
 	return t
 }
 
-func dockerUserState(t *Iptables) string {
+// dockerUserState reads the DOCKER-USER chain from iptables -S, or from
+// the nft listing when iptables could not be listed.
+func dockerUserState(t *Iptables, n *NFTables) string {
 	if t == nil || !t.Listed {
-		return ""
+		if n == nil || !n.Listed {
+			return ""
+		}
+		if !n.DockerUser {
+			return "absent"
+		}
+		for _, r := range n.DockerUserRules {
+			if r != "return" {
+				return "filtered"
+			}
+		}
+		return "default"
 	}
 	if !t.HasChain(dockerUserChain) {
 		return "absent"
@@ -652,7 +677,7 @@ func dockerBackend(n *NFTables, t *Iptables) string {
 	return ""
 }
 
-func collectUFWDocker(sys System, u *UFW, t *Iptables) *UFWDocker {
+func collectUFWDocker(sys System, u *UFW, t *Iptables, n *NFTables) *UFWDocker {
 	if u == nil || !u.Installed {
 		return nil
 	}
@@ -663,10 +688,18 @@ func collectUFWDocker(sys System, u *UFW, t *Iptables) *UFWDocker {
 			d.InFiles = "present"
 		}
 	}
-	if t != nil && t.Listed {
+	switch {
+	case t != nil && t.Listed:
 		d.Loaded = "no"
 		for _, r := range t.DockerUserRules {
 			if strings.HasSuffix(r, "-j "+ufwForwardTarget) {
+				d.Loaded = "yes"
+			}
+		}
+	case n != nil && n.Listed:
+		d.Loaded = "no"
+		for _, r := range n.DockerUserRules {
+			if strings.HasSuffix(r, "jump "+ufwForwardTarget) {
 				d.Loaded = "yes"
 			}
 		}
