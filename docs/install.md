@@ -4,6 +4,12 @@ stackward is a single static binary. You run it on a server you care about, so
 this page shows how to check what you downloaded before you run it. Nothing
 here needs root, and nothing runs the binary for you.
 
+The newest release is the pre-release `v0.1.0-rc.1`. GitHub does not mark a
+pre-release as "latest", so `releases/latest` has nothing to point at yet and
+every command below names the tag. Once a stable release exists, use its tag
+instead. The release notes are the matching section of `CHANGELOG.md` in the
+repository.
+
 Releases are built by GitHub Actions from a tag (`v*`) on `main`. Each release
 holds:
 
@@ -20,7 +26,7 @@ holds:
 ## Download, verify, run
 
 ```sh
-VERSION=v0.1.0   # a real tag from the releases page
+VERSION=v0.1.0-rc.1   # a pre-release; use a stable tag once there is one
 ARCH=amd64       # or arm64 (uname -m: x86_64 or aarch64)
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -58,12 +64,14 @@ gh attestation verify "stackward_${VERSION#v}_linux_$ARCH.tar.gz" --repo Shirone
 check when cosign is installed. It is short on purpose; read it first.
 
 ```sh
-curl -fsSLO https://github.com/Shironex/stackward/releases/latest/download/get.sh
+curl -fsSLO "https://github.com/Shironex/stackward/releases/download/$VERSION/get.sh"
 less get.sh
-sh get.sh -d "$HOME/.local/bin"      # -v v0.1.0 pins a version
+sh get.sh -v "$VERSION" -d "$HOME/.local/bin"
 ```
 
-It detects Linux or macOS and amd64 or arm64, installs only the `stackward`
+Without `-v` (or `STACKWARD_VERSION`) it installs the latest stable release and
+stops with a hint when only pre-releases exist: it never picks a pre-release
+on its own. It detects Linux or macOS and amd64 or arm64, installs only the `stackward`
 file into the directory you pass (default: the current directory), never runs
 the binary, never uses sudo, and stops without installing if a check fails.
 When cosign is missing it says so and tells you the signature was not checked.
