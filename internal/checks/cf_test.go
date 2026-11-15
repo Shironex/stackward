@@ -51,6 +51,10 @@ func TestCF003(t *testing.T) {
 	loopback := l(netSock("tcp", "127.0.0.1", 443, "docker-proxy"), netSock("tcp", "127.0.0.1", 80, "docker-proxy"))
 	published := l(netSock("tcp", "0.0.0.0", 443, "docker-proxy"))
 	nginx := l(netSock("tcp", "0.0.0.0", 443, "nginx"))
+	byDockerd := l(netSock("tcp", "0.0.0.0", 443, "dockerd"))
+	proxy443 := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
+		Name: "proxy", Running: true, Ports: []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 443, ContainerPort: 443, Proto: "tcp"}},
+	}}}
 	filtered := netUFW("deny")
 	filtered.DockerUser = "filtered"
 	netCases(t, "CF-003", []netCase{
@@ -64,6 +68,7 @@ func TestCF003(t *testing.T) {
 		{"host proxy blocked by ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx, Firewall: netUFW("deny")}, "", Pass},
 		{"host proxy allowed by ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx, Firewall: netUFW("deny", netWebAnywhere)}, "", Fail},
 		{"host proxy, firewall unknown", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: nginx}, "", Unknown},
+		{"dockerd holds a published 443 under ufw", &facts.Facts{Cloudflared: cfTunnel(2), Listeners: byDockerd, Firewall: netUFW("deny"), Docker: proxy443}, "", Fail},
 	})
 }
 

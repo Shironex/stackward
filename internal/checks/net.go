@@ -586,11 +586,13 @@ func checkUFWDockerLoaded(in Input) []Result {
 	return One(Unknown, "ufw-docker is loaded with no tailscale0 route rules; whether ports are published needs the Docker facts", ev)
 }
 
-// publishedPorts lists published ports from docker-proxy listeners and,
-// when the Docker API was read, from the containers themselves (hosts
-// without the userland proxy have no listener for them).
+// publishedPorts lists published ports from the listeners a container
+// holds (docker-proxy, or dockerd while the Docker API names the
+// container) and, when the Docker API was read, from the containers
+// themselves (hosts without the userland proxy may have no listener for
+// them).
 func publishedPorts(f *facts.Facts) []string {
-	out := publishedViaProxy(f.Listeners)
+	out := publishedListeners(f)
 	if out == nil {
 		out = []string{}
 	}
@@ -621,17 +623,18 @@ func publishedPorts(f *facts.Facts) []string {
 	return out
 }
 
-// publishedViaProxy lists ports held by docker-proxy. Hosts that run
-// Docker without the userland proxy publish ports without one, so an empty
-// list proves nothing.
-func publishedViaProxy(l *facts.Listeners) []string {
+// publishedListeners lists ports whose listener a container holds. Hosts
+// that run Docker without the userland proxy may publish ports without
+// one, so an empty list proves nothing.
+func publishedListeners(f *facts.Facts) []string {
+	l := f.Listeners
 	if l == nil {
 		return nil
 	}
 	seen := map[string]bool{}
 	out := []string{}
 	for _, s := range l.Sockets {
-		if s.HasProcess("docker-proxy") {
+		if s.PublishedByContainer(f.Docker) {
 			k := portLabel(s.Proto, s.Port)
 			if !seen[k] {
 				seen[k] = true

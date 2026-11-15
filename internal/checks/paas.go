@@ -548,10 +548,13 @@ func paasJudgeHostPort(f *facts.Facts, ls []paasListener, proto string, port int
 			exposed = append(exposed, l.Addr)
 		}
 	}
-	// A visible process name settles whether Docker published the port.
+	// A visible process name settles whether Docker published the port:
+	// docker-proxy, or dockerd (no userland proxy, or the nftables
+	// backend) while a container publishes that address and port.
 	for _, l := range ls {
 		if strings.TrimSuffix(l.Proto, "6") == proto && l.Port == port && l.Process != "" {
-			viaDocker = strings.Contains(","+l.Process+",", ",docker-proxy,")
+			sock := facts.Listener{Proto: proto, Address: l.Addr, Port: l.Port, Processes: strings.Split(l.Process, ",")}
+			viaDocker = sock.PublishedByContainer(f.Docker)
 			break
 		}
 	}
