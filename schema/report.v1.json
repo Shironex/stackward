@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/report.v1.json",
+  "title": "stackward report v1",
+  "description": "Output of `stackward audit --json`. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs report.v2. Results are ordered by group (catalog order), then check id, then subject.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tool", "generated_at", "host", "profile", "coverage", "summary", "results"],
+  "properties": {
+    "schema": { "const": "stackward.report.v1" },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "stackward" },
+        "version": { "type": "string" }
+      }
+    },
+    "generated_at": {
+      "description": "When the facts were collected, RFC 3339 UTC. Empty when unknown.",
+      "type": "string"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hostname_hash": {
+          "description": "sha256: plus the first 16 hex digits of the SHA-256 of the hostname. Present unless --show-hostname.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{16}$"
+        },
+        "hostname": { "description": "Only with --show-hostname.", "type": "string" },
+        "os": { "description": "os-release PRETTY_NAME.", "type": "string" },
+        "os_id": { "description": "os-release ID.", "type": "string" },
+        "os_version": { "description": "os-release VERSION_ID.", "type": "string" },
+        "kernel": { "description": "Running kernel release.", "type": "string" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source"],
+      "properties": {
+        "name": { "enum": ["unknown", "tunnel", "public-web", "tailnet-only", "paas-panel"] },
+        "source": { "enum": ["inferred", "flag"] }
+      }
+    },
+    "coverage": {
+      "description": "How much was actually inspected. Counts are of results, not checks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks", "results", "checked", "unknown", "skipped", "root", "sandbox", "collectors"],
+      "properties": {
+        "checks": { "description": "Checks evaluated.", "type": "integer", "minimum": 0 },
+        "results": { "description": "Results produced.", "type": "integer", "minimum": 0 },
+        "checked": { "description": "Results with level pass, warn, fail or info.", "type": "integer", "minimum": 0 },
+        "unknown": { "description": "Results with level unknown (could not inspect; never a pass).", "type": "integer", "minimum": 0 },
+        "skipped": { "description": "Results with level skip (not applicable).", "type": "integer", "minimum": 0 },
+        "root": { "description": "Whether the audit ran as root.", "type": "boolean" },
+        "sandbox": { "$ref": "#/$defs/sandbox" },
+        "collectors": { "type": "array", "items": { "$ref": "#/$defs/collector" } }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail", "warn", "unknown", "info", "pass", "skip"],
+      "properties": {
+        "fail": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "integer", "minimum": 0 },
+        "skip": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "results": { "type": "array", "items": { "$ref": "#/$defs/result" } }
+  },
+  "$defs": {
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": { "enum": ["landlock", "unavailable", "disabled", "failed"] },
+        "abi": { "description": "Landlock ABI version.", "type": "integer", "minimum": 1 },
+        "network": { "description": "TCP bind and connect denied as well.", "type": "boolean" },
+        "reason": { "type": "string" }
+      }
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "status": { "enum": ["ok", "partial", "failed", "timeout", "skipped"] },
+        "reason": { "type": "string" },
+        "error": { "description": "Redacted error text.", "type": "string" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "group", "title", "level", "severity", "subject", "message", "fix"],
+      "properties": {
+        "id": { "description": "Stable check id; never reused.", "type": "string", "pattern": "^[A-Z]{2,4}-[0-9]{3}$" },
+        "group": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
+        "title": { "type": "string" },
+        "level": { "enum": ["pass", "warn", "fail", "unknown", "skip", "info"] },
+        "severity": { "enum": ["critical", "high", "moderate", "low", "info"] },
+        "subject": {
+          "description": "host, container:<project>/<service>, port:<proto>/<port>, file:<path> or user:<name>.",
+          "type": "string"
+        },
+        "message": { "type": "string" },
+        "evidence": {
+          "description": "Fixed set of keys per check id. Never holds secrets; redacted as a safety net.",
+          "type": "object"
+        },
+        "fix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hint"],
+          "properties": {
+            "hint": { "type": "string" },
+            "docs": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
