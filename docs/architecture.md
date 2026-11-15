@@ -207,8 +207,9 @@ SHA-256, a unified diff, an optional `validate` command for the staged file),
 [plan.md](plan.md).
 
 A **generator** (`plan.Generator`) owns one step id. Its `Plan` function is
-pure: it reads `plan.Input` (the facts, nil for a report alone, and the check
-results) and returns a step or a skip with a kind and a reason. No host
+pure: it reads `plan.Input` (the facts, nil for a report alone, the check
+results, and the client address of the SSH session that plans, when known)
+and returns a step or a skip with a kind and a reason. No host
 access, no clock, no network: the facts already hold everything, which is why
 a facts file reproduces a plan and plans have golden files.
 
@@ -312,7 +313,8 @@ so its tests never reach the machine. Only `hostApplyEnv` touches the real host.
   `guard_sshd.go`). An access-critical generator says what it does to
   access with `SSHD` (the effective sshd settings it leaves) and `Access`
   (closes public SSH, the networks it still allows, accounts it disables,
-  keys it removes). `plan.ProveAccess(step, GuardInput{Facts, Source,
+  keys it removes; for a step that bans clients, `Bans` and the sources it
+  never bans, which the session that plans or applies must come from). `plan.ProveAccess(step, GuardInput{Facts, Source,
   Applier})` proves a second way in or names the missing piece; the CLI
   passes `plan.LockoutVeto` to `Build`, and before a transaction
   `apply.GuardAccess` proves it again from facts the `ssh`, `users`,
