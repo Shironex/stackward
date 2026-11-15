@@ -51,7 +51,8 @@ Signed release binaries will follow.
 ## Usage
 
 ```
-stackward audit [--json] [--out FILE] [--fail-on fail|warn|never] [--all]
+stackward audit [--json | --md] [--out FILE] [--fail-on fail|warn|never] [--all]
+stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
 stackward explain [id]                explain a check, or list them all
