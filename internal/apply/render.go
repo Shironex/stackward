@@ -106,7 +106,13 @@ func WriteResult(w io.Writer, j *Journal) error {
 		}
 		pf("   %-20s %s\n", s.ID, line)
 	}
-	if lines := UndoScript(j); len(lines) > 0 {
+	lines := UndoScript(j)
+	switch t := j.Transaction; {
+	case t != nil && t.Status == TxnOpen:
+		pf("\nThis run is an open transaction: it is rolled back at %s unless confirmed.\nTo roll it back now:\n   sudo stackward undo --transaction %s\n", t.Deadline, j.RunID)
+	case j.Status == RunUndone:
+		pf("\nThe run was undone; nothing is left to undo.\n")
+	case len(lines) > 0:
 		pf("\nTo undo this run:\n   sudo stackward undo --run %s\nor by hand, as root:\n", j.RunID)
 		for _, l := range lines {
 			pf("   %s\n", l)

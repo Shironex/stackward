@@ -40,6 +40,7 @@ const (
 	KindValidate = "validate" // checks a staged file before it is moved into place
 	KindCommand  = "command"  // a step command, after the edits
 	KindUndo     = "undo"     // run by stackward undo
+	KindCheck    = "check"    // a transaction check after the steps ran
 )
 
 // Journal is the record of one apply run: what was selected, every file
@@ -61,6 +62,25 @@ type Journal struct {
 	Steps     []JournalStep `json:"steps"`
 	// Error is why the run failed, when it did.
 	Error string `json:"error,omitempty"`
+	// Transaction is set when the run was an access-critical transaction
+	// (see txn.go); the state file under StateDir is the authority, this
+	// is the record that stays with the run.
+	Transaction *JournalTxn `json:"transaction,omitempty"`
+}
+
+// JournalTxn is the transaction a run belongs to, as the journal keeps it.
+type JournalTxn struct {
+	Status    string `json:"status"`
+	Deadline  string `json:"deadline"`
+	TimerUnit string `json:"timer_unit"`
+	// ConfirmedVia is ViaSSH or ViaConsole.
+	ConfirmedAt  string `json:"confirmed_at,omitempty"`
+	ConfirmedVia string `json:"confirmed_via,omitempty"`
+	RolledBackAt string `json:"rolled_back_at,omitempty"`
+	Cause        string `json:"cause,omitempty"`
+	// Checks are the validation commands run after the steps (sshd -t,
+	// sshd -T, ss).
+	Checks []JournalCommand `json:"checks"`
 }
 
 // PlanRef identifies the plan a run applied.
@@ -149,6 +169,9 @@ func writeJournal(h Host, j *Journal) error {
 	}
 	return h.WriteAtomic(JournalPath(j.RunID), append(b, '\n'), FileState{Mode: 0o600, UID: -1, GID: -1}, nil)
 }
+
+// SaveJournal saves j, as every change to it is saved.
+func SaveJournal(h Host, j *Journal) error { return writeJournal(h, j) }
 
 // LoadJournal reads the journal of run id.
 func LoadJournal(h Host, id string) (*Journal, error) {
