@@ -16,10 +16,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 51,
-    "results": 51,
+    "checks": 65,
+    "results": 65,
     "checked": 4,
-    "unknown": 46,
+    "unknown": 60,
     "skipped": 1,
     "root": false,
     "sandbox": {
@@ -40,7 +40,7 @@
   "summary": {
     "fail": 0,
     "warn": 0,
-    "unknown": 46,
+    "unknown": 60,
     "info": 0,
     "pass": 4,
     "skip": 1
@@ -132,6 +132,231 @@
       },
       "fix": {
         "hint": "Prune images and build cache (`docker system prune`), cap logs (LOG-001 to LOG-003) and remove what is not needed."
+      }
+    },
+    {
+      "id": "SSH-001",
+      "group": "SSH",
+      "title": "Password authentication is off",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a drop-in with PasswordAuthentication no, named to sort before cloud-init's (for example /etc/ssh/sshd_config.d/00-hardening.conf), then check with sudo sshd -t and reload ssh."
+      }
+    },
+    {
+      "id": "SSH-002",
+      "group": "SSH",
+      "title": "Keyboard-interactive authentication is off",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set KbdInteractiveAuthentication no (ChallengeResponseAuthentication on older releases) in the same early drop-in."
+      }
+    },
+    {
+      "id": "SSH-003",
+      "group": "SSH",
+      "title": "Root cannot log in over SSH",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Log in as a sudo user (a dedicated non root user for the PaaS too), then set PermitRootLogin no."
+      }
+    },
+    {
+      "id": "SSH-004",
+      "group": "SSH",
+      "title": "Empty passwords are refused",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set PermitEmptyPasswords no (the default) and lock accounts with empty passwords (passwd -l)."
+      }
+    },
+    {
+      "id": "SSH-005",
+      "group": "SSH",
+      "title": "MaxAuthTries is low",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set MaxAuthTries 3."
+      }
+    },
+    {
+      "id": "SSH-006",
+      "group": "SSH",
+      "title": "Logins are limited with AllowUsers or AllowGroups",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add AllowUsers with the accounts that log in (or AllowGroups with a group such as sshusers)."
+      }
+    },
+    {
+      "id": "SSH-007",
+      "group": "SSH",
+      "title": "X11 and agent forwarding are off",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set X11Forwarding no and AllowAgentForwarding no; use ProxyJump instead of agent forwarding."
+      }
+    },
+    {
+      "id": "SSH-008",
+      "group": "SSH",
+      "title": "No early drop-in shadows a later hardening setting",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Rename the hardening drop-in to sort first (00-hardening.conf), or fix the earlier file, then confirm with sudo sshd -T."
+      }
+    },
+    {
+      "id": "SSH-009",
+      "group": "SSH",
+      "title": "Effective SSH configuration fully confirmed",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Rerun with sudo for full coverage."
+      }
+    },
+    {
+      "id": "SSH-010",
+      "group": "SSH",
+      "title": "sshd listens where it is configured to",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "systemctl daemon-reload \u0026\u0026 systemctl restart ssh.socket (or restart ssh.service without socket activation), then compare ss -tln with sshd -T again."
+      }
+    },
+    {
+      "id": "SSH-012",
+      "group": "SSH",
+      "title": "Host keys are strong and private",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the private keys and chown them to root; remove DSA keys and regenerate a small RSA key with ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key."
+      }
+    },
+    {
+      "id": "SSH-013",
+      "group": "SSH",
+      "title": "Home, ~/.ssh and authorized_keys are not writable by others",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod go-w ~USER; chmod 700 ~USER/.ssh; chmod 600 ~USER/.ssh/authorized_keys; chown the files to the user."
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Replace weak keys with ed25519 (ssh-keygen -t ed25519) and remove root's authorized keys once nothing logs in as root."
+      }
+    },
+    {
+      "id": "SSH-015",
+      "group": "SSH",
+      "title": "No weak key exchange, cipher or MAC algorithms",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Follow the ssh-audit hardening guide for the distribution: a drop-in with explicit KexAlgorithms, Ciphers and MACs lists.",
+        "docs": "https://www.ssh-audit.com/hardening_guides.html"
       }
     },
     {

@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-51 checks in the catalog.
+65 checks in the catalog.
 
 ## System (SYS)
 
@@ -15,6 +15,25 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [SYS-003](SYS-003.md) | moderate | Running kernel is the newest installed |
 | [SYS-004](SYS-004.md) | moderate | Clock is synchronized |
 | [SYS-005](SYS-005.md) | moderate | Disks have free space |
+
+## SSH (SSH)
+
+| Id | Severity | Check |
+|---|---|---|
+| [SSH-001](SSH-001.md) | high | Password authentication is off |
+| [SSH-002](SSH-002.md) | high | Keyboard-interactive authentication is off |
+| [SSH-003](SSH-003.md) | high | Root cannot log in over SSH |
+| [SSH-004](SSH-004.md) | critical | Empty passwords are refused |
+| [SSH-005](SSH-005.md) | low | MaxAuthTries is low |
+| [SSH-006](SSH-006.md) | low | Logins are limited with AllowUsers or AllowGroups |
+| [SSH-007](SSH-007.md) | low | X11 and agent forwarding are off |
+| [SSH-008](SSH-008.md) | moderate | No early drop-in shadows a later hardening setting |
+| [SSH-009](SSH-009.md) | info | Effective SSH configuration fully confirmed |
+| [SSH-010](SSH-010.md) | high | sshd listens where it is configured to |
+| [SSH-012](SSH-012.md) | moderate | Host keys are strong and private |
+| [SSH-013](SSH-013.md) | high | Home, ~/.ssh and authorized_keys are not writable by others |
+| [SSH-014](SSH-014.md) | moderate | Authorized keys are strong and not stale |
+| [SSH-015](SSH-015.md) | low | No weak key exchange, cipher or MAC algorithms |
 
 ## Users and privilege (USR)
 
