@@ -1,0 +1,49 @@
+{
+  "group": "KRN",
+  "checks": [
+    {
+      "id": "KRN-001",
+      "title": "IPv4 forwarding is on where Docker runs",
+      "severity": "high",
+      "rationale": "Docker needs net.ipv4.ip_forward=1 to route container traffic. A hardening profile that sets it to 0 silently breaks container networking, and the failure looks like an application problem.",
+      "verify": "sysctl net.ipv4.ip_forward; grep -r ip_forward /etc/sysctl.conf /etc/sysctl.d",
+      "fix": "Set net.ipv4.ip_forward=1 in a sysctl drop-in and never let a hardening profile own it.",
+      "breaks": "Turning forwarding on also lets the host route packets between interfaces; the firewall FORWARD policy then decides what passes."
+    },
+    {
+      "id": "KRN-002",
+      "title": "Reverse path filter is loose where Docker or Tailscale run",
+      "severity": "moderate",
+      "rationale": "Strict rp_filter=1 drops packets that arrive on an interface other than the one the reply would leave from. Docker bridges and Tailscale (subnet routes, exit nodes) produce exactly that traffic, so strict mode causes hard to explain packet loss.",
+      "verify": "sysctl net.ipv4.conf.all.rp_filter net.ipv4.conf.default.rp_filter",
+      "fix": "Set net.ipv4.conf.all.rp_filter=2 and net.ipv4.conf.default.rp_filter=2 (loose) in a drop-in.",
+      "breaks": "Loose mode accepts packets whose source is reachable on any interface, a little less anti spoofing than strict."
+    },
+    {
+      "id": "KRN-003",
+      "title": "Network sysctls match the hardening baseline",
+      "severity": "low",
+      "rationale": "ICMP redirects, source routed packets and broadcast ICMP are not needed on a server and help an attacker on the network path. SYN cookies and martian logging help against floods and spoofing. ufw also reapplies /etc/ufw/sysctl.conf when it is enabled or reloaded, which can undo a drop-in.",
+      "verify": "sysctl -a 2>/dev/null | grep -E 'accept_redirects|send_redirects|accept_source_route|tcp_syncookies|log_martians|echo_ignore_broadcasts'; cat /etc/ufw/sysctl.conf",
+      "fix": "Set the values in a /etc/sysctl.d drop-in and make /etc/ufw/sysctl.conf agree.",
+      "breaks": "accept_redirects and send_redirects can matter on a host that acts as a router."
+    },
+    {
+      "id": "KRN-004",
+      "title": "Kernel hardening sysctls match the baseline",
+      "severity": "low",
+      "rationale": "kptr_restrict, dmesg_restrict, protected hardlinks, symlinks, fifos and regular files, unprivileged BPF and ptrace_scope make local privilege escalation harder by hiding kernel addresses and restricting common attack primitives.",
+      "verify": "sysctl kernel.kptr_restrict kernel.dmesg_restrict kernel.unprivileged_bpf_disabled kernel.yama.ptrace_scope fs.protected_hardlinks fs.protected_symlinks fs.protected_fifos fs.protected_regular",
+      "fix": "Set the values in a /etc/sysctl.d drop-in.",
+      "breaks": "ptrace_scope of 1 or more stops debuggers from attaching to processes that are not their children; strace -p and gdb need root or a set value."
+    },
+    {
+      "id": "KRN-005",
+      "title": "IPv6 router advertisements are not switched off by a profile",
+      "severity": "low",
+      "rationale": "When the provider configures IPv6 through router advertisements, setting accept_ra=0 in a hardening profile removes the address and default route once the lifetime runs out, so IPv6 fails hours after the change. Warned only when a sysctl file sets it and a dynamic global IPv6 address is present.",
+      "verify": "sysctl net.ipv6.conf.all.accept_ra; ip -6 addr show scope global",
+      "fix": "Leave net.ipv6.conf.all.accept_ra at its default where the provider uses router advertisements, or configure the address statically."
+    }
+  ]
+}

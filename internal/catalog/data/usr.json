@@ -1,0 +1,68 @@
+{
+  "group": "USR",
+  "checks": [
+    {
+      "id": "USR-001",
+      "title": "Only root has uid 0",
+      "severity": "critical",
+      "rationale": "Any account with uid 0 is root under another name. Attackers add one as a backdoor because it does not show up in a list of sudo users, and it bypasses every per user restriction.",
+      "verify": "awk -F: '$3 == 0 {print $1}' /etc/passwd",
+      "fix": "Remove the account, or give it a normal uid with `usermod -u` after checking what it owns."
+    },
+    {
+      "id": "USR-002",
+      "title": "No login account has an empty password",
+      "severity": "critical",
+      "rationale": "An account with an empty password hash and a login shell lets anyone in who can reach a login prompt, including the console and su. stackward reads the status with `passwd -S -a`, which prints a letter per account and never a hash.",
+      "verify": "sudo passwd -S -a",
+      "fix": "Lock the account with `passwd -l <user>` or set a password.",
+      "needs_root": true
+    },
+    {
+      "id": "USR-003",
+      "title": "Cloud default account is locked down",
+      "severity": "moderate",
+      "rationale": "Cloud images create a well known first account (ubuntu, debian, admin, ec2-user), often with passwordless sudo and the provisioning key. Once you have your own admin account, the default one is a known username for attackers to target and a spare way in nobody reviews.",
+      "verify": "getent passwd ubuntu debian admin ec2-user; sudo grep -r NOPASSWD /etc/sudoers /etc/sudoers.d",
+      "fix": "Lock it: `passwd -l <user>`, set its shell to nologin, move its authorized_keys aside and drop its NOPASSWD line. Keep your own admin account working first.",
+      "breaks": "If the default account is also what your provider console or automation logs in with, locking it removes that path.",
+      "needs_root": true
+    },
+    {
+      "id": "USR-004",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "severity": "high",
+      "rationale": "A sudoers file that anyone but root can write is a direct escalation to root. NOPASSWD entries are sometimes required (a PaaS deploy account) but are the first thing an attacker with a user shell uses, so they are listed so each one is a decision.",
+      "verify": "ls -l /etc/sudoers /etc/sudoers.d; sudo visudo -c",
+      "fix": "Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf <file>`, and keep NOPASSWD to the PaaS account.",
+      "breaks": "Removing a NOPASSWD line breaks whatever automation relied on it.",
+      "needs_root": true
+    },
+    {
+      "id": "USR-005",
+      "title": "Docker group has no extra members",
+      "severity": "moderate",
+      "rationale": "Membership of the docker group is root on the host: a member can start a container that mounts / and changes anything. Every member is listed so the access is intentional.",
+      "verify": "getent group docker",
+      "fix": "Remove users who do not need it: `gpasswd -d <user> docker`.",
+      "breaks": "The removed user can no longer run docker without sudo."
+    },
+    {
+      "id": "USR-006",
+      "title": "Login accounts are used",
+      "severity": "low",
+      "rationale": "Login capable accounts that have not been seen for 90 days (or never) are credentials nobody watches. They keep working for whoever holds the password or key.",
+      "verify": "sudo lastlog",
+      "fix": "Lock unused accounts with `passwd -l <user>` or remove them."
+    },
+    {
+      "id": "USR-007",
+      "title": "Root recovery path is known",
+      "severity": "info",
+      "rationale": "Whether root has a password decides your way back in when SSH keys fail: a locked root means provider console or rescue mode only. The status is printed so you know your recovery path before you need it.",
+      "verify": "sudo passwd -S root",
+      "fix": "Store the console or rescue procedure and any root password in a password manager.",
+      "needs_root": true
+    }
+  ]
+}

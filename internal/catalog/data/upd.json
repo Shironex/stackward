@@ -1,0 +1,56 @@
+{
+  "group": "UPD",
+  "checks": [
+    {
+      "id": "UPD-001",
+      "title": "Automatic security updates are enabled",
+      "severity": "high",
+      "rationale": "Most compromises of patched-upstream bugs happen in the weeks after a fix is published. unattended-upgrades closes that window without you, but only when the package is installed, APT::Periodic::Unattended-Upgrade is on and apt-daily-upgrade.timer is enabled.",
+      "verify": "dpkg -s unattended-upgrades; apt-config dump APT::Periodic; systemctl is-enabled apt-daily-upgrade.timer",
+      "fix": "apt install unattended-upgrades; dpkg-reconfigure -plow unattended-upgrades",
+      "breaks": "Packages update and services restart on their own, mostly at night."
+    },
+    {
+      "id": "UPD-002",
+      "title": "Unattended upgrades ran recently",
+      "severity": "moderate",
+      "rationale": "An enabled setup that has not run for days is a broken setup (timer masked, lock stuck, disk full) that still looks fine in the configuration.",
+      "verify": "ls -l /var/lib/apt/periodic/ /var/log/unattended-upgrades/",
+      "fix": "Check the timer (`systemctl list-timers apt-daily-upgrade`) and /var/log/unattended-upgrades/."
+    },
+    {
+      "id": "UPD-003",
+      "title": "Unattended upgrades include the security pocket",
+      "severity": "high",
+      "rationale": "The allowed origins decide what is installed automatically. Without the security pocket the tool runs and does nothing about security fixes.",
+      "verify": "apt-config dump Unattended-Upgrade::Allowed-Origins",
+      "fix": "Include `${distro_id}:${distro_codename}-security` (Debian: `origin=Debian,codename=${distro_codename}-security`) in Unattended-Upgrade::Allowed-Origins."
+    },
+    {
+      "id": "UPD-004",
+      "title": "Reboot policy is a decision",
+      "severity": "low",
+      "rationale": "Kernel and libc fixes only take effect after a reboot. Either the host reboots itself in a window or a person does it on a routine; leaving both off means a reboot required marker that sits for weeks. The current policy is printed; a reboot pending over 14 days with automatic reboot off warns.",
+      "verify": "apt-config dump Unattended-Upgrade::Automatic-Reboot; ls -l /var/run/reboot-required",
+      "fix": "Decide: set Unattended-Upgrade::Automatic-Reboot and a time, or schedule a manual reboot routine.",
+      "breaks": "Automatic reboot interrupts every service on the host at the set time."
+    },
+    {
+      "id": "UPD-005",
+      "title": "Release is within standard support",
+      "severity": "high",
+      "rationale": "After a release leaves standard support it gets no security fixes from the distribution (Ubuntu Pro or Debian LTS aside), so every new bug stays open. The check uses an embedded table of end of support dates; a release missing from it is reported unknown.",
+      "verify": "cat /etc/os-release",
+      "fix": "Upgrade to a supported release (do-release-upgrade on Ubuntu, the Debian release notes upgrade procedure).",
+      "breaks": "A release upgrade is a major change: test it on a copy and keep a backup and console access."
+    },
+    {
+      "id": "UPD-006",
+      "title": "No pending security updates",
+      "severity": "high",
+      "rationale": "A security update that is available and not installed is an open known vulnerability. The check simulates `apt-get upgrade`, which needs no root and installs nothing, and counts the updates that come from a security pocket. It reflects the package lists as of the last apt update.",
+      "verify": "apt-get -s upgrade | grep -i security",
+      "fix": "apt update && apt upgrade"
+    }
+  ]
+}

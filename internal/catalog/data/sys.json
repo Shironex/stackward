@@ -26,6 +26,24 @@
       "verify": "uname -r; ls /boot/vmlinuz-*",
       "fix": "Reboot to load the patched kernel.",
       "breaks": "A reboot interrupts every service on the host."
+    },
+    {
+      "id": "SYS-004",
+      "title": "Clock is synchronized",
+      "severity": "moderate",
+      "rationale": "TLS certificate validation, TOTP codes, Kerberos, log correlation and token expiry all depend on correct time. A clock that is not synchronized drifts, and the failures look like unrelated auth and certificate errors.",
+      "verify": "timedatectl show --property=NTPSynchronized --property=NTP",
+      "fix": "Enable systemd-timesyncd (`timedatectl set-ntp true`) or install chrony.",
+      "breaks": "Stepping the clock can confuse running software that assumes time never jumps."
+    },
+    {
+      "id": "SYS-005",
+      "title": "Disks have free space",
+      "severity": "moderate",
+      "rationale": "A full filesystem stops logging, databases and package installs, and fills the places attackers and bugs fill first. Checked: / and /var, and the Docker root (/var/lib/docker) when present. More than 85 percent used warns, more than 95 percent fails.",
+      "verify": "df -h / /var /var/lib/docker",
+      "fix": "Prune images and build cache (`docker system prune`), cap logs (LOG-001 to LOG-003) and remove what is not needed.",
+      "breaks": "docker system prune removes stopped containers and unused images; confirm what is unused first."
     }
   ]
 }
