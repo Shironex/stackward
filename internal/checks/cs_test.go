@@ -63,7 +63,30 @@ func TestCS002(t *testing.T) {
 		{"stale", csFacts(csBase(csBouncer("traefik", "proxy", 10*time.Minute))), "", Warn},
 		{"never pulled", csFacts(csBase(facts.CrowdSecBouncer{Name: "fw", Kind: "firewall"})), "", Warn},
 		{"unread", csFacts(unread), "", Unknown},
+		// The real run: the base row is stale, its name@IP rows (sharing
+		// the base key) pull fine. One bouncer, and it is fresh.
+		{"stale base, fresh ip rows", csFacts(csBase(
+			csBouncer("traefik-x", "proxy", 3*time.Hour),
+			csBouncer("traefik-x@192.0.2.3", "proxy", 5*time.Second),
+			csBouncer("traefik-x@192.0.2.4", "proxy", 2*time.Hour),
+		)), "", Pass},
+		{"every row stale", csFacts(csBase(
+			csBouncer("traefik-x", "proxy", 3*time.Hour),
+			csBouncer("traefik-x@192.0.2.3", "proxy", 2*time.Hour),
+		)), "", Warn},
+		// An @ that is not followed by an address is part of the name.
+		{"at sign in a name", csFacts(csBase(
+			csBouncer("ops@example", "firewall", 3*time.Hour),
+			csBouncer("ops", "firewall", 5*time.Second),
+		)), "", Warn},
 	})
+	r := netOne(t, "CS-002", csFacts(csBase(
+		csBouncer("traefik-x", "proxy", 3*time.Hour),
+		csBouncer("traefik-x@192.0.2.3", "proxy", 5*time.Second),
+	)), "")
+	if names, _ := r.Evidence["bouncers"].([]string); len(names) != 1 || names[0] != "traefik-x" {
+		t.Errorf("want one merged bouncer, got %v", r.Evidence["bouncers"])
+	}
 }
 
 func TestCS003(t *testing.T) {
