@@ -124,9 +124,10 @@ func TestText(t *testing.T) {
 		"note:      not root: 1 result could not be inspected; run with sudo for full coverage",
 		"sandbox:   unavailable (test)",
 		"collector: ssh failed:",
-		"SYS  System  (1 passing or skipped not shown)",
-		"FAIL    SYS-002  No reboot pending [moderate]",
-		"fix: Reboot in a maintenance window",
+		"x moderate  SYS-002  reboot pending for 20 days",
+		"-- FAIL (1) --",
+		"  x reboot pending for 20 days\n    SYS-002, moderate\n    rule: No reboot pending\n",
+		"    fix:  Reboot in a maintenance window",
 		"summary: 1 fail, 0 warn, 1 unknown, 0 info, 1 pass, 0 skip",
 	} {
 		if !strings.Contains(out, want) {
@@ -192,7 +193,7 @@ func TestProbeReport(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"stackward test probe (",
+		"stackward probe  test (stackward.report.v1)",
 		"target:    203.0.113.10",
 		"addresses: 203.0.113.10 (ipv4)",
 		"ipv6:      no-address: the target is an IPv4 address",
