@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 8 checked, 94 unknown, 4 skipped (102 checks), root: yes
+- **Coverage:** 102 checks, 106 results: 8 checked, 94 unknown, 4 skipped, root: yes
 
 ## Summary
 

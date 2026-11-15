@@ -147,7 +147,7 @@ func (m Model) header() []string {
 	if cov.Results > 0 && cov.Unknown*2 > cov.Results {
 		right = st.warnText.Render("mostly unknown ")
 	}
-	l3 := spread(" "+st.text.Render(fmt.Sprintf("%d results", cov.Results))+"  "+strings.Join(parts, "  "), right, m.width)
+	l3 := spread(" "+st.text.Render(fmt.Sprintf("%d checks, %d results", cov.Checks, cov.Results))+"  "+strings.Join(parts, "  "), right, m.width)
 	return []string{l1, l2, l3}
 }
 

@@ -50,8 +50,7 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	}
 	p("- **Root:** %s\n", root)
 	p("- **Sandbox:** %s\n", mdEscape(sandboxLine(r.Coverage.Sandbox)))
-	p("- **Coverage:** %d checked, %d unknown, %d skipped (%d checks), root: %s\n",
-		r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped, r.Coverage.Checks, yesNo(r.Coverage.Root))
+	p("- **Coverage:** %s, root: %s\n", CoverageLine(r.Coverage), yesNo(r.Coverage.Root))
 	for _, c := range r.Coverage.Collectors {
 		if c.Status == "ok" {
 			continue
