@@ -4,8 +4,8 @@
 
 Version 0.1 audits. It does not change your server, so it cannot lock you
 out or break a service. From 0.2 on the same holds for `audit`, `probe`,
-`tui` and `plan`; only `apply` and `undo` write, and only what the plan's
-selected steps say (see [below](#apply-rules)). The promise, enforced by
+`tui` and `plan`; only `apply`, `undo` and `confirm` write, and only what the
+plan's selected steps say (see [below](#apply-rules)). The promise, enforced by
 design and, on supported kernels, by the Landlock sandbox described in the
 [threat model](threat-model.md):
 
@@ -109,10 +109,13 @@ command is run.
 ## Version 0.2: plan and apply
 
 `stackward plan` and `stackward apply` exist now (in the upcoming 0.2, not yet
-released). The access critical transaction and the lockout guard below are
-still a design, not something you can run today: until they exist, apply
-refuses every access-critical step. They are written down now so the safety
-rules are settled before any code changes SSH, the firewall or users.
+released), and so does the access-critical transaction below: an
+access-critical step runs only inside it. No step of this version is
+access-critical yet (the first ones, for accounts and sshd, are
+[#28](https://github.com/Shironex/stackward/issues/28)); the transaction is
+tested with steps that exist only in test builds. The lockout guard below is
+still a design ([#27](https://github.com/Shironex/stackward/issues/27)). Both
+are written down before any real step changes SSH, the firewall or users.
 
 Fixing a finding on a remote machine is riskier than finding it. A wrong SSH
 or firewall change can lock you out, and a hardening profile can break
@@ -154,17 +157,19 @@ details.
   whose schema is not `stackward.plan.v1`. There is no override.
 - **You choose.** Nothing runs unless selected: `--step ID` or
   `--all-safe` (safe steps that are not opt in). Opt in and `networking`
-  steps run only when named. `access-critical` steps are refused outright
-  until the transaction below exists. Apply prints every step, file,
-  command and restart, then asks `[y/N]` on a terminal (or needs `--yes`).
+  steps run only when named. `access-critical` steps run only when named,
+  in a run of their own, inside the [transaction](#access-critical-changes-rollback-timer-and-second-session-confirm).
+  Apply prints every step, file, command and restart, then asks `[y/N]` on
+  a terminal (or needs `--yes`).
 - **A plan file is not trusted.** Every step is re-derived from the code of
   the generator that owns its id: a hand edited plan cannot name another
   path, other content, another command or another undo command. Commands
   run as argument vectors, without a shell, with a fixed `PATH`. An edit
   whose content was redacted in the plan is refused.
-- **One run at a time.** Apply and undo hold an exclusive lock
-  (`/run/stackward/apply.lock`) for the whole run; a second run is refused
-  with the holder's run id. A dead run releases it.
+- **One run at a time.** Apply, undo, confirm and the rollback timer hold
+  an exclusive lock (`/run/stackward/apply.lock`) for the whole run; a
+  second run is refused with the holder's run id (the rollback timer waits
+  for it instead). A dead run releases it.
 - **Undo values are pinned.** The value a `sysctl -w` undo restores must be
   the key's running value on this host (the one the audit recorded), so a
   hand edited plan cannot choose it.
@@ -211,38 +216,117 @@ selected (or of the run you undo):
 | `dockerd --validate --config-file <staged file>` | docker-log-rotation | before the new `daemon.json` is moved into place |
 | `systemctl restart docker` | docker-log-rotation | after `daemon.json` changed; undo |
 
+An access-critical transaction also runs these, around its steps (see
+below):
+
+| Command | When |
+|---|---|
+| `systemd-run --version` | preflight, before anything changes |
+| `sshd -t`, `sshd -T`, `ss -Htln` | preflight, and again after the steps (the validation) |
+| `systemd-run --quiet --collect --wait --unit=stackward-check-ID /var/lib/stackward/transactions/ID/stackward version` | before anything changes: the copy the timer will run starts as a systemd service |
+| `systemd-run --quiet --collect --unit=stackward-rollback-ID --on-active=Ns ... /var/lib/stackward/transactions/ID/stackward undo --transaction ID --yes --by-timer` | arms the rollback timer, before the steps |
+| `systemctl is-active stackward-rollback-ID.timer` (and `.service`) | checks the timer is armed, or stopped |
+| `systemctl stop stackward-rollback-ID.timer stackward-rollback-ID.service` | confirm, an immediate rollback, `undo --transaction` |
+
 ### Access critical changes: rollback timer and second session confirm
 
-Changes to SSH, the firewall and users run as a transaction:
+Changes to SSH, the firewall and users run as a transaction. A step is
+access-critical by its own code (the registry), not by the plan file. It
+runs only when named with `--step`, never with `--all-safe` and never in
+the same run as a safe or networking step, so the rollback undoes exactly
+the access changes. [apply.md](apply.md#the-access-critical-transaction)
+has the details; in order:
 
-1. Take a snapshot of what will change.
-2. Arm a rollback timer in `systemd` that runs independently of your SSH
-   session, so a dropped connection cannot stop it.
-3. Apply the change.
-4. Validate it: `sshd -t`, the effective `sshd -T` values, and that the
-   listeners match what the configuration says.
-5. Wait for `stackward confirm`, which must be run from a **new** SSH
-   session (a different session id and source port). The same session is
-   refused, because a session that survived the change proves nothing about
-   a fresh login.
-6. If no confirmation arrives before the deadline, the timer restores the
-   snapshot automatically.
+1. **The provider console reminder** is printed before anything about the
+   steps: the web or serial console of your hosting provider is the way in
+   when SSH is gone.
+2. **Refusals that change nothing.** Another transaction is open, or a
+   rollback that fired has not been acknowledged; `systemd-run` is missing;
+   `sshd -t` already fails; nothing listens on sshd's port; the copy of
+   stackward the timer would run does not start as a systemd service (a
+   `noexec` mount, for example).
+3. **Snapshot.** Every file the steps touch is backed up as in any apply:
+   `FILE.orig` and `/var/backups/stackward/<run-id>/`, with a journal.
+4. **Arm the rollback timer** before any change: a transient systemd timer
+   and service (`systemd-run`, unit `stackward-rollback-<run-id>`) that run
+   a root only copy of the stackward binary
+   (`/var/lib/stackward/transactions/<run-id>/stackward`, directory and file
+   0700) with `undo --transaction <run-id>`. systemd runs it, so a dropped
+   SSH session, a killed terminal or a dead stackward cannot stop it. The
+   deadline is `--confirm-within` (default 5 minutes, 30 seconds to 30
+   minutes). The state file `/var/lib/stackward/transaction.json` (0600)
+   says `open` before the timer can fire.
+5. **Apply** the steps.
+6. **Validate**: `sshd -t` passes, `sshd -T` shows every setting the
+   steps mean to leave in place (from the step's own code), and something
+   listens on each of sshd's ports, including every port it listened on
+   before. A failed step or a failed check **rolls back at once**, stops the
+   timer and exits 1; you watched it, so it needs no acknowledgement.
+7. **Wait for `stackward confirm ID`**, which must run from a **new** SSH
+   session: the same session is refused, because a session that survived the
+   change proves nothing about a fresh login. `--console` is the one way
+   around that rule, for the provider console. Confirm stops the timer and
+   marks the transaction confirmed.
+8. **No confirm before the deadline**: the timer restores the snapshot (the
+   same undo as `stackward undo`), reloads what the steps reloaded, and marks
+   the transaction rolled back. Access-critical steps then stay refused
+   until `stackward confirm --ack-rollback ID`, so a rollback you did not
+   see cannot go unnoticed. Safe and networking steps are not affected.
 
-Only one transaction can be open at a time, and a rollback that fired blocks
-further access changes until you acknowledge it.
+Only one transaction can be open at a time: the state file is read and
+written only under the run lock, and apply refuses a second one.
+
+How confirm tells sessions apart: it compares four facts of the session
+that applied with its own. Any fact both have that is equal means the same
+session; at least one must differ; a session that shares no fact to compare
+is refused, never assumed new; a confirm that does not run over SSH needs
+`--console`.
+
+| Fact | Where it comes from | What it catches |
+|---|---|---|
+| audit session id | `/proc/self/sessionid`, set by `pam_loginuid` at login and kept across `sudo` and `su` | the same login, also from a `tmux` or `screen` window started in it |
+| sshd session process | the first `sshd` (or `sshd-session`) above stackward in the process tree, with its start time | the same SSH connection |
+| SSH connection | `SSH_CONNECTION` (client address and port), from the environment or from the login shell when `sudo` dropped it | the same TCP connection, including a multiplexed `ControlMaster` channel |
+| logind session | `XDG_SESSION_ID`, the same way | the same login |
+
+The limits, honestly:
+
+- A confirm from a `tmux` or `screen` window that was started in the
+  applying session is refused (same audit session), even if you reattached
+  from a new connection. Confirm from a plain new login.
+- `ssh` with connection sharing (`ControlMaster`) reuses the old
+  connection: refused. Use `ssh -o ControlPath=none`.
+- Without `pam_loginuid` (some containers) the audit session id is absent,
+  and the check rests on the sshd process and `SSH_CONNECTION`.
+- The check proves that a new SSH session reached a shell and `sudo`, not
+  that every way in works (another user, another key, another address). It
+  is a strong signal, not a proof of every path; the lockout guard (#27)
+  adds the checks on the second way in.
+- Transient units do not survive a reboot. If the host reboots before the
+  deadline, the timer is gone: the transaction stays `open` with its
+  deadline passed, every access step and every confirm is refused, and
+  `sudo stackward undo --transaction ID` rolls it back by hand (from SSH if
+  it still works, otherwise from the provider console).
+- The rollback waits up to 10 minutes for the run lock when an apply or a
+  confirm holds it, and then gives up; the transaction then shows as open
+  past its deadline, as after a reboot.
+- A rollback restores files only while they still hold what the
+  transaction wrote; a file you edited in the window is left alone, the
+  transaction is marked `rollback-failed`, and you restore it from the
+  backup by hand.
 
 ### Lockout guard
 
 stackward will refuse to close public SSH unless another way in is proven:
 Tailscale is running with key expiry off and the confirming session arrived
 over the tailnet, or an explicit allowed source exists and the confirming
-session came from it. Before any access step it will remind you where your
-provider console is, because that is the recovery path of last resort.
+session came from it. Before any access step it already reminds you of your
+provider console, because that is the recovery path of last resort.
 
 ### What will still go wrong
 
 No design removes all risk. Keep provider console access, keep a second
 session open while you work, and read the plan. Apply is tested on
-disposable GitHub runner VMs (the `apply` scenario in
+disposable GitHub runner VMs (the `apply` and `transaction` scenarios in
 [testing.md](testing.md)), never on a developer's own machine, and not on
 your production server first.

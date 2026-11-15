@@ -60,7 +60,7 @@ Every step has one of three risk classes.
 |---|---|---|
 | `safe` | Changes a setting that cannot cut you off or stop your services; may restart a logging daemon. | journald size cap, sysctl hardening drop-in |
 | `networking` | Can interrupt traffic: restarts Docker, so containers stop and start. Always says what it restarts. | Docker log rotation in `daemon.json` |
-| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply refuses these until it can run them inside a transaction with a rollback timer and a confirm from a new SSH session (#26). | none yet |
+| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | none yet (#28 adds the first) |
 
 Some steps are **opt in** (`opt_in: true`): apply runs them only when you
 select them by id. The Docker step is opt in because of its restart.

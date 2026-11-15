@@ -246,7 +246,9 @@ a facts file reproduces a plan and plans have golden files.
 5. Write `Check(Reader, Step) (applied, why, error)`: read only, through
    the `Reader` apply passes (so it works under a test root). Set
    `CommandsOnChange` when the commands only load a changed file (a
-   restart).
+   restart). An `AccessCritical` step that changes sshd also sets `SSHD`:
+   the settings it means to leave in effect, as `sshd -T` prints them; the
+   transaction refuses to keep the change unless `sshd -T` shows them.
 6. Test the three plan cases (pass gives no step, fail gives the exact
    diff, unknown facts give no step and a reason) in
    `internal/plan/plan_test.go`, and add or extend a `test/fixtures/plan-*`
@@ -281,26 +283,44 @@ plan.Authorize  ->  plan.Check  ->  preconditions  ->  preview, confirm  ->  app
   first, then runs the steps' undo commands except file removals.
 
 - `apply.AcquireRunLock` takes the exclusive run lock (`Host.Lock`, flock on
-  `/run/stackward/apply.lock`) that apply and undo hold; later transactions
-  reuse it. `apply.FindPending` and `apply.FinishPending` run the restarts a
+  `/run/stackward/apply.lock`) that apply, undo and confirm hold;
+  `AcquireRunLockWait` is the rollback timer's patient version. `apply.FindPending` and `apply.FinishPending` run the restarts a
   journal marks `restart_pending`. `plan.Pin` (a generator's optional `Pin`)
   ties plan values such as sysctl undo values to the host.
 
-All host access goes through `apply.Host` (`NewHost(root, runner)`):
+All host writes and commands go through `apply.Host` (`NewHost(root, runner)`):
 `ReadFile`, `Stat`, `WriteAtomic`, `CopyNew`, `MkdirAll`, `Remove`,
 `ReadDir`, `Lock`, `Run`.
 The real host is `NewHost("/", nil)`; tests use `t.TempDir()` and the fake
-runner in `internal/apply/applytest`, and the CLI takes an `applyEnv` (host,
-euid, hostname, stdin, terminal, clock) so its tests never reach the
-machine. Only `hostApplyEnv` touches the real host.
+runner in `internal/apply/applytest` (with `applytest.System` faking
+systemd, sshd and ss for the transaction), and the CLI takes an `applyEnv`
+(host, euid, hostname, stdin, terminal, clock, session, binary path, sleep)
+so its tests never reach the machine. Only `hostApplyEnv` touches the real host.
 
 - **Never touched list (issue #27).** `plan.Options.Vetoes` takes
   `func(Step) string` policies; a non empty reason moves the step to
   `skipped` with kind `refused`, at plan time. Policies judge the step's
   `touches` and `edits`, so a step cannot reach a forbidden target without
   declaring it.
-- **Access-critical steps (issue #26)** will run inside a transaction with a
-  rollback timer. Until then `apply.Select` refuses them.
+- **Access-critical steps** run inside the transaction (`internal/apply/txn.go`,
+  `internal/cli/txn.go`). `apply.Select` takes them only when named and
+  alone; `apply.Preflight` reads (systemd-run, `sshd -t`, `sshd -T`, `ss`);
+  `apply.RunTransaction` copies the binary, writes the state
+  (`/var/lib/stackward/transaction.json`, `schema/transaction.v1.json`),
+  arms the `systemd-run` timer, runs `Execute`, then `ValidateAccess`, and
+  rolls back at once on a failure; `apply.ConfirmTxn`, `apply.RollBack` and
+  `apply.AckRollback` move the state on, always under the run lock. Session
+  facts come from `apply.ReadSession` (a `/proc` root, so tests use a fake
+  tree) and are compared by `apply.CompareSessions`. The CLI takes them from
+  `applyEnv.session`, and the binary path from `applyEnv.exe`.
+- **Test-only access steps.** `internal/plan/txntest` holds two
+  access-critical steps (an sshd drop-in with `LoginGraceTime 60`, and one
+  `sshd -t` refuses). Nothing registers them by default: tests call
+  `txntest.Register()`, and `cmd/stackward/scenario.go` does under the
+  `stackward_scenario` build tag, used only for the scenario binary.
+  `TestReleasedBinaryHasNoTestSteps` (cmd/stackward) and
+  `TestDefaultRegistryHasNoTestAccessSteps` (internal/plan) keep them out of
+  releases.
 - **Order.** Steps sort by risk class, then id. A later step that must run
   after another (create a user, prove it, then lock the default user) adds
   an explicit ordering field rather than relying on ids.

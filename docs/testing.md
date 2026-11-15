@@ -7,7 +7,7 @@ others miss.
 |---|---|---|
 | Unit tests | `internal/**/*_test.go` | collectors parse what the host prints, checks judge fake facts right (pass, warn or fail, unknown) |
 | Golden fixtures | `test/fixtures/<scenario>/` | a saved facts file gives exactly the expected report, valid against `schema/report.v1.json` |
-| Live host scenarios | `test/scenarios/` | the real binary, as root, under the Landlock sandbox, on a real Ubuntu host with real containers, firewall and sshd, reports what it should, and writes nothing; `apply` and `undo` change exactly what the plan says |
+| Live host scenarios | `test/scenarios/` | the real binary, as root, under the Landlock sandbox, on a real Ubuntu host with real containers, firewall and sshd, reports what it should, and writes nothing; `apply` and `undo` change exactly what the plan says, and the access-critical transaction rolls back by itself |
 
 The first two run with `go test ./...`. See [architecture.md](architecture.md)
 for how to add a fixture. `go test ./...` never changes the machine it runs
@@ -36,6 +36,7 @@ specific checks and subjects.
 | `read-only` | the `bad-docker` containers, UFW active and a process listening on a custom port | nothing changes on the host during an audit with and without the sandbox, strace sees no write attempt outside `--out` (the socket ownership snapshot taken before the sandbox included), and under the sandbox the snapshot names the owner of the custom port |
 | `non-root` | the `bad-docker` containers | as a user, no collector crashes and the report says it ran without root; as a user with no groups, no check marked `needs_root` passes blind: a pass without root must not be a fail or warn in a root audit of the same host, nor say "not inspected" |
 | `apply` | kernel values off baseline, a persistent journal without a cap, a `daemon.json` without log rotation | the only scenario where stackward changes the host: `plan`, then `apply` without root is refused; `apply --all-safe --step docker-log-rotation` writes exactly the planned files, keeps the mode of `daemon.json`, writes `daemon.json.orig` and the run backup, a journal with status ok (0600), changes the running values and leaves Docker up with json-file logs; nothing else under `/etc` changes; a second apply says nothing to do, writes no run, changes no file and does not restart Docker; a new audit passes DKR-031 and KRN-004; `undo --run` restores `/etc` (except `daemon.json.orig`) and the running value |
+| `transaction` | the runner's own sshd, the scenario binary (`-tags stackward_scenario`) with the test-only access-critical steps, and no SSH session (as after a dropped connection) | a step `sshd -t` refuses rolls back at once (exit 1, file gone, no timer, not blocking); `txn-test-sshd` with `--confirm-within 30s` arms `stackward-rollback-ID.timer`, `sshd -T` shows `logingracetime 60`, a second transaction and a confirm without `--console` are refused; nobody confirms, the timer rolls back (file gone, `sshd -t` passes, port 22 listened on, `ssh.service` active, journal undone), access steps stay refused until `confirm --ack-rollback`; a second transaction confirmed with `--console` stops the timer and keeps the drop-in past the deadline |
 
 CI runs every scenario on `ubuntu-24.04` and `ubuntu-22.04` runners
 (`.github/workflows/scenarios.yml`) for pull requests that touch `internal/`,
@@ -107,6 +108,14 @@ CGO_ENABLED=0 go build -trimpath -o stackward ./cmd/stackward
 
 test/scenarios/run.sh list
 STACKWARD=$PWD/stackward test/scenarios/run.sh bad-docker
+```
+
+The `transaction` scenario needs the scenario binary, the only build with
+the test-only access-critical steps:
+
+```sh
+CGO_ENABLED=0 go build -trimpath -tags stackward_scenario -o stackward-scenario ./cmd/stackward
+STACKWARD=$PWD/stackward-scenario test/scenarios/run.sh transaction
 ```
 
 Reports, traces and the assertion log land in `./scenario-out` (set `OUT` to
