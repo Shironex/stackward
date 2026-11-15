@@ -5,6 +5,40 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.1.2 (2026-11-15)
+
+A patch release: an easier to read text report, and three fixes found while
+running 0.1.1 on a real server. Still read only; nothing new changes the
+host.
+
+### Added
+
+- `audit --plain` (and `probe --plain`): no colors, Unicode or box lines, the
+  same output as when piped. `NO_COLOR` still drops only the colors.
+- `audit --info`: list every info result in full instead of one line each.
+- `audit --group`: lay results out by check group instead of by level.
+
+### Changed
+
+- The text report starts with a summary: counts per level, the fails with
+  the most severe first, and the commands to dig in (in a box on a
+  terminal). Results follow,
+  ordered fail, warn, unknown, info. Each result leads with what was found;
+  the check title is shown as `rule`, as in the TUI. Info results take one
+  line each unless `--info` or `--all` is given.
+- The text report fits the terminal width (or `COLUMNS`); a pipe or an
+  `--out` file gets 100 columns.
+
+### Fixed
+
+- LOG-004 now counts a metrics agent (node_exporter, Alloy, Grafana Agent and
+  others) that runs in a container or is found by its process name, not only
+  one installed from a package.
+- The USR-007 message no longer comes out half masked by secret redaction.
+- `install.sh` asks again on an answer it does not know instead of taking
+  the default, and after `uninstall` it reminds you to run `hash -r` or open a
+  new shell, since the shell may still remember the old path.
+
 ## 0.1.1 (2026-11-15)
 
 A patch release: an installer, clearer findings in the terminal browser, and
