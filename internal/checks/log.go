@@ -2,7 +2,6 @@ package checks
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -72,13 +71,12 @@ func checkMonitoringAgent(in Input) []Result {
 	if j == nil {
 		return []Result{NotInspected(in.Facts, "journal")}
 	}
-	agents := nonNil(j.Agents)
-	sort.Strings(agents)
-	ev := map[string]any{"agents": agents}
+	agents, labels := monitoringAgents(in.Facts)
+	ev := map[string]any{"agents": nonNil(agents)}
 	if len(agents) == 0 {
 		return One(Info, "no metrics agent found (node exporter, Alloy, Netdata and similar); consider monitoring with alerts for disk and SSH logins", ev)
 	}
-	return One(Info, "metrics agent found: "+strings.Join(agents, ", "), ev)
+	return One(Info, "metrics agent found: "+strings.Join(labels, ", "), ev)
 }
 
 func checkJournalPersistent(in Input) []Result {
