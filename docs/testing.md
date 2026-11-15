@@ -6,7 +6,7 @@ others miss.
 | Layer | Where | What it proves |
 |---|---|---|
 | Unit tests | `internal/**/*_test.go` | collectors parse what the host prints, checks judge fake facts right (pass, warn or fail, unknown) |
-| Golden fixtures | `test/fixtures/<scenario>/` | a saved facts file gives exactly the expected report, valid against `schema/report.v1.json` |
+| Golden fixtures | `test/fixtures/<scenario>/` | a saved facts file gives exactly the expected report, valid against `schema/report.v1.json`; a few fixtures also pin the Markdown (`expected.md`) and the text report (`expected-*.txt`: terminal at 80 and 120 columns, plain, grouped, `--all`) |
 | Live host scenarios | `test/scenarios/` | the real binary, as root, under the Landlock sandbox, on a real Ubuntu host with real containers, firewall and sshd, reports what it should, and writes nothing |
 
 The first two run with `go test ./...`. See [architecture.md](architecture.md)
