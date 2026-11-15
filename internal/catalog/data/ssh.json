@@ -1,0 +1,140 @@
+{
+  "group": "SSH",
+  "checks": [
+    {
+      "id": "SSH-001",
+      "title": "Password authentication is off",
+      "severity": "high",
+      "rationale": "With password authentication on, anyone on the internet can guess passwords against every account that has one, and bots do so all day. Keys cannot be guessed. A Match block that turns passwords back on for some users or addresses counts as a warning; Match all counts as global.",
+      "verify": "sudo sshd -T | grep -i '^passwordauthentication'; grep -ri passwordauthentication /etc/ssh/sshd_config /etc/ssh/sshd_config.d/",
+      "fix": "Add a drop-in with PasswordAuthentication no, named to sort before cloud-init's (for example /etc/ssh/sshd_config.d/00-hardening.conf), then check with sudo sshd -t and reload ssh.",
+      "breaks": "Accounts without an authorized key can no longer log in over SSH. Confirm a key login works in a second session before reloading.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-002",
+      "title": "Keyboard-interactive authentication is off",
+      "severity": "high",
+      "rationale": "Keyboard-interactive authentication usually asks for the account password through PAM, so it is password authentication under another name even when PasswordAuthentication is no. It is a warning instead of a failure when a PAM second factor module is configured for sshd or AuthenticationMethods only accepts it after a key.",
+      "verify": "sudo sshd -T | grep -i '^kbdinteractiveauthentication'; grep -v '^#' /etc/pam.d/sshd",
+      "fix": "Set KbdInteractiveAuthentication no (ChallengeResponseAuthentication on older releases) in the same early drop-in.",
+      "breaks": "Logins that rely on a PAM prompt (one time codes, password through PAM) stop working; keep it only with a real second factor.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-003",
+      "title": "Root cannot log in over SSH",
+      "severity": "high",
+      "rationale": "root is the one account name every attacker knows, and a root session has no sudo step to log or limit it. PermitRootLogin yes allows a root password; prohibit-password (the default) still allows root with a key, which is usually a leftover from provisioning.",
+      "verify": "sudo sshd -T | grep -i '^permitrootlogin'",
+      "fix": "Log in as a sudo user (a dedicated non root user for the PaaS too), then set PermitRootLogin no.",
+      "breaks": "Tools that connect as root (a PaaS, backup jobs, provisioning) must move to a sudo user first.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-004",
+      "title": "Empty passwords are refused",
+      "severity": "critical",
+      "rationale": "PermitEmptyPasswords yes lets an account whose password is empty log in with no secret at all.",
+      "verify": "sudo sshd -T | grep -i '^permitemptypasswords'",
+      "fix": "Set PermitEmptyPasswords no (the default) and lock accounts with empty passwords (passwd -l).",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-005",
+      "title": "MaxAuthTries is low",
+      "severity": "low",
+      "rationale": "MaxAuthTries caps the authentication attempts per connection. The default of 6 gives a guesser more tries per connection, and log lines arrive later for fail2ban or CrowdSec to act on.",
+      "verify": "sudo sshd -T | grep -i '^maxauthtries'",
+      "fix": "Set MaxAuthTries 3.",
+      "breaks": "Clients that offer many keys from an agent may hit the limit before the right key; point them at one key with IdentitiesOnly.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-006",
+      "title": "Logins are limited with AllowUsers or AllowGroups",
+      "severity": "low",
+      "rationale": "Without an allow list, any account that gains a key or a password (a service account, a forgotten user, an account a package created) may log in. Listing the accounts that should log in turns every other account into a refusal.",
+      "verify": "sudo sshd -T | grep -Ei '^allow(users|groups)'",
+      "fix": "Add AllowUsers with the accounts that log in (or AllowGroups with a group such as sshusers).",
+      "breaks": "Every account not listed is refused, including automation users; list them all before reloading.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-007",
+      "title": "X11 and agent forwarding are off",
+      "severity": "low",
+      "rationale": "On a server nobody needs X11 forwarding, and agent forwarding lets anyone with root on the server use the agent of whoever is logged in to reach other machines. Ubuntu's default sshd_config turns X11Forwarding on.",
+      "verify": "sudo sshd -T | grep -Ei '^(x11forwarding|allowagentforwarding)'",
+      "fix": "Set X11Forwarding no and AllowAgentForwarding no; use ProxyJump instead of agent forwarding.",
+      "breaks": "Workflows that forward an agent through the server (git over SSH from the server with the laptop's key) stop working.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-008",
+      "title": "No early drop-in shadows a later hardening setting",
+      "severity": "moderate",
+      "rationale": "sshd takes the first value it reads for most keywords, and drop-ins in /etc/ssh/sshd_config.d are read in name order before the rest of the main file. A cloud-init file such as 50-cloud-init.conf with PasswordAuthentication yes beats a hardening file named 60-hardening.conf, which then does nothing while looking correct.",
+      "verify": "ls /etc/ssh/sshd_config.d/; sudo grep -ri -E 'passwordauthentication|permitrootlogin' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/",
+      "fix": "Rename the hardening drop-in to sort first (00-hardening.conf), or fix the earlier file, then confirm with sudo sshd -T.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-009",
+      "title": "Effective SSH configuration fully confirmed",
+      "severity": "info",
+      "rationale": "Without root stackward cannot run sshd -T and parses the configuration files itself. That is exact for the global section when every file is readable, but Match blocks change settings per user, group or address, and root only drop-ins (0600 on Ubuntu 24.04) may hold any value. This check says when the SSH results rest on that fallback.",
+      "verify": "sudo sshd -T; sudo sshd -T -C user=NAME,host=HOST,addr=ADDR for a Match block",
+      "fix": "Rerun with sudo for full coverage.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-010",
+      "title": "sshd listens where it is configured to",
+      "severity": "high",
+      "rationale": "On Ubuntu 22.10 and later sshd is socket activated: ssh.socket opens the listening sockets, generated from Port and ListenAddress only on daemon-reload. Changing the port in sshd_config without a reload and a socket restart leaves the old port open and the new one closed, so firewall rules, fail2ban jails and the admin's belief no longer match reality.",
+      "verify": "sudo sshd -T | grep -Ei '^(port|listenaddress)'; ss -tln; systemctl status ssh.socket",
+      "fix": "systemctl daemon-reload && systemctl restart ssh.socket (or restart ssh.service without socket activation), then compare ss -tln with sshd -T again.",
+      "breaks": "Restarting the socket moves the listener: keep the current session open and test a new login on the new port before closing it.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-012",
+      "title": "Host keys are strong and private",
+      "severity": "moderate",
+      "rationale": "A host private key readable by other users lets them impersonate the server to every client. DSA host keys are obsolete and RSA keys under 3072 bits are below current guidance. Only the metadata of the private key is read, never its contents.",
+      "verify": "ls -l /etc/ssh/ssh_host_*; for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf \"$f\"; done",
+      "fix": "chmod 600 the private keys and chown them to root; remove DSA keys and regenerate a small RSA key with ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key.",
+      "breaks": "Regenerating a host key changes the server fingerprint: clients see a host key warning until known_hosts is updated."
+    },
+    {
+      "id": "SSH-013",
+      "title": "Home, ~/.ssh and authorized_keys are not writable by others",
+      "severity": "high",
+      "rationale": "Anyone who can write to a user's home, ~/.ssh or authorized_keys can add their own key and log in as that user. sshd's StrictModes also refuses keys in that state, which can lock the user out. A ~/.ssh directory that is not 0700 is a warning.",
+      "verify": "ls -ld ~USER ~USER/.ssh ~USER/.ssh/authorized_keys",
+      "fix": "chmod go-w ~USER; chmod 700 ~USER/.ssh; chmod 600 ~USER/.ssh/authorized_keys; chown the files to the user.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-014",
+      "title": "Authorized keys are strong and not stale",
+      "severity": "moderate",
+      "rationale": "DSA keys and RSA keys under 2048 bits are weak enough to retire. Keys in root's authorized_keys while root login is off are leftovers that start working again the day someone relaxes PermitRootLogin. Only the key type and size are kept, never the key or its comment.",
+      "verify": "ssh-keygen -lf ~USER/.ssh/authorized_keys",
+      "fix": "Replace weak keys with ed25519 (ssh-keygen -t ed25519) and remove root's authorized keys once nothing logs in as root.",
+      "needs_root": true
+    },
+    {
+      "id": "SSH-015",
+      "title": "No weak key exchange, cipher or MAC algorithms",
+      "severity": "low",
+      "rationale": "SHA-1 key exchange, CBC mode ciphers and SHA-1, MD5 or 64 bit tag MACs are the algorithms ssh-audit and the distribution hardening guides remove. OpenSSH's defaults still include hmac-sha1 and umac-64 for old clients. stackward compares sshd -T output with a short built in list and does not connect to the server.",
+      "verify": "sudo sshd -T | grep -Ei '^(kexalgorithms|ciphers|macs)'; or run ssh-audit against the server from another machine",
+      "fix": "Follow the ssh-audit hardening guide for the distribution: a drop-in with explicit KexAlgorithms, Ciphers and MACs lists.",
+      "breaks": "Very old clients and libraries that only speak the removed algorithms can no longer connect.",
+      "docs": "https://www.ssh-audit.com/hardening_guides.html",
+      "needs_root": true
+    }
+  ]
+}
