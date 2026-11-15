@@ -56,6 +56,8 @@ stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
 stackward explain [id]                explain a check, or list them all
+stackward tui [--report FILE | --facts FILE]
+                                      browse the findings in the terminal
 stackward version
 ```
 
@@ -63,6 +65,21 @@ Exit codes: `0` no finding at or above `--fail-on` (default `fail`), `1`
 findings, `2` the tool itself failed.
 
 The JSON report follows [schema/report.v1.json](schema/report.v1.json).
+
+### Browsing findings
+
+`stackward tui` runs the same audit as `stackward audit` (same flags, same
+sandbox, same read only promise) and opens a findings browser: results by
+group, worst first, with the full explanation, fix and verify steps of the
+selected check beside them. `--report report.json` browses a saved
+`--json` report instead, `--facts facts.json` a saved facts file.
+
+Keys: arrows or `j`/`k` move, `tab` switches between the list and the
+detail pane, `/` filters, `l` cycles the level, `a` shows passing and
+skipped results, `g` jumps to the next group, `y` copies the fix, `?` lists
+every key, `q` quits. Copying uses the terminal clipboard sequence (OSC 52)
+and only happens when you press `y`; the browser writes no file. It needs
+at least 60x16 and is laid out for 80x24. `NO_COLOR` turns colors off.
 
 ### Reading a report
 
