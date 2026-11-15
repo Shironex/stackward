@@ -1,0 +1,24 @@
+ stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ profile public-web (inferred) · sandbox unavailable · root yes                 
+ 91 results  3 fail  5 warn  56 unknown  7 info  16 pass  4 skip                
+────────────────────────────────────────────────────────────────────────────────
+ KEYS                                                                           
+                                                                                
+  ↑ ↓  j k      move between results, or scroll the detail pane                 
+  pgup pgdn     a page up or down                                               
+  home end      first or last                                                   
+  tab           switch between the list and the detail pane                     
+  enter  esc    open the detail pane, go back                                   
+  /             filter by id, title, subject or message                         
+  l             cycle the level: all, fail, warn, unknown, info                 
+  a             show or hide passing and skipped results                        
+  g  G          next or previous group                                          
+  y             copy the fix to the clipboard (OSC 52)                          
+  ?             close this help                                                 
+  q             quit                                                            
+                                                                                
+  stackward tui only reads. It writes no file, runs no command and changes      
+  nothing on the host. Unknown means could not inspect; it is never a pass.     
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ ? close help  q quit                                                           
