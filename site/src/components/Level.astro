@@ -1,0 +1,9 @@
+---
+/** A finding level as a chip: the word always shows, colour only supports it. */
+interface Props {
+  level: 'pass' | 'warn' | 'fail' | 'unknown' | 'skip' | 'info';
+}
+const { level } = Astro.props;
+---
+
+<span class={`level level-${level}`}>{level}</span>

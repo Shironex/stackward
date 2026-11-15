@@ -1,0 +1,161 @@
+/* The open-strata token layer, built on the brand palette: ink #102B2B,
+   mint #72D6BC, paper #F3F6F1, muted #B7CAC4. Dark ink is the default theme,
+   paper the light one.
+
+   The brand mark is a stack of mint bars whose dim segments mean "not
+   inspected". The site keeps that meaning: mint is what was checked and
+   passed, --sw-dim marks what was not inspected, and warn (#F3C879) and fail
+   (#FF9C90) come from the brand too, with darker aliases on paper. A level always travels with its word, never colour alone.
+
+   Starlight is dark first: dark lives in :root, light in
+   :root[data-theme='light']. Its inline script sets data-theme before paint
+   and follows the system setting until the reader picks one. Every colour is
+   an oklch() literal so scripts/contrast.test.mjs can compute the WCAG
+   contrast of each text and background pair from these values. */
+
+@import '@fontsource-variable/ibm-plex-sans/standard.css';
+@import '@fontsource-variable/ibm-plex-sans/standard-italic.css';
+@import '@fontsource-variable/red-hat-mono/index.css';
+
+:root,
+::backdrop {
+  --sw-bg: oklch(26.8% 0.033 195.4); /* ink #102B2B */
+  --sw-bg-2: oklch(30% 0.034 194);
+  --sw-bg-3: oklch(33.5% 0.035 192);
+  --sw-line: oklch(38.5% 0.034 190);
+  --sw-line-2: oklch(52% 0.03 184);
+  --sw-ink: oklch(96.9% 0.007 132.4); /* paper #F3F6F1 */
+  --sw-ink-2: oklch(90% 0.014 165);
+  --sw-ink-3: oklch(82.3% 0.022 174.9); /* muted #B7CAC4 */
+
+  --sw-mint: oklch(80.8% 0.102 174.7); /* #72D6BC */
+  --sw-dim: oklch(54.4% 0.057 178.4); /* dim cells #497B70, 3:1 on ink */
+  --sw-mint-ink: oklch(84% 0.095 174);
+  --sw-mint-wash: oklch(33% 0.05 180);
+  --sw-on-mint: oklch(26.8% 0.033 195.4);
+
+  --sw-fail: oklch(79.1% 0.121 27.5); /* #FF9C90 */
+  --sw-fail-wash: oklch(32% 0.06 30);
+  --sw-warn: oklch(85.4% 0.109 81.6); /* #F3C879 */
+  --sw-warn-wash: oklch(33% 0.05 85);
+  --sw-pass: oklch(84% 0.095 174);
+  --sw-pass-wash: oklch(33% 0.05 180);
+  --sw-unknown: oklch(82.3% 0.022 174.9); /* muted #B7CAC4 */
+  --sw-unknown-wash: oklch(31% 0.02 195);
+
+  /* The terminal panel stays dark ink in both themes: it shows real CLI output. */
+  --sw-term-bg: oklch(21.5% 0.028 196);
+  --sw-term-line: oklch(33% 0.03 193);
+  --sw-term-ink: oklch(94% 0.008 140);
+  --sw-term-dim: oklch(76% 0.02 180);
+  --sw-term-fail: oklch(79.1% 0.121 27.5);
+  --sw-term-warn: oklch(85.4% 0.109 81.6);
+  --sw-term-pass: oklch(80.8% 0.102 174.7);
+  --sw-term-unknown: oklch(76% 0.02 190);
+  --sw-term-prompt: oklch(80.8% 0.102 174.7);
+
+  --sw-focus: oklch(80.8% 0.102 174.7);
+  --sw-scrim: oklch(12% 0.02 196 / 0.6);
+  --sw-shadow: 0 1px 0 oklch(0% 0 0 / 0.2), 0 18px 48px -18px oklch(10% 0.02 196 / 0.7);
+
+  --sw-font-display: 'IBM Plex Sans Variable', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --sw-font-ui: 'IBM Plex Sans Variable', 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sw-font-code: 'Red Hat Mono Variable', 'Red Hat Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sw-radius: 4px;
+  --sw-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+  --sw-bg: oklch(96.9% 0.007 132.4); /* paper #F3F6F1 */
+  --sw-bg-2: oklch(94.2% 0.01 160);
+  --sw-bg-3: oklch(91.2% 0.013 170);
+  --sw-line: oklch(86.5% 0.016 175);
+  --sw-line-2: oklch(72% 0.02 178);
+  --sw-ink: oklch(26.8% 0.033 195.4); /* ink #102B2B */
+  --sw-ink-2: oklch(35% 0.03 192);
+  --sw-ink-3: oklch(45% 0.025 188);
+
+  --sw-mint: oklch(80.8% 0.102 174.7);
+  --sw-mint-ink: oklch(47.9% 0.075 175.2); /* deep teal #246B5B */
+  --sw-dim: oklch(63% 0.039 166.9); /* dim cells #739184, 3:1 on paper */
+  --sw-mint-wash: oklch(93% 0.04 172);
+  --sw-on-mint: oklch(26.8% 0.033 195.4);
+
+  --sw-fail: oklch(49.4% 0.155 28.1); /* #A8322A */
+  --sw-fail-wash: oklch(95% 0.025 28);
+  --sw-warn: oklch(50.8% 0.105 72.1); /* #8A5A0A */
+  --sw-warn-wash: oklch(95% 0.045 90);
+  --sw-pass: oklch(47.9% 0.075 175.2);
+  --sw-pass-wash: oklch(93% 0.04 172);
+  --sw-unknown: oklch(47% 0.025 200);
+  --sw-unknown-wash: oklch(93.5% 0.01 190);
+
+  --sw-term-bg: oklch(26.8% 0.033 195.4);
+  --sw-term-line: oklch(26.8% 0.033 195.4);
+
+  --sw-focus: oklch(47.9% 0.075 175.2);
+  --sw-scrim: oklch(26.8% 0.033 195.4 / 0.4);
+  --sw-shadow: 0 1px 0 oklch(26.8% 0.033 195.4 / 0.05), 0 18px 40px -18px oklch(26.8% 0.033 195.4 / 0.3);
+
+  color-scheme: light;
+}
+
+/* Starlight's variables mapped onto the tokens once. Starlight keeps its
+   defaults in cascade layers and customCss is unlayered, so these win. Its
+   grey ramp is named for dark mode: white is the strongest ink. */
+:root,
+::backdrop {
+  --sl-font: var(--sw-font-ui);
+  --sl-font-mono: var(--sw-font-code);
+
+  --sl-color-white: var(--sw-ink);
+  --sl-color-gray-1: var(--sw-ink);
+  --sl-color-gray-2: var(--sw-ink-2);
+  --sl-color-gray-3: var(--sw-ink-3);
+  --sl-color-gray-4: var(--sw-line-2);
+  --sl-color-gray-5: var(--sw-line);
+  --sl-color-gray-6: var(--sw-bg-2);
+  --sl-color-gray-7: var(--sw-bg-2);
+  --sl-color-black: var(--sw-bg);
+
+  --sl-color-accent-low: var(--sw-mint-wash);
+  --sl-color-accent: var(--sw-mint);
+  --sl-color-accent-high: var(--sw-mint-ink);
+
+  --sl-color-text: var(--sw-ink-2);
+  --sl-color-text-accent: var(--sw-mint-ink);
+  --sl-color-text-invert: var(--sw-on-mint);
+  --sl-color-bg: var(--sw-bg);
+  --sl-color-bg-nav: var(--sw-bg);
+  --sl-color-bg-sidebar: var(--sw-bg);
+  --sl-color-bg-inline-code: var(--sw-bg-3);
+  --sl-color-bg-accent: var(--sw-mint);
+  --sl-color-hairline-light: var(--sw-line);
+  --sl-color-hairline: var(--sw-line);
+  --sl-color-hairline-shade: var(--sw-line);
+  --sl-color-backdrop-overlay: var(--sw-scrim);
+
+  /* Asides: note stays neutral, tip is pass, caution is warn, danger is fail. */
+  --sl-color-blue-low: var(--sw-bg-2);
+  --sl-color-blue: var(--sw-line-2);
+  --sl-color-blue-high: var(--sw-ink);
+  --sl-color-purple-low: var(--sw-bg-2);
+  --sl-color-purple: var(--sw-line-2);
+  --sl-color-purple-high: var(--sw-ink);
+  --sl-color-green-low: var(--sw-pass-wash);
+  --sl-color-green: var(--sw-pass);
+  --sl-color-green-high: var(--sw-pass);
+  --sl-color-orange-low: var(--sw-warn-wash);
+  --sl-color-orange: var(--sw-warn);
+  --sl-color-orange-high: var(--sw-warn);
+  --sl-color-red-low: var(--sw-fail-wash);
+  --sl-color-red: var(--sw-fail);
+  --sl-color-red-high: var(--sw-fail);
+
+  --sl-shadow-sm: none;
+  --sl-shadow-md: none;
+  --sl-shadow-lg: var(--sw-shadow);
+}

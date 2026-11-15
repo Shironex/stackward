@@ -1,0 +1,314 @@
+/* Element type and Starlight's chrome in the open-strata theme: one reading
+   column, condensed Plex headings, mint as the only loud colour. Reads only
+   --sw-* tokens and the --sl-* variables tokens.css maps onto them. */
+
+/* ---------- type ---------- */
+body {
+  background: var(--sw-bg);
+  color: var(--sw-ink);
+  font-family: var(--sw-font-ui);
+  font-size: 1rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+code,
+kbd,
+pre {
+  font-variant-ligatures: none;
+}
+
+kbd {
+  font: 500 0.75rem/1 var(--sw-font-code);
+  padding: 3px 6px;
+  border: 1px solid var(--sw-line-2);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  color: var(--sw-ink-2);
+  background: var(--sw-bg-2);
+}
+
+:focus-visible {
+  outline: 2px solid var(--sw-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--sw-mint);
+  color: var(--sw-on-mint);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- page title ---------- */
+h1#_top {
+  margin-top: 0.25rem;
+  font: 600 clamp(1.875rem, 3.4vw, 2.625rem) / 1.1 var(--sw-font-display);
+  font-stretch: 85%;
+  letter-spacing: -0.015em;
+  color: var(--sw-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- markdown content ---------- */
+.sl-markdown-content {
+  color: var(--sw-ink-2);
+}
+
+.sl-markdown-content :is(p, li):not(:where(.not-content *)) {
+  max-width: 70ch;
+}
+
+/* The overview's hero holds the only h1, so Starlight's title panel is empty there. */
+.content-panel:has(> .sl-container:empty) {
+  display: none;
+}
+
+.sl-markdown-content :is(strong, b) {
+  color: var(--sw-ink);
+  font-weight: 600;
+}
+
+.sl-markdown-content :is(h2, h3, h4):not(:where(.not-content *)) {
+  color: var(--sw-ink);
+  font-family: var(--sw-font-display);
+}
+
+.sl-markdown-content h2:not(:where(.not-content *)) {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+  font-stretch: 85%;
+  letter-spacing: -0.01em;
+}
+
+/* Starlight wraps each h2 with its anchor link; the section rule goes on the
+   full width wrapper, not on the heading, which is only as wide as its text. */
+.sl-markdown-content .sl-heading-wrapper.level-h2:not(:where(.not-content *)) {
+  margin-top: 2.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sw-line);
+}
+
+.sl-markdown-content .sl-heading-wrapper.level-h2 > h2 {
+  margin-top: 0;
+}
+
+.sl-markdown-content h3:not(:where(.not-content *)) {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  font-weight: 600;
+  margin-top: 1.75rem;
+}
+
+.sl-markdown-content h4:not(:where(.not-content *)) {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sl-markdown-content li::marker {
+  color: var(--sw-ink-3);
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--sw-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--sw-mint);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 160ms var(--sw-ease), text-decoration-thickness 160ms var(--sw-ease);
+}
+
+.sl-markdown-content a:hover:not(:where(.not-content *)) {
+  text-decoration-thickness: 2px;
+}
+
+.sl-markdown-content :not(pre) > code:not(:where(.not-content *)) {
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  background: var(--sw-bg-3);
+  color: var(--sw-ink);
+}
+
+.sl-markdown-content hr {
+  border: 0;
+  border-top: 1px solid var(--sw-line);
+}
+
+.sl-markdown-content blockquote {
+  border-inline-start: 0;
+  padding: 0.75rem 1rem;
+  background: var(--sw-bg-2);
+  border-radius: var(--sw-radius);
+  color: var(--sw-ink-2);
+  font-style: normal;
+}
+
+/* Tables: a hairline under the head, quiet rows, numbers and ids in mono. */
+.sl-markdown-content table:not(:where(.not-content *)) {
+  font-size: 0.9375rem;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+  border: 0;
+  border-bottom: 1px solid var(--sw-line);
+  padding: 0.5rem 0.875rem 0.5rem 0;
+  text-align: start;
+  vertical-align: top;
+  background: transparent;
+}
+
+.sl-markdown-content th:not(:where(.not-content *)) {
+  color: var(--sw-ink);
+  font-weight: 600;
+  border-bottom-color: var(--sw-line-2);
+}
+
+.sl-markdown-content tr:last-child td:not(:where(.not-content *)) {
+  border-bottom: 0;
+}
+
+/* ---------- asides: a tinted panel with a full hairline, no side stripe ---------- */
+.starlight-aside {
+  border: 1px solid var(--sl-color-asides-border);
+  border-radius: var(--sw-radius);
+  padding: 0.875rem 1rem;
+}
+
+.starlight-aside__title {
+  font-family: var(--sw-font-display);
+  font-weight: 600;
+  font-stretch: 90%;
+  letter-spacing: 0;
+}
+
+.starlight-aside--note {
+  --sl-color-asides-text-accent: var(--sw-ink);
+  --sl-color-asides-border: var(--sw-line-2);
+  background: var(--sw-bg-2);
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--sw-pass);
+  --sl-color-asides-border: color-mix(in oklch, var(--sw-pass) 55%, var(--sw-bg));
+  background: var(--sw-pass-wash);
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--sw-warn);
+  --sl-color-asides-border: color-mix(in oklch, var(--sw-warn) 55%, var(--sw-bg));
+  background: var(--sw-warn-wash);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--sw-fail);
+  --sl-color-asides-border: color-mix(in oklch, var(--sw-fail) 55%, var(--sw-bg));
+  background: var(--sw-fail-wash);
+}
+
+.starlight-aside .starlight-aside__content {
+  color: var(--sw-ink-2);
+}
+
+/* ---------- chrome ---------- */
+.header {
+  border-bottom: 1px solid var(--sw-line);
+}
+
+nav.sidebar .large {
+  font-family: var(--sw-font-display);
+  font-weight: 600;
+  font-stretch: 90%;
+  color: var(--sw-ink);
+}
+
+/* A group nested inside a group reads as one of its siblings, not as a top level heading. */
+nav.sidebar details details .large {
+  font-family: var(--sw-font-ui);
+  font-size: var(--sl-text-sm);
+  font-weight: 400;
+  font-stretch: 100%;
+  color: var(--sw-ink-2);
+}
+
+nav.sidebar a {
+  font-variant-numeric: tabular-nums;
+}
+
+nav.sidebar a {
+  border-radius: 3px;
+}
+
+nav.sidebar a[aria-current='page'],
+nav.sidebar a[aria-current='page']:hover,
+nav.sidebar a[aria-current='page']:focus {
+  background: var(--sw-mint-wash);
+  color: var(--sw-ink);
+  font-weight: 600;
+}
+
+.sl-badge {
+  font-family: var(--sw-font-code);
+  border-radius: 3px;
+}
+
+starlight-toc a[aria-current='true'],
+starlight-toc a[aria-current='true']:hover {
+  color: var(--sw-mint-ink);
+}
+
+.pagination-links a {
+  border-radius: var(--sw-radius);
+  box-shadow: none;
+  border-color: var(--sw-line);
+}
+
+.pagination-links .link-title {
+  font-size: 1.125rem;
+  font-family: var(--sw-font-display);
+  font-weight: 600;
+  font-stretch: 90%;
+}
+
+.pagination-links a:hover {
+  border-color: var(--sw-line-2);
+}
+
+/* Search trigger and dialog follow the tokens. */
+site-search button[data-open-modal] {
+  border-radius: var(--sw-radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

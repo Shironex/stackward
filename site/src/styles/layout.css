@@ -1,0 +1,408 @@
+/* Page level layout: the overview and the responsive rules. */
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1.125rem;
+  border-radius: var(--sw-radius);
+  font: 600 0.9375rem/1 var(--sw-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms var(--sw-ease), border-color 160ms var(--sw-ease), transform 160ms var(--sw-ease);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--sw-mint);
+  color: var(--sw-on-mint);
+  border: 1px solid var(--sw-mint);
+}
+
+.btn-primary:hover {
+  background: color-mix(in oklch, var(--sw-mint) 86%, var(--sw-ink));
+}
+
+.btn-quiet {
+  color: var(--sw-ink);
+  border: 1px solid var(--sw-line-2);
+}
+
+.btn-quiet:hover {
+  border-color: var(--sw-ink-3);
+  background: var(--sw-bg-2);
+}
+
+/* ---------- overview ---------- */
+.home {
+  --home-gap: clamp(3.5rem, 7vw, 6rem);
+  max-width: 76rem;
+  margin: 0 auto;
+  color: var(--sw-ink-2);
+}
+
+.home h2 {
+  font: 600 clamp(1.5rem, 2.4vw, 1.875rem) / 1.15 var(--sw-font-display);
+  font-stretch: 85%;
+  letter-spacing: -0.01em;
+  color: var(--sw-ink);
+  margin: 0;
+}
+
+.home p {
+  max-width: 62ch;
+  line-height: 1.65;
+}
+
+.home a:not(.btn) {
+  color: var(--sw-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--sw-mint);
+  text-underline-offset: 3px;
+}
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+  padding-top: clamp(1rem, 3vw, 2.5rem);
+}
+
+.home-hero-copy {
+  padding-top: clamp(0rem, 2vw, 1.5rem);
+}
+
+.home-hero h1 {
+  font: 600 clamp(2.375rem, 4.6vw, 3.75rem) / 1.04 var(--sw-font-display);
+  font-stretch: 80%;
+  letter-spacing: -0.025em;
+  color: var(--sw-ink);
+  margin: 0;
+  max-width: 15ch;
+}
+
+.home-lede {
+  margin: 1.25rem 0 0;
+  font-size: 1.125rem;
+  color: var(--sw-ink-2);
+  max-width: 40ch;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.home-hero-term {
+  min-width: 0;
+}
+
+.home-hero-term .terminal {
+  box-shadow: var(--sw-shadow);
+}
+
+.home-status {
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  padding: 1rem 0;
+  border-top: 1px solid var(--sw-line);
+  border-bottom: 1px solid var(--sw-line);
+}
+
+.home-status p {
+  margin: 0;
+  max-width: none;
+  font-size: 0.9375rem;
+}
+
+.home-status strong {
+  color: var(--sw-warn);
+  font-weight: 700;
+}
+
+.home-intro {
+  margin: 0.875rem 0 0;
+}
+
+/* The strata: one band per layer, coverage as segments (the brand's bars). */
+.home-strata {
+  margin-top: var(--home-gap);
+}
+
+.strata {
+  list-style: none;
+  padding: 0;
+  margin: 1.75rem 0 0;
+  display: grid;
+  gap: 4px;
+}
+
+.stratum {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 5.5rem;
+  gap: 1rem 2rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  /* The coverage cells sit on the page colour: the brand's dim cell is
+     specified at 3:1 against ink and paper, not against a raised panel. */
+  background: var(--sw-bg);
+  border: 1px solid var(--sw-line);
+  border-radius: 2px;
+}
+
+.stratum:first-child {
+  border-radius: var(--sw-radius) var(--sw-radius) 2px 2px;
+}
+
+.stratum:last-child {
+  border-radius: 2px 2px var(--sw-radius) var(--sw-radius);
+}
+
+.stratum-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+.stratum-name a {
+  font: 600 1.0625rem/1.3 var(--sw-font-display);
+  font-stretch: 90%;
+  min-width: 9.5rem;
+}
+
+.stratum-name span {
+  color: var(--sw-ink-3);
+  font-size: 0.9375rem;
+}
+
+.stratum-groups {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.seg {
+  display: grid;
+  gap: 0.375rem;
+  justify-items: start;
+  width: 3.5rem;
+}
+
+.seg-bar {
+  display: block;
+  width: 100%;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--sw-dim);
+}
+
+.seg-live .seg-bar {
+  background: var(--sw-mint);
+}
+
+.seg-id {
+  font: 600 0.75rem/1 var(--sw-font-code);
+  color: var(--sw-ink-3);
+}
+
+.seg-live .seg-id {
+  color: var(--sw-ink);
+}
+
+.stratum-count {
+  font: 500 0.8125rem/1 var(--sw-font-code);
+  color: var(--sw-ink-3);
+  text-align: end;
+}
+
+.stratum-live {
+  border-color: color-mix(in oklch, var(--sw-mint) 55%, var(--sw-line));
+}
+
+.stratum-live .stratum-count {
+  color: var(--sw-mint-ink);
+}
+
+/* The promise: a heading column beside a ruled grid, no cards. */
+.home-promise {
+  margin-top: var(--home-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+  gap: 2rem 3.5rem;
+}
+
+.home-promise-head p {
+  margin: 0.875rem 0 0;
+}
+
+.home .promise-lead {
+  margin: 0 0 1.5rem;
+  font: 500 clamp(1.25rem, 2vw, 1.5rem) / 1.35 var(--sw-font-display);
+  color: var(--sw-ink);
+  max-width: 34ch;
+}
+
+.promise-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 0.75rem 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sw-line);
+}
+
+.promise-list > div {
+  display: contents;
+}
+
+.promise-list dt {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--sw-ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.promise-list dd {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  color: var(--sw-ink-2);
+  max-width: 60ch;
+}
+
+/* Levels: a single row of definitions. */
+.home-levels {
+  margin-top: var(--home-gap);
+}
+
+.levels {
+  margin: 1.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.levels dd {
+  margin: 0.75rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* Learn: intro beside a two column ordered path. */
+.home-learn {
+  margin-top: var(--home-gap);
+  margin-bottom: 2rem;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  background: var(--sw-bg-2);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
+  gap: 2rem 3.5rem;
+}
+
+.home-learn-head p {
+  margin: 0.875rem 0 1.5rem;
+}
+
+.learn-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: topic;
+  columns: 2;
+  column-gap: 2.5rem;
+}
+
+.learn-list li {
+  counter-increment: topic;
+  break-inside: avoid;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--sw-line);
+  font-size: 0.9375rem;
+}
+
+.learn-list li::before {
+  content: counter(topic, decimal-leading-zero);
+  font: 600 0.75rem/1.9 var(--sw-font-code);
+  color: var(--sw-mint-ink);
+}
+
+.home .learn-list a {
+  text-decoration-color: transparent;
+}
+
+.home .learn-list a:hover {
+  text-decoration-color: var(--sw-mint);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 64rem) {
+  .levels {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 56rem) {
+  .home-hero,
+  .home-promise,
+  .home-learn {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-hero h1 {
+    max-width: 16ch;
+  }
+}
+
+@media (max-width: 40rem) {
+  .stratum {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stratum-groups {
+    flex-wrap: wrap;
+  }
+
+  .promise-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .promise-list dd {
+    margin-bottom: 0.75rem;
+  }
+
+  .levels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 1rem;
+  }
+
+  .levels dd {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .stratum-count {
+    text-align: start;
+  }
+
+  .learn-list {
+    columns: 1;
+  }
+
+  .terminal pre {
+    font-size: 0.75rem;
+  }
+}
