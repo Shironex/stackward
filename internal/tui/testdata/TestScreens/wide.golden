@@ -2,7 +2,7 @@
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
  135 results  6 fail  10 warn  87 unknown  0 info  30 pass  2 skip                                       mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  103 of 135                                      │ DETAIL                                            1-25 of 43
+FINDINGS  103 of 135                                      │ DETAIL                                            1-25 of 44
 Docker DKR                                       16 of 48 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API is not on TCP without TLS   │ Docker API is not on TCP without TLS                        
   FAIL    DKR-012  shop/web · No container mounts a sens… │ FAIL · critical severity                                    
@@ -24,9 +24,9 @@ System SYS                                              5 │   day. Even a loop
   UNKNOWN SYS-001  Distribution is one stackward is test… │   every host network container root. stackward reads the    
   UNKNOWN SYS-002  No reboot pending                      │   hosts in daemon.json and the effective ExecStart of       
   UNKNOWN SYS-003  Running kernel is the newest installed │   docker.service, and the listening sockets on 2375 and 2376
-  UNKNOWN SYS-004  Clock is synchronized                  │   in /proc/net/tcp. This check can fail without access to   
-  UNKNOWN SYS-005  Disks have free space                  │   the Docker socket.                                        
-SSH                                                    16 │                                                             
-  UNKNOWN SSH-001  Password authentication is off         │ FIX  y copies it                                            
+  UNKNOWN SYS-004  Clock is synchronized                  │   from the shared listener facts (ss or /proc, no root      
+  UNKNOWN SYS-005  Disks have free space                  │   needed). This check can fail without access to the Docker 
+SSH                                                    16 │   socket.                                                   
+  UNKNOWN SSH-001  Password authentication is off         │                                                             
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit                                            

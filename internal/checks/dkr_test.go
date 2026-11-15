@@ -104,15 +104,47 @@ func TestDKR002(t *testing.T) {
 			d.TCP = []facts.DockerTCPListener{{Port: 2375, Bind: "any"}}
 		}, Fail},
 		{"clean, socket denied", func(d *facts.Docker) { d.API = "denied" }, Unknown},
-		{"proc not read", func(d *facts.Docker) { d.TCPRead = false }, Unknown},
+		{"listeners not read", func(d *facts.Docker) { d.TCPRead = false }, Unknown},
 		{"bad daemon.json", func(d *facts.Docker) { d.Daemon.ConfigError = "invalid JSON" }, Unknown},
 	}
 	for _, tc := range cases {
 		f := dockerHost()
 		tc.mod(f.Docker)
 		if got := only(t, checkDaemonTCP(Input{Facts: f})); got != tc.want {
+			t.Errorf("legacy %s: got %s, want %s", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestDKR002Listeners(t *testing.T) {
+	withSocks := func(api string, socks ...facts.Listener) *facts.Facts {
+		f := dockerHost()
+		f.Docker.API, f.Docker.TCPRead = api, false
+		f.Listeners = &facts.Listeners{Source: "ss", Sockets: socks}
+		return f
+	}
+	cases := []struct {
+		name string
+		f    *facts.Facts
+		want Level
+	}{
+		{"no docker port", withSocks("ok", netSock("tcp", "0.0.0.0", 22)), Pass},
+		{"2375 on any", withSocks("ok", netSock("tcp", "::", 2375)), Fail},
+		{"2375 on loopback", withSocks("ok", netSock("tcp", "127.0.0.1", 2375)), Fail},
+		{"udp 2375 is not the API", withSocks("ok", netSock("udp", "0.0.0.0", 2375)), Pass},
+		{"2375 seen without socket access", withSocks("denied", netSock("tcp", "0.0.0.0", 2375)), Fail},
+		{"clean without socket access", withSocks("denied"), Unknown},
+	}
+	for _, tc := range cases {
+		if got := only(t, checkDaemonTCP(Input{Facts: tc.f})); got != tc.want {
 			t.Errorf("%s: got %s, want %s", tc.name, got, tc.want)
 		}
+	}
+	// Listener facts win over the legacy field of older facts files.
+	f := withSocks("ok")
+	f.Docker.TCP, f.Docker.TCPRead = []facts.DockerTCPListener{{Port: 2375, Bind: "any"}}, true
+	if got := only(t, checkDaemonTCP(Input{Facts: f})); got != Pass {
+		t.Errorf("listeners should win over legacy tcp: %s", got)
 	}
 }
 
