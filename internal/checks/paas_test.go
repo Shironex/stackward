@@ -24,7 +24,8 @@ func paasCoolifyFacts() *facts.Facts {
 			Name: facts.PlatformCoolify, Role: facts.RolePanel, DataRoot: facts.CoolifyRoot,
 			Evidence: []string{"path:/data/coolify"},
 		}}},
-		Docker:    &facts.Docker{},
+		Docker: &facts.Docker{Installed: true, API: "denied",
+			APIReason: "cannot open /var/run/docker.sock: permission denied (run with sudo, or as a member of the docker group)"},
 		Listeners: &facts.Listeners{},
 		Firewall:  &facts.Firewall{},
 	}
@@ -55,10 +56,10 @@ func TestPaaSChecksUnknownWithoutFacts(t *testing.T) {
 			t.Errorf("missing docker or listeners: %s %q", paasLevels(rs), rs[0].Message)
 		}
 	}
-	f = paasCoolifyFacts() // Docker present but not mapped yet (default hook)
+	f = paasCoolifyFacts() // Docker installed but the socket is denied
 	rs := checkPaaSPublicDatabase(Input{Facts: f})
-	if paasLevels(rs) != "=unknown" || !strings.Contains(rs[0].Message, "cannot read") {
-		t.Errorf("unmapped docker: %s %q", paasLevels(rs), rs[0].Message)
+	if paasLevels(rs) != "=unknown" || !strings.Contains(rs[0].Message, "permission denied") {
+		t.Errorf("denied docker: %s %q", paasLevels(rs), rs[0].Message)
 	}
 }
 
@@ -256,8 +257,9 @@ func TestPaaSPublicDatabase(t *testing.T) {
 
 func paasDokployFacts() *facts.Facts {
 	return &facts.Facts{
-		PaaS:      &facts.PaaS{Platforms: []facts.Platform{{Name: facts.PlatformDokploy, Role: facts.RoleUnknown, DataRoot: facts.DokployRoot}}},
-		Docker:    &facts.Docker{},
+		PaaS: &facts.PaaS{Platforms: []facts.Platform{{Name: facts.PlatformDokploy, Role: facts.RoleUnknown, DataRoot: facts.DokployRoot}}},
+		Docker: &facts.Docker{Installed: true, API: "denied",
+			APIReason: "cannot open /var/run/docker.sock: permission denied (run with sudo, or as a member of the docker group)"},
 		Listeners: &facts.Listeners{},
 	}
 }
@@ -313,5 +315,80 @@ func TestPaaSHelpers(t *testing.T) {
 		if paasIsDBImage(image) != want {
 			t.Errorf("paasIsDBImage(%q) != %v", image, want)
 		}
+	}
+}
+
+func TestPaaSContainersFrom(t *testing.T) {
+	if cs, ok := paasContainersFrom(&facts.Docker{}); !ok || len(cs) != 0 {
+		t.Errorf("not installed: %v %v", cs, ok)
+	}
+	if _, ok := paasContainersFrom(&facts.Docker{Installed: true, API: "denied"}); ok {
+		t.Error("denied socket must not be available")
+	}
+	d := &facts.Docker{Installed: true, API: "ok", Containers: []facts.DockerContainer{{
+		Name: "db1", Image: "postgres:16", Project: "shop", Networks: []string{"coolify"},
+		Labels: map[string]string{"coolify.managed": "true"},
+		Ports:  []facts.DockerPort{{HostIP: "0.0.0.0", HostPort: 5432, ContainerPort: 5432, Proto: "tcp"}},
+	}}}
+	cs, ok := paasContainersFrom(d)
+	if !ok || len(cs) != 1 || cs[0].Project != "shop" || cs[0].Ports[0].HostPort != 5432 || cs[0].Networks[0] != "coolify" {
+		t.Errorf("mapped %+v", cs)
+	}
+}
+
+func TestPaaSVersionIgnoresLatest(t *testing.T) {
+	withPaaSViews(t, []paasContainer{{Name: "coolify", Image: "ghcr.io/coollabsio/coolify:latest"}}, nil, paasFilterUnknown)
+	rs := checkPaaSDetected(Input{Facts: paasCoolifyFacts()})
+	if rs[0].Evidence["version"] != "" {
+		t.Errorf("latest is not a version: %v", rs[0].Evidence["version"])
+	}
+}
+
+func TestPaaSPublicDatabaseFiltered(t *testing.T) {
+	db := []paasContainer{{Name: "db1", Image: "postgres:16-alpine", Labels: map[string]string{"coolify.managed": "true"},
+		Ports: []paasPort{{HostIP: "0.0.0.0", HostPort: 5432, ContainerPort: 5432, Proto: "tcp"}}}}
+	withPaaSViews(t, db, nil, paasFilterUnknown)
+	f := paasCoolifyFacts()
+	f.Firewall = &facts.Firewall{DockerUser: "filtered", DockerBackend: "iptables",
+		Iptables: &facts.Iptables{Listed: true, DockerUserRules: []string{"-A DOCKER-USER ! -s 198.51.100.0/24 -j DROP"}}}
+	if got := paasLevels(checkPaaSPublicDatabase(Input{Facts: f})); got != "container:db1=warn" {
+		t.Errorf("filtered: %s", got)
+	}
+	f.Firewall.DockerUser = "default"
+	if got := paasLevels(checkPaaSPublicDatabase(Input{Facts: f})); got != "container:db1=fail" {
+		t.Errorf("unfiltered: %s", got)
+	}
+}
+
+func TestPaaSDefaultNetwork(t *testing.T) {
+	app := func(name, project string, nets ...string) paasContainer {
+		return paasContainer{Name: name, Image: "ghcr.io/example/" + name + ":1", Project: project, Networks: nets,
+			Labels: map[string]string{"coolify.managed": "true", "coolify.projectName": project}}
+	}
+	internal := paasContainer{Name: "coolify-db", Image: "postgres:15-alpine", Networks: []string{"coolify"}, Labels: map[string]string{}}
+	proxy := paasContainer{Name: "coolify-proxy", Image: "traefik:v3.1", Networks: []string{"coolify", "shopnet"}, Labels: map[string]string{"coolify.proxy": "true"}}
+	cases := []struct {
+		name string
+		cs   []paasContainer
+		want string
+	}{
+		{"two projects share coolify", []paasContainer{internal, proxy, app("shop", "shop", "coolify"), app("blog", "blog", "coolify")}, "host=warn"},
+		{"one project", []paasContainer{internal, proxy, app("shop-web", "shop", "coolify"), app("shop-db", "shop", "coolify")}, "host=pass"},
+		{"own networks", []paasContainer{internal, proxy, app("shop", "shop", "shopnet"), app("blog", "blog", "blognet")}, "host=pass"},
+	}
+	for _, c := range cases {
+		withPaaSViews(t, c.cs, nil, paasFilterUnknown)
+		if got := paasLevels(EvaluateChecks([]Check{{ID: "PAAS-005", Run: checkPaaSDefaultNetwork}}, Input{Facts: paasCoolifyFacts()})); got != c.want {
+			t.Errorf("%s: %s", c.name, got)
+		}
+	}
+}
+
+func TestPaaSDefaultNetworkWithoutContainers(t *testing.T) {
+	if got := paasLevels(checkPaaSDefaultNetwork(Input{Facts: paasCoolifyFacts()})); got != "=unknown" {
+		t.Errorf("denied docker: %s", got)
+	}
+	if got := paasLevels(checkPaaSDefaultNetwork(Input{Facts: &facts.Facts{PaaS: &facts.PaaS{}, Docker: &facts.Docker{}}})); got != "=skip" {
+		t.Errorf("no platform: %s", got)
 	}
 }

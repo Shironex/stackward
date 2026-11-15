@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-109 checks in the catalog.
+110 checks in the catalog.
 
 ## System (SYS)
 
@@ -170,6 +170,7 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [PAAS-002](PAAS-002.md) | high | Platform proxy is not published on all interfaces behind a tunnel |
 | [PAAS-003](PAAS-003.md) | high | Platform panel ports are not open to the world |
 | [PAAS-004](PAAS-004.md) | critical | No platform database is published publicly |
+| [PAAS-005](PAAS-005.md) | moderate | Projects do not share the platform default network |
 | [PAAS-008](PAAS-008.md) | high | Docker Swarm ports are restricted to cluster peers |
 
 ## Backups (BAK)

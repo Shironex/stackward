@@ -33,10 +33,20 @@
       "id": "PAAS-004",
       "title": "No platform database is published publicly",
       "severity": "critical",
-      "rationale": "Both platforms offer a \"publicly available\" switch on databases that publishes the port on every interface. Docker publishes past UFW, so the database is open to the internet and to password guessing and known exploits.",
-      "verify": "docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'postgres|mysql|maria|mongo|redis|valkey|clickhouse'",
+      "rationale": "Both platforms offer a \"publicly available\" switch on databases that publishes the port on every interface. Docker publishes past UFW, so the database is open to the internet and to password guessing and known exploits. A DOCKER-USER rule that drops unknown sources turns the failure into a warning: the port is still published and one rule change away from public.",
+      "verify": "docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'postgres|mysql|maria|mongo|redis|valkey|clickhouse'; sudo iptables -S DOCKER-USER",
       "fix": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel.",
-      "breaks": "Clients that connect over the public port lose access until they use the private path."
+      "breaks": "Clients that connect over the public port lose access until they use the private path.",
+      "needs_root": true
+    },
+    {
+      "id": "PAAS-005",
+      "title": "Projects do not share the platform default network",
+      "severity": "moderate",
+      "rationale": "Coolify attaches apps to its \"coolify\" destination network and Dokploy to \"dokploy-network\" unless a project gets its own. On a shared network every app resolves and reaches every other project's services by name, including databases, so one compromised app can talk to the rest. DKR-030 judges every network; this check names the platform setting behind it.",
+      "verify": "docker network inspect coolify --format '{{range .Containers}}{{.Name}} {{end}}'",
+      "fix": "Give each project its own destination (Coolify: a new destination network per project; Dokploy: an isolated network per compose project) and attach the platform proxy to each.",
+      "breaks": "Apps that call another project's service by its container name stop resolving it; route those calls through the proxy or join only the two that need it."
     },
     {
       "id": "PAAS-008",

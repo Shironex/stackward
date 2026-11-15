@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 103 checks, 107 results: 8 checked, 95 unknown, 4 skipped, root: yes
+- **Coverage:** 104 checks, 108 results: 8 checked, 96 unknown, 4 skipped, root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 95 |
+| unknown | 96 |
 | info | 3 |
 | pass | 0 |
 | skip | 4 |
@@ -112,7 +112,7 @@
 
 ## Not inspected
 
-<details><summary>95 checks not inspected</summary>
+<details><summary>96 checks not inspected</summary>
 
 **SYS: System**
 
@@ -270,6 +270,7 @@
 | [PAAS-002](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-002.md) | Platform proxy is not published on all interfaces behind a tunnel | `host` | not inspected: the paas collector did not run |
 | [PAAS-003](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-003.md) | Platform panel ports are not open to the world | `host` | not inspected: the paas collector did not run |
 | [PAAS-004](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-004.md) | No platform database is published publicly | `host` | not inspected: the paas collector did not run |
+| [PAAS-005](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-005.md) | Projects do not share the platform default network | `host` | not inspected: the paas collector did not run |
 | [PAAS-008](https://github.com/Shironex/stackward/blob/main/docs/checks/PAAS-008.md) | Docker Swarm ports are restricted to cluster peers | `host` | not inspected: the paas collector did not run |
 
 **BAK: Backups**

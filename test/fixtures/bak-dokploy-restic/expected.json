@@ -17,10 +17,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 103,
-    "results": 114,
+    "checks": 104,
+    "results": 115,
     "checked": 32,
-    "unknown": 78,
+    "unknown": 79,
     "skipped": 4,
     "root": true,
     "sandbox": {
@@ -53,7 +53,7 @@
   "summary": {
     "fail": 4,
     "warn": 3,
-    "unknown": 78,
+    "unknown": 79,
     "info": 5,
     "pass": 20,
     "skip": 4
@@ -1906,6 +1906,22 @@
       },
       "fix": {
         "hint": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PAAS-005",
+      "group": "PAAS",
+      "title": "Projects do not share the platform default network",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Give each project its own destination (Coolify: a new destination network per project; Dokploy: an isolated network per compose project) and attach the platform proxy to each."
       }
     },
     {

@@ -4,16 +4,16 @@
 
 - **Group:** Coolify and Dokploy
 - **Severity when it fails:** critical
-- **Root:** not needed
+- **Root:** the full result needs `sudo`. Without root this check may report `unknown`; it never reports a pass it could not verify.
 
 ## Why it matters
 
-Both platforms offer a "publicly available" switch on databases that publishes the port on every interface. Docker publishes past UFW, so the database is open to the internet and to password guessing and known exploits.
+Both platforms offer a "publicly available" switch on databases that publishes the port on every interface. Docker publishes past UFW, so the database is open to the internet and to password guessing and known exploits. A DOCKER-USER rule that drops unknown sources turns the failure into a warning: the port is still published and one rule change away from public.
 
 ## Verify by hand
 
 ```sh
-docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'postgres|mysql|maria|mongo|redis|valkey|clickhouse'
+docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'postgres|mysql|maria|mongo|redis|valkey|clickhouse'; sudo iptables -S DOCKER-USER
 ```
 
 ## How to fix it
