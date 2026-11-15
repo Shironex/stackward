@@ -203,7 +203,7 @@ func (s *System) sshd() (effective, bad string) {
 	return b.String(), ""
 }
 
-// TxnPlan returns the fixture plan with the two transaction test steps
+// TxnPlan returns the fixture plan with every transaction test step
 // added, for Hostname. It registers the test steps.
 func TxnPlan(t testing.TB) *plan.Plan {
 	t.Helper()
@@ -211,7 +211,7 @@ func TxnPlan(t testing.TB) *plan.Plan {
 	p := FixturePlan(t, "plan-host-settings-fix")
 	rep := &report.Report{Schema: p.Source.Report.Schema, GeneratedAt: p.GeneratedAt, Host: p.Host}
 	in := plan.Input{Facts: &facts.Facts{}}
-	for _, id := range []string{txntest.GoodID, txntest.BadID} {
+	for _, id := range txntest.IDs {
 		g, _ := plan.Lookup(id)
 		built := plan.BuildWith([]plan.Generator{g}, in, rep, plan.Options{Version: "test", SourceKind: plan.FromFacts})
 		p.Steps = append(p.Steps, built.Steps...)
