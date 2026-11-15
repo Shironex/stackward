@@ -138,6 +138,9 @@ func checkPaaSSSHKeys(in Input) []Result {
 				}
 				return "", "", false
 			}
+			if !facts.IsPaaSKeyName(path.Base(file.Path)) {
+				return "", "", false // a lock file or public half in an older facts file
+			}
 			if file.Mode.GroupOrOtherReadable() {
 				return Fail, fmt.Sprintf("platform SSH key is readable by group or others (mode %s)", file.Mode), true
 			}

@@ -74,6 +74,11 @@ func TestSecChecks(t *testing.T) {
 		{"SEC-003", func(s *facts.Secrets) {
 			s.PaaSSSHKeys = secScanOf([]string{facts.CoolifySSHKeys}, nil, secFile(facts.CoolifySSHKeys, "dir", 0o700))
 		}, "host=pass"},
+		{"SEC-003", func(s *facts.Secrets) {
+			// Older facts files listed Coolify's lock files as keys.
+			s.PaaSSSHKeys = secScanOf([]string{facts.CoolifySSHKeys}, nil, secFile(facts.CoolifySSHKeys, "dir", 0o700),
+				secFile(facts.CoolifySSHKeys+"/ssh_key@example1", "key", 0o600), secFile(facts.CoolifySSHKeys+"/ssh_key@example1.lock", "key", 0o644))
+		}, "host=pass"},
 		{"SEC-004", func(s *facts.Secrets) {
 			d := facts.CoolifyProxyDynamic
 			s.ProxyDynamic = secScanOf([]string{d}, nil, secFile(d+"/app.yml", "config", 0o644), secFile(d+"/app.yml.bak", "config", 0o644),

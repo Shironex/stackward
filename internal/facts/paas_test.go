@@ -64,6 +64,7 @@ func coolifyPanelTree() map[string]fs.FileMode {
 		"/data/coolify/ssh/keys/ssh_key@example1":      0o600,
 		"/data/coolify/ssh/keys/ssh_key@example2":      0o644,
 		"/data/coolify/ssh/keys/ssh_key@example.pub":   0o644,
+		"/data/coolify/ssh/keys/ssh_key@example1.lock": 0o644,
 		"/data/coolify/applications/app1/.env":         0o644,
 		"/data/coolify/applications/app2/.env":         0o600,
 		"/data/coolify/applications/app2/.env.example": 0o644,
@@ -319,4 +320,15 @@ func sameSet(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestIsPaaSKeyName(t *testing.T) {
+	for name, want := range map[string]bool{
+		"ssh_key@example1": true, "example_rsa": true, "id_ed25519": true,
+		"ssh_key@example1.lock": false, "example_rsa.pub": false, "known_hosts": false, "known_hosts.old": false, "config": false,
+	} {
+		if got := IsPaaSKeyName(name); got != want {
+			t.Errorf("%s: got %v, want %v", name, got, want)
+		}
+	}
 }
