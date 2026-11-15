@@ -1,0 +1,154 @@
+---
+title: Usage and reports
+description: Run an audit, read the report, explain a check, and use the JSON output and exit codes in scripts and CI.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Terminal from '../../components/Terminal.astro';
+import Level from '../../components/Level.astro';
+import sample from '../../samples/audit-debian-12.txt?raw';
+
+stackward runs on the server you want to audit. It reads, prints a report
+and exits. Nothing on the server changes.
+
+```
+stackward audit [flags]     audit this host (sudo gives full coverage)
+stackward explain [id]      explain a check, or list every check
+stackward version           print the version
+stackward probe             planned: check the server from another machine
+stackward tui               planned: browse findings in the terminal
+```
+
+## Run an audit
+
+```sh
+# Partial coverage: checks that need root report unknown.
+stackward audit
+
+# Full coverage.
+sudo stackward audit
+```
+
+Without root, every check that needs root reports `unknown`, and the report
+says "run with sudo for full coverage". The read only promise holds either
+way: root gives stackward more to read, not more to change.
+
+### Flags
+
+| Flag | What it does |
+|---|---|
+| `--json` | Print the report as JSON (same as `--format json`). |
+| `--format text\|json` | Output format. Text is the default. |
+| `--out FILE` | Write the report to this file. It is the only file stackward ever writes. |
+| `--fail-on fail\|warn\|never` | Which level makes the exit code 1. Default `fail`. |
+| `--all` | Text output: also list passing and skipped results. |
+| `--profile NAME` | Ingress profile: `auto`, `tunnel`, `public-web`, `tailnet-only` or `paas-panel`. Default `auto`. |
+| `--dump-facts` | Print the collected facts as redacted JSON instead of a report, for bug reports. |
+| `--facts FILE` | Evaluate the checks over a saved facts file instead of this host. |
+| `--timeout DURATION` | Time limit for each collector. |
+| `--show-hostname` | Print the hostname instead of its hash. |
+| `--no-sandbox` | Do not apply the Landlock sandbox. For debugging only. |
+
+`stackward audit -h` prints the same list from your build.
+
+## Reading a report
+
+<Terminal
+  command="sudo stackward audit --all"
+  output={sample}
+  caption="A real text report, from a build of main run over the debian-12-reboot-overdue test fixture. Only the version line is shortened."
+/>
+
+The header comes first. Read it before the findings:
+
+- **host** is a hash of the hostname unless you pass `--show-hostname`, so a
+  pasted report does not name your server.
+- **profile** is how traffic is meant to reach this server. It changes what
+  counts as a problem (port 443 open to the world is fine on a public web
+  server and a mistake behind a tunnel), never what is shown.
+- **root** and **sandbox** say how much stackward could see and whether the
+  Landlock sandbox was applied.
+- **coverage** counts results that were checked, unknown and skipped. A
+  report with many unknowns has not told you much yet.
+
+Then come the results, grouped (SYS, SSH, NET, DKR and so on). Each line has a
+level, a check id, a title and the severity from the catalog. Failing and
+warning lines also print the fix.
+
+### Levels
+
+| Level | Meaning |
+|---|---|
+| <Level level="fail" /> | Misconfigured in a way that matters. |
+| <Level level="warn" /> | Worth a look. It may be deliberate; the message says why it was flagged. |
+| <Level level="pass" /> | Inspected and fine. |
+| <Level level="unknown" /> | Could not be inspected (no root, a missing tool, a collector error). **Never counted as a pass.** |
+| <Level level="skip" /> | Does not apply to this host. |
+| <Level level="info" /> | A fact worth knowing, with no judgement. |
+
+Severity (`critical`, `high`, `moderate`, `low`, `info`) is a property of the
+check, not of your server: it says how bad a failure of that check is. Fix
+the highest severity `fail` results first.
+
+<Aside type="caution" title="There is no score on purpose">
+A single number hides a single critical finding behind many passes, and it
+rewards checks that could not run. stackward gives counts and coverage
+instead. See the [threat model](/stackward/project/threat-model/) for the
+reasoning.
+</Aside>
+
+## Explain a check
+
+```sh
+stackward explain            # list every check
+stackward explain SYS-002    # why it matters, verify, fix, what can break
+```
+
+The same text is on this site, one page per check, in the
+[check reference](/stackward/checks/).
+
+## JSON output and CI
+
+```sh
+sudo stackward audit --json --out report.json
+```
+
+The JSON report follows the `report.v1` schema in
+[`schema/report.v1.json`](https://github.com/Shironex/stackward/blob/main/schema/report.v1.json).
+Check ids are stable forever, so other tools can key on them.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | No result at or above `--fail-on` (default `fail`). |
+| `1` | At least one result at or above `--fail-on`. |
+| `2` | stackward itself failed (bad flags, an unreadable facts file). |
+
+`unknown` never trips the threshold. Use `--fail-on warn` in CI to fail on
+warnings too, or `--fail-on never` to always exit 0.
+
+## Bug reports with facts
+
+```sh
+sudo stackward audit --dump-facts > facts.json
+stackward audit --facts facts.json
+```
+
+`--dump-facts` prints what the collectors found, with secret shaped values
+masked and the hostname hashed. `--facts` replays a saved file, so a report
+can be reproduced on another machine. Read the file before you attach it to
+an issue: redaction is a safety net, and you are the last reviewer.
+
+## Planned
+
+- **`stackward probe`** checks the server from another machine: which ports
+  answer on the public address, and whether the origin answers when it
+  should only be reached through a tunnel. See
+  [the outside view](/stackward/learn/outside-view/).
+- **`stackward tui`** browses findings by group and severity in the
+  terminal.
+- **Hardening (v0.2)**: a reviewed plan of changes with old and new values,
+  applied only on request, with a rollback timer for anything that could
+  lock you out. Version 0.1 changes nothing. See
+  [safety design](/stackward/project/safety/).

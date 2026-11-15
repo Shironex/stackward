@@ -1,0 +1,162 @@
+---
+/**
+ * The overview page: what stackward is, the stack it reads, the read only
+ * promise, the result levels, and the way into the Learn track.
+ */
+import sample from '../samples/audit-debian-12.txt?raw';
+import { catalog } from '../lib/catalog.mjs';
+import { TOPICS } from '../lib/learn.mjs';
+import { url } from '../lib/site.mjs';
+import Level from './Level.astro';
+import Terminal from './Terminal.astro';
+
+const live = new Set(catalog.groups.filter((g) => g.checks.length > 0).map((g) => g.id));
+const countOf = (ids: string[]) => catalog.groups.filter((g) => ids.includes(g.id)).reduce((n, g) => n + g.checks.length, 0);
+const name = (id: string) => catalog.groups.find((g) => g.id === id)?.name ?? id;
+const building = catalog.groups.filter((g) => g.checks.length === 0).map((g) => g.name);
+const listOf = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}`);
+
+// Top of the stack first: how traffic arrives, down to the host underneath.
+const strata = [
+  { layer: 'The way in', parts: 'Cloudflare Tunnel, Tailscale, SSH', groups: ['CF', 'TS', 'SSH'], topic: 'private-ingress' },
+  { layer: 'The edge', parts: 'UFW or nftables, CrowdSec, fail2ban', groups: ['NET', 'CS'], topic: 'firewall-and-docker' },
+  { layer: 'The platform', parts: 'Coolify or Dokploy, Traefik', groups: ['PAAS'], topic: 'coolify-and-dokploy' },
+  { layer: 'The containers', parts: 'Docker engine, socket, networks, users', groups: ['DKR'], topic: 'docker-socket' },
+  { layer: 'The host', parts: 'OS, kernel, updates, accounts, secrets, logs, backups', groups: ['SYS', 'UPD', 'KRN', 'USR', 'SEC', 'LOG', 'BAK'], topic: 'updates' },
+];
+
+const promises = [
+  { title: 'Sandboxed', text: 'A Landlock sandbox blocks file writes on Linux 5.13 and later; the report says whether it applied.' },
+  { title: 'GET only to Docker', text: 'It talks to the Docker socket with GET requests and drops container environment variables.' },
+  { title: 'No state changes', text: 'It never runs a command that changes the host.' },
+  { title: 'Secrets stay shut', text: 'It reads the permissions of secret files, never their contents, and redacts secret shaped values.' },
+];
+
+const levels = [
+  { level: 'fail' as const, text: 'Misconfigured in a way that matters. The report shows the fix.' },
+  { level: 'warn' as const, text: 'Worth a look; may be deliberate. The report says why it flagged it.' },
+  { level: 'pass' as const, text: 'Inspected, and fine.' },
+  { level: 'unknown' as const, text: 'Could not be inspected, often for lack of root. Never counted as a pass.' },
+  { level: 'skip' as const, text: 'Does not apply to this host.' },
+  { level: 'info' as const, text: 'A fact worth knowing, with no judgement attached.' },
+];
+---
+
+<div class="home not-content">
+  <section class="home-hero" aria-labelledby="_top">
+    <div class="home-hero-copy">
+      <h1 id="_top">See what your server really exposes.</h1>
+      <p class="home-lede">
+        stackward audits a self hosted Docker server without changing it, and tells you what is open, misconfigured or unknown.
+      </p>
+      <div class="home-actions">
+        <a class="btn btn-primary" href={url('install')}>Install and verify</a>
+        <a class="btn btn-quiet" href={url('learn')}>Start learning</a>
+      </div>
+    </div>
+    <div class="home-hero-term">
+      <Terminal
+        command="sudo stackward audit --all"
+        output={sample}
+        caption="Real output from a build of main, run over the debian-12-reboot-overdue test fixture. Only the version line is shortened."
+      />
+    </div>
+  </section>
+
+  <section class="home-status" aria-label="Project status">
+    <p>
+      <strong>Pre-alpha.</strong>{' '}
+      {`The audit engine, report format and sandbox are in place, with ${catalog.count} ${catalog.count === 1 ? 'check' : 'checks'} in the catalog today.`}
+      {building.length > 0 ? ` Still being built: the ${listOf(building)} checks.` : ''} Do not rely on it yet. <a href={url('checks')}>See every check</a>.
+    </p>
+  </section>
+
+  <section class="home-strata" aria-labelledby="strata-title">
+    <h2 id="strata-title">The stack it reads, top to bottom</h2>
+    <p class="home-intro">
+      Generic auditors look at a Linux box. stackward looks at how a self hosted server is actually run, and at the places where those layers
+      disagree, such as a firewall rule that Docker routes around. Each layer is filled in as its checks land; a dim segment is a group with no
+      checks yet.
+    </p>
+    <ol class="strata">
+      {
+        strata.map((s) => (
+          <li class:list={['stratum', { 'stratum-live': countOf(s.groups) > 0 }]}>
+            <div class="stratum-name">
+              <a href={url(`learn/${s.topic}`)}>{s.layer}</a>
+              <span>{s.parts}</span>
+            </div>
+            <ul class="stratum-groups" aria-label="Check groups">
+              {s.groups.map((g) => (
+                <li class:list={['seg', { 'seg-live': live.has(g) }]} title={`${name(g)}: ${live.has(g) ? 'checks in the catalog' : 'no checks yet'}`}>
+                  <span class="seg-bar" aria-hidden="true" />
+                  <span class="seg-id">{g}</span>
+                  <span class="sr-only">{live.has(g) ? `${name(g)}, checks in the catalog` : `${name(g)}, no checks yet`}</span>
+                </li>
+              ))}
+            </ul>
+            <span class="stratum-count">{countOf(s.groups) > 0 ? `${countOf(s.groups)} ${countOf(s.groups) === 1 ? 'check' : 'checks'}` : 'planned'}</span>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section class="home-promise" aria-labelledby="promise-title">
+    <div class="home-promise-head">
+      <h2 id="promise-title">The read only promise</h2>
+      <p>
+        Version 0.1 is safe to run on a production box. You can check each promise in the <a href={url('project/threat-model')}>threat model</a>.
+      </p>
+    </div>
+    <div class="promise-body">
+    <p class="promise-lead">It writes nothing but the report you ask for, and sends nothing anywhere. No telemetry, ever.</p>
+    <dl class="promise-list">
+      {
+        promises.map((p) => (
+          <div>
+            <dt>{p.title}</dt>
+            <dd>{p.text}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    </div>
+  </section>
+
+  <section class="home-levels" aria-labelledby="levels-title">
+    <h2 id="levels-title">Every finding gets a level, never a score</h2>
+    <dl class="levels">
+      {
+        levels.map((l) => (
+          <div>
+            <dt>
+              <Level level={l.level} />
+            </dt>
+            <dd>{l.text}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="home-learn" aria-labelledby="learn-title">
+    <div class="home-learn-head">
+      <h2 id="learn-title">Learn why each finding matters</h2>
+      <p>
+        Twelve short runbooks for self learners and students. Each one explains the risk, what an attacker can actually do, how to see it on your
+        own server with read only commands, and what the fix can break. Every claim links to its source.
+      </p>
+      <a class="btn btn-quiet" href={url('learn')}>Start here</a>
+    </div>
+    <ol class="learn-list">
+      {
+        TOPICS.map((t) => (
+          <li>
+            <a href={url(`learn/${t.slug}`)}>{t.title}</a>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+</div>

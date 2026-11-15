@@ -1,0 +1,37 @@
+---
+/**
+ * Real stackward output in a terminal panel. The text is captured from the
+ * CLI (see src/samples/), never typed by hand; level words are coloured, and
+ * stay readable without colour.
+ */
+interface Props {
+  /** The command shown on the prompt line. */
+  command: string;
+  /** Raw output text. */
+  output: string;
+  /** What the reader is looking at, for the caption and screen readers. */
+  caption: string;
+}
+const { command, output, caption } = Astro.props;
+
+const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const html = escape(output.trimEnd())
+  .split('\n')
+  .map((line) =>
+    line
+      .replace(/^(\s{2})(PASS|WARN|FAIL|UNKNOWN|SKIP|INFO)(\s+)([A-Z]{2,4}-\d{3})/, (_m, a, lvl, b, id) => `${a}<span class="t-${lvl.toLowerCase()}">${lvl}</span>${b}<span class="t-id">${id}</span>`)
+      .replace(/^(\s+)(fix:)/, '$1<span class="t-dim">$2</span>')
+      .replace(/^([a-z]+:)(\s)/, '<span class="t-dim">$1</span>$2')
+      .replace(/^([A-Z]{2,4})(\s\s)(.+)$/, '<span class="t-group">$1$2$3</span>'),
+  )
+  .join('\n');
+---
+
+<figure class="terminal not-content">
+  <div class="terminal-bar" aria-hidden="true">
+    <span class="terminal-dots"><i></i><i></i><i></i></span>
+  </div>
+  <pre tabindex="0" role="region" aria-label={`Terminal output: ${command}`}><span class="t-prompt" aria-hidden="true">$ </span><span class="t-cmd">{command}</span>
+<Fragment set:html={html} /></pre>
+  <figcaption>{caption}</figcaption>
+</figure>
