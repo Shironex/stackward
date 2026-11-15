@@ -1,0 +1,57 @@
+stackward test probe (stackward.report.v1)
+target:    198.51.100.20
+hostname:  www.example.com
+addresses: 198.51.100.20 (ipv4)
+ipv4:      probed
+ipv6:      no-address: the target is an IPv4 address
+probed:    2026-03-01T12:00:00Z
+profile:   public-web (flag)
+sandbox:   unavailable (golden test)
+open:      tcp/80 on 198.51.100.20, tcp/443 on 198.51.100.20
+note:      the raw IP HTTPS check skips certificate verification (an IP has no certificate name); the --hostname check verifies normally
+coverage:  20 checked, 0 unknown, 0 skipped (6 checks)
+
+PRB  Outside view
+  PASS    PRB-001 port:tcp/22  SSH is not reachable from the internet on a private ingress host [moderate]
+          port 22 (SSH) is closed or filtered on 198.51.100.20
+  INFO    PRB-002 port:tcp/443  Web ports do not answer on the raw IP behind a tunnel [high]
+          port 443 answers on the raw IP 198.51.100.20 (https 404); expected on public-web
+  INFO    PRB-002 port:tcp/80  Web ports do not answer on the raw IP behind a tunnel [high]
+          port 80 answers on the raw IP 198.51.100.20 (http 308); expected on public-web
+  PASS    PRB-003 port:tcp/2375  Docker API ports are not reachable from the internet [critical]
+          port 2375 (Docker API) is closed or filtered on 198.51.100.20
+  PASS    PRB-003 port:tcp/2376  Docker API ports are not reachable from the internet [critical]
+          port 2376 (Docker API over TLS) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/3000  Panels and dashboards are not reachable from the internet [high]
+          port 3000 (Dokploy or Grafana) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/3100  Panels and dashboards are not reachable from the internet [high]
+          port 3100 (Loki) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/6001  Panels and dashboards are not reachable from the internet [high]
+          port 6001 (Coolify realtime) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/6002  Panels and dashboards are not reachable from the internet [high]
+          port 6002 (Coolify terminal) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/8000  Panels and dashboards are not reachable from the internet [high]
+          port 8000 (Coolify) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/8080  Panels and dashboards are not reachable from the internet [high]
+          port 8080 (Traefik dashboard or admin UI) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/8081  Panels and dashboards are not reachable from the internet [high]
+          port 8081 (admin UI) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/9000  Panels and dashboards are not reachable from the internet [high]
+          port 9000 (Portainer) is closed or filtered on 198.51.100.20
+  PASS    PRB-004 port:tcp/9090  Panels and dashboards are not reachable from the internet [high]
+          port 9090 (Prometheus) is closed or filtered on 198.51.100.20
+  PASS    PRB-005 port:tcp/27017  Databases are not reachable from the internet [high]
+          port 27017 (MongoDB) is closed or filtered on 198.51.100.20
+  PASS    PRB-005 port:tcp/3306  Databases are not reachable from the internet [high]
+          port 3306 (MySQL or MariaDB) is closed or filtered on 198.51.100.20
+  PASS    PRB-005 port:tcp/5432  Databases are not reachable from the internet [high]
+          port 5432 (PostgreSQL) is closed or filtered on 198.51.100.20
+  PASS    PRB-005 port:tcp/6379  Databases are not reachable from the internet [high]
+          port 6379 (Redis) is closed or filtered on 198.51.100.20
+  PASS    PRB-005 port:tcp/9200  Databases are not reachable from the internet [high]
+          port 9200 (Elasticsearch) is closed or filtered on 198.51.100.20
+  PASS    PRB-006  The app hostname answers over HTTPS without TLS or redirect anomalies [moderate]
+          https://www.example.com/ answers with 200
+
+summary: 0 fail, 0 warn, 0 unknown, 2 info, 18 pass, 0 skip
+explain any check with: stackward explain <id>

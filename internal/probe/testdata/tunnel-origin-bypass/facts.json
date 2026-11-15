@@ -1,0 +1,331 @@
+{
+  "schema": "stackward.probe.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "target": "origin.example.com",
+  "hostname": "app.example.com",
+  "addresses": [
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6"
+    }
+  ],
+  "families": [
+    {
+      "family": "ipv4",
+      "status": "probed"
+    },
+    {
+      "family": "ipv6",
+      "status": "probed"
+    }
+  ],
+  "port_list": {
+    "ssh": [
+      22
+    ],
+    "http": [
+      80
+    ],
+    "https": [
+      443
+    ],
+    "docker": [
+      2375,
+      2376
+    ],
+    "panels": [
+      3000,
+      3100,
+      6001,
+      6002,
+      8000,
+      8080,
+      8081,
+      9000,
+      9090
+    ],
+    "databases": [
+      3306,
+      5432,
+      6379,
+      9200,
+      27017
+    ]
+  },
+  "ports": [
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 22,
+      "state": "open",
+      "banner": "SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 22,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 80,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 80,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 443,
+      "state": "open"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 443,
+      "state": "filtered"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 2375,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 2375,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 2376,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 2376,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 3000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 3000,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 3100,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 3100,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 3306,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 3306,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 5432,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 5432,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 6001,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 6001,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 6002,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 6002,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 6379,
+      "state": "open"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 6379,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 8000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 8000,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 8080,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 8080,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 8081,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 8081,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 9000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 9000,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 9090,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 9090,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 9200,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 9200,
+      "state": "closed"
+    },
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 27017,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8::10",
+      "family": "ipv6",
+      "port": 27017,
+      "state": "closed"
+    }
+  ],
+  "raw_http": [
+    {
+      "address": "203.0.113.10",
+      "family": "ipv4",
+      "port": 443,
+      "scheme": "https",
+      "status": 404,
+      "tls_verify_skipped": true
+    }
+  ],
+  "https": {
+    "hostname": "app.example.com",
+    "hops": [
+      {
+        "url": "https://app.example.com/",
+        "status": 301,
+        "location": "https://app.example.com/"
+      }
+    ],
+    "final_status": 301,
+    "loop": true,
+    "cert_not_after": "2026-05-20T00:00:00Z"
+  },
+  "steps": [
+    {
+      "name": "resolve",
+      "status": "ok"
+    },
+    {
+      "name": "tcp",
+      "status": "ok"
+    },
+    {
+      "name": "http-raw",
+      "status": "ok"
+    },
+    {
+      "name": "https-hostname",
+      "status": "ok"
+    }
+  ]
+}

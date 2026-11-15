@@ -1,0 +1,219 @@
+{
+  "schema": "stackward.probe.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "target": "198.51.100.20",
+  "hostname": "www.example.com",
+  "addresses": [
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4"
+    }
+  ],
+  "families": [
+    {
+      "family": "ipv4",
+      "status": "probed"
+    },
+    {
+      "family": "ipv6",
+      "status": "no-address",
+      "detail": "the target is an IPv4 address"
+    }
+  ],
+  "port_list": {
+    "ssh": [
+      22
+    ],
+    "http": [
+      80
+    ],
+    "https": [
+      443
+    ],
+    "docker": [
+      2375,
+      2376
+    ],
+    "panels": [
+      3000,
+      3100,
+      6001,
+      6002,
+      8000,
+      8080,
+      8081,
+      9000,
+      9090
+    ],
+    "databases": [
+      3306,
+      5432,
+      6379,
+      9200,
+      27017
+    ]
+  },
+  "ports": [
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 22,
+      "state": "filtered"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 80,
+      "state": "open"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 443,
+      "state": "open"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 2375,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 2376,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 3000,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 3100,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 3306,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 5432,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 6001,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 6002,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 6379,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 8000,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 8080,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 8081,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 9000,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 9090,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 9200,
+      "state": "closed"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 27017,
+      "state": "closed"
+    }
+  ],
+  "raw_http": [
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 80,
+      "scheme": "http",
+      "status": 308,
+      "location": "https://198.51.100.20/"
+    },
+    {
+      "address": "198.51.100.20",
+      "family": "ipv4",
+      "port": 443,
+      "scheme": "https",
+      "status": 404,
+      "tls_verify_skipped": true
+    }
+  ],
+  "https": {
+    "hostname": "www.example.com",
+    "hops": [
+      {
+        "url": "https://www.example.com/",
+        "status": 200
+      }
+    ],
+    "final_status": 200,
+    "cert_not_after": "2026-05-20T00:00:00Z"
+  },
+  "steps": [
+    {
+      "name": "resolve",
+      "status": "ok"
+    },
+    {
+      "name": "tcp",
+      "status": "ok"
+    },
+    {
+      "name": "http-raw",
+      "status": "ok"
+    },
+    {
+      "name": "https-hostname",
+      "status": "ok"
+    }
+  ]
+}

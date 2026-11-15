@@ -1,0 +1,634 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {},
+  "profile": {
+    "name": "public-web",
+    "source": "flag"
+  },
+  "coverage": {
+    "checks": 6,
+    "results": 20,
+    "checked": 20,
+    "unknown": 0,
+    "skipped": 0,
+    "root": false,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "resolve",
+        "status": "ok"
+      },
+      {
+        "name": "tcp",
+        "status": "ok"
+      },
+      {
+        "name": "http-raw",
+        "status": "ok"
+      },
+      {
+        "name": "https-hostname",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "unknown": 0,
+    "info": 2,
+    "pass": 18,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "PRB-001",
+      "group": "PRB",
+      "title": "SSH is not reachable from the internet on a private ingress host",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:tcp/22",
+      "message": "port 22 (SSH) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "banner": "",
+        "closed": [],
+        "filtered": [
+          "198.51.100.20"
+        ],
+        "open": [],
+        "port": 22,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Make SSH work over the tailnet first, then close the public SSH rule in the host firewall and the provider firewall (see SSH and NET checks)."
+      }
+    },
+    {
+      "id": "PRB-002",
+      "group": "PRB",
+      "title": "Web ports do not answer on the raw IP behind a tunnel",
+      "level": "info",
+      "severity": "high",
+      "subject": "port:tcp/443",
+      "message": "port 443 answers on the raw IP 198.51.100.20 (https 404); expected on public-web",
+      "evidence": {
+        "closed": [],
+        "filtered": [],
+        "open": [
+          "198.51.100.20"
+        ],
+        "port": 443,
+        "responses": [
+          {
+            "address": "198.51.100.20",
+            "error": "",
+            "location": "",
+            "scheme": "https",
+            "status": 404
+          }
+        ],
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only and let the tunnel connector reach it locally, then drop the public 80 and 443 rules in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-002",
+      "group": "PRB",
+      "title": "Web ports do not answer on the raw IP behind a tunnel",
+      "level": "info",
+      "severity": "high",
+      "subject": "port:tcp/80",
+      "message": "port 80 answers on the raw IP 198.51.100.20 (http 308); expected on public-web",
+      "evidence": {
+        "closed": [],
+        "filtered": [],
+        "open": [
+          "198.51.100.20"
+        ],
+        "port": 80,
+        "responses": [
+          {
+            "address": "198.51.100.20",
+            "error": "",
+            "location": "https://198.51.100.20/",
+            "scheme": "http",
+            "status": 308
+          }
+        ],
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only and let the tunnel connector reach it locally, then drop the public 80 and 443 rules in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-003",
+      "group": "PRB",
+      "title": "Docker API ports are not reachable from the internet",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "port:tcp/2375",
+      "message": "port 2375 (Docker API) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 2375,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Remove the tcp:// listener from the Docker daemon (hosts in daemon.json, -H in the service unit) and reach Docker over SSH or the tailnet instead."
+      }
+    },
+    {
+      "id": "PRB-003",
+      "group": "PRB",
+      "title": "Docker API ports are not reachable from the internet",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "port:tcp/2376",
+      "message": "port 2376 (Docker API over TLS) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 2376,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Remove the tcp:// listener from the Docker daemon (hosts in daemon.json, -H in the service unit) and reach Docker over SSH or the tailnet instead."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/3000",
+      "message": "port 3000 (Dokploy or Grafana) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3000,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/3100",
+      "message": "port 3100 (Loki) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3100,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/6001",
+      "message": "port 6001 (Coolify realtime) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6001,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/6002",
+      "message": "port 6002 (Coolify terminal) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6002,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/8000",
+      "message": "port 8000 (Coolify) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8000,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/8080",
+      "message": "port 8080 (Traefik dashboard or admin UI) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8080,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/8081",
+      "message": "port 8081 (admin UI) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 8081,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/9000",
+      "message": "port 9000 (Portainer) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9000,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-004",
+      "group": "PRB",
+      "title": "Panels and dashboards are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/9090",
+      "message": "port 9090 (Prometheus) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9090,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Bind panels and dashboards to 127.0.0.1 or the tailnet address and reach them over the tailnet or behind an access proxy; close the ports in the provider firewall."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/27017",
+      "message": "port 27017 (MongoDB) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 27017,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/3306",
+      "message": "port 3306 (MySQL or MariaDB) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 3306,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/5432",
+      "message": "port 5432 (PostgreSQL) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 5432,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/6379",
+      "message": "port 6379 (Redis) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 6379,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-005",
+      "group": "PRB",
+      "title": "Databases are not reachable from the internet",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/9200",
+      "message": "port 9200 (Elasticsearch) is closed or filtered on 198.51.100.20",
+      "evidence": {
+        "closed": [
+          "198.51.100.20"
+        ],
+        "filtered": [],
+        "open": [],
+        "port": 9200,
+        "unreachable": []
+      },
+      "fix": {
+        "hint": "Turn off public publishing of the database (or publish it on 127.0.0.1), and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PRB-006",
+      "group": "PRB",
+      "title": "The app hostname answers over HTTPS without TLS or redirect anomalies",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "https://www.example.com/ answers with 200",
+      "evidence": {
+        "anomalies": [],
+        "cert_not_after": "2026-05-20T00:00:00Z",
+        "final_status": 200,
+        "hops": [
+          "200 https://www.example.com/"
+        ],
+        "hostname": "www.example.com",
+        "off_host": "",
+        "tls_error": ""
+      },
+      "fix": {
+        "hint": "Behind a tunnel, turn off the app's own redirect to HTTPS (or trust the proxy's X-Forwarded-Proto) and let the tunnel enforce HTTPS; renew or fix the certificate when verification fails."
+      }
+    }
+  ],
+  "probe": {
+    "target": "198.51.100.20",
+    "hostname": "www.example.com",
+    "addresses": [
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4"
+      }
+    ],
+    "families": [
+      {
+        "family": "ipv4",
+        "status": "probed"
+      },
+      {
+        "family": "ipv6",
+        "status": "no-address",
+        "detail": "the target is an IPv4 address"
+      }
+    ],
+    "ports": [
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 22,
+        "state": "filtered"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 80,
+        "state": "open"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 443,
+        "state": "open"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 2375,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 2376,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 3000,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 3100,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 3306,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 5432,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 6001,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 6002,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 6379,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 8000,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 8080,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 8081,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 9000,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 9090,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 9200,
+        "state": "closed"
+      },
+      {
+        "address": "198.51.100.20",
+        "family": "ipv4",
+        "port": 27017,
+        "state": "closed"
+      }
+    ],
+    "notes": [
+      "the raw IP HTTPS check skips certificate verification (an IP has no certificate name); the --hostname check verifies normally"
+    ]
+  }
+}

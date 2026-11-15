@@ -1,0 +1,330 @@
+{
+  "schema": "stackward.probe.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "target": "server.example.com",
+  "addresses": [
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6"
+    }
+  ],
+  "families": [
+    {
+      "family": "ipv4",
+      "status": "probed"
+    },
+    {
+      "family": "ipv6",
+      "status": "unreachable",
+      "detail": "this machine has no route to ipv6; run probe from a machine with ipv6 connectivity"
+    }
+  ],
+  "port_list": {
+    "ssh": [
+      22
+    ],
+    "http": [
+      80
+    ],
+    "https": [
+      443
+    ],
+    "docker": [
+      2375,
+      2376
+    ],
+    "panels": [
+      3000,
+      3100,
+      6001,
+      6002,
+      8000,
+      8080,
+      8081,
+      9000,
+      9090
+    ],
+    "databases": [
+      3306,
+      5432,
+      6379,
+      9200,
+      27017
+    ]
+  },
+  "ports": [
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 22,
+      "state": "open",
+      "banner": "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 22,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 80,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 80,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 443,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 443,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 2375,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 2375,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 2376,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 2376,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 3000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 3000,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 3100,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 3100,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 3306,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 3306,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 5432,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 5432,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 6001,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 6001,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 6002,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 6002,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 6379,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 6379,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 8000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 8000,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 8080,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 8080,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 8081,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 8081,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 9000,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 9000,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 9090,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 9090,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 9200,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 9200,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    },
+    {
+      "address": "192.0.2.30",
+      "family": "ipv4",
+      "port": 27017,
+      "state": "closed"
+    },
+    {
+      "address": "2001:db8:2::30",
+      "family": "ipv6",
+      "port": 27017,
+      "state": "unreachable",
+      "error": "network is unreachable"
+    }
+  ],
+  "raw_http": [],
+  "steps": [
+    {
+      "name": "resolve",
+      "status": "ok"
+    },
+    {
+      "name": "tcp",
+      "status": "ok"
+    },
+    {
+      "name": "http-raw",
+      "status": "skipped",
+      "reason": "no web port answered"
+    },
+    {
+      "name": "https-hostname",
+      "status": "skipped",
+      "reason": "no --hostname given"
+    }
+  ]
+}
