@@ -201,6 +201,11 @@ type Generator struct {
 	// in this run (a restart that only loads a new file). Otherwise they
 	// run whenever the step is not already applied.
 	CommandsOnChange bool
+	// SSHD, for an access-critical step, returns the effective sshd
+	// settings the step means to leave in place, as `sshd -T` prints them
+	// (lowercase key, value): the transaction refuses to keep the change
+	// unless `sshd -T` shows every one. It reads the step, never the host.
+	SSHD func(s Step) map[string]string
 }
 
 // Veto lets a policy refuse a planned step before it reaches the plan (the

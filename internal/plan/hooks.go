@@ -78,6 +78,16 @@ func Pin(r Reader, s Step) error {
 	return g.Pin(r, s)
 }
 
+// SSHDExpect returns the effective sshd settings step s means to leave in
+// place (see Generator.SSHD), or nil.
+func SSHDExpect(s Step) map[string]string {
+	g, ok := Lookup(s.ID)
+	if !ok || g.SSHD == nil {
+		return nil
+	}
+	return g.SSHD(s)
+}
+
 // RunsCommandsOnChange reports whether step id runs its commands only when
 // one of its edits changed a file in this run.
 func RunsCommandsOnChange(id string) bool {
