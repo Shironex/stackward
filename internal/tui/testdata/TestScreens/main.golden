@@ -1,0 +1,24 @@
+ stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ profile public-web (inferred) · sandbox unavailable · root yes                 
+ 91 results  3 fail  5 warn  56 unknown  7 info  16 pass  4 skip                
+────────────────────────────────────────────────────────────────────────────────
+FINDINGS  71 of 91                     │ DETAIL                       1-17 of 49
+Secrets on disk SEC            4 of 11 │ SEC-001  Secrets on disk               
+› FAIL    SEC-001  …c3/.env · Platfor… │ Platform app .env files are readable by
+  FAIL    SEC-001  …i9/.env · Platfor… │ their owner only                       
+  WARN    SEC-004  …aml.bak · No stra… │ FAIL · high severity                   
+  WARN    SEC-004  …up.yaml · No stra… │ subject file:/data/coolify/applications
+Coolify and Dokploy PAAS        3 of 7 │         /a1b2c3/.env                   
+  FAIL    PAAS-003 tcp/8000 · Platfor… │                                        
+  UNKNOWN PAAS-004 No platform databa… │ app .env is readable by group or others
+  INFO    PAAS-001 …coolify · Self ho… │ (mode 0644)                            
+Firewall and exposure NET      9 of 14 │                                        
+  WARN    NET-004  tcp/443 · Exposure… │ EVIDENCE                               
+  WARN    NET-004  tcp/80 · Exposure:… │   gid       0                          
+  WARN    NET-004  tcp/8000 · Exposur… │   kind      env                        
+  UNKNOWN NET-003  SSH is not open to… │   mode      0644                       
+  UNKNOWN NET-009  Provider firewall … │   path      /data/coolify/applications/
+  INFO    NET-004  tcp/22 · Exposure:… │             a1b2c3/.env                
+  INFO    NET-004  tcp/6001 · Exposur… │   platform  coolify                    
+────────────────────────────────────────────────────────────────────────────────
+ tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    

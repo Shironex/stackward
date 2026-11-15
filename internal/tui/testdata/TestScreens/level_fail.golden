@@ -1,0 +1,24 @@
+ stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ profile public-web (inferred) · sandbox unavailable · root yes                 
+ 91 results  3 fail  5 warn  56 unknown  7 info  16 pass  4 skip                
+────────────────────────────────────────────────────────────────────────────────
+FINDINGS  3 of 91           level fail │ DETAIL                       1-17 of 49
+Secrets on disk SEC            2 of 11 │ SEC-001  Secrets on disk               
+› FAIL    SEC-001  …c3/.env · Platfor… │ Platform app .env files are readable by
+  FAIL    SEC-001  …i9/.env · Platfor… │ their owner only                       
+Coolify and Dokploy PAAS        1 of 7 │ FAIL · high severity                   
+  FAIL    PAAS-003 tcp/8000 · Platfor… │ subject file:/data/coolify/applications
+                                       │         /a1b2c3/.env                   
+                                       │                                        
+                                       │ app .env is readable by group or others
+                                       │ (mode 0644)                            
+                                       │                                        
+                                       │ EVIDENCE                               
+                                       │   gid       0                          
+                                       │   kind      env                        
+                                       │   mode      0644                       
+                                       │   path      /data/coolify/applications/
+                                       │             a1b2c3/.env                
+                                       │   platform  coolify                    
+────────────────────────────────────────────────────────────────────────────────
+ tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    

@@ -1,0 +1,24 @@
+ stackward test · host sha256:b819aad7f7091fd8 · Ubuntu 24.04.1 LTS             
+ profile public-web (inferred) · sandbox unavailable · root yes                 
+ 91 results  3 fail  5 warn  56 unknown  7 info  16 pass  4 skip                
+────────────────────────────────────────────────────────────────────────────────
+FINDINGS  71 of 91                     │ DETAIL                      19-35 of 49
+Secrets on disk SEC            4 of 11 │                                        
+  FAIL    SEC-001  …c3/.env · Platfor… │ WHY IT MATTERS                         
+› FAIL    SEC-001  …i9/.env · Platfor… │   App and service .env files hold      
+  WARN    SEC-004  …aml.bak · No stra… │   database passwords, API keys and     
+  WARN    SEC-004  …up.yaml · No stra… │   tokens. Platforms rewrite them on    
+Coolify and Dokploy PAAS        3 of 7 │   every deploy, often as 0644, so any  
+  FAIL    PAAS-003 tcp/8000 · Platfor… │   local user or compromised process can
+  UNKNOWN PAAS-004 No platform databa… │   read every app's secrets. stackward  
+  INFO    PAAS-001 …coolify · Self ho… │   reads only their mode, never their   
+Firewall and exposure NET      9 of 14 │   contents.                            
+  WARN    NET-004  tcp/443 · Exposure… │                                        
+  WARN    NET-004  tcp/80 · Exposure:… │ FIX  y copies it                       
+  WARN    NET-004  tcp/8000 · Exposur… │   chmod 600 the files, and add a       
+  UNKNOWN NET-003  SSH is not open to… │   systemd timer or path unit that      
+  UNKNOWN NET-009  Provider firewall … │   repeats it, because the platform     
+  INFO    NET-004  tcp/22 · Exposure:… │   rewrites them on the next deploy.    
+  INFO    NET-004  tcp/6001 · Exposur… │                                        
+────────────────────────────────────────────────────────────────────────────────
+ tab pane  / filter  l level  a passing  g group  y copy fix  ? help  q quit    
