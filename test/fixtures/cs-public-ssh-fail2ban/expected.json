@@ -1246,7 +1246,7 @@
         ]
       },
       "fix": {
-        "hint": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API",
+        "hint": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API. Never delete a stale base bouncer whose name@IP rows still pull: they share its API key.",
         "docs": "https://docs.crowdsec.net/u/bouncers/intro"
       }
     },

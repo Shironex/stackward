@@ -59,14 +59,57 @@ func checkCrowdSecRunning(in Input) []Result {
 	return One(Fail, "CrowdSec is installed but the engine is not running: nothing is detected or banned", ev)
 }
 
+// liveBouncers returns the bouncers that are not revoked, one per bouncer.
+//
+// A bouncer that runs in several containers (or behind several addresses)
+// registers its base name once and then a name@IP row per address, all
+// sharing the base row's API key; the base row itself may never pull again.
+// They are one bouncer: the merged row keeps the base name and the newest
+// pull of any of its rows. Deleting the base row would break every row that
+// shares its key, so stackward never suggests it.
 func liveBouncers(c *facts.CrowdSec) []facts.CrowdSecBouncer {
 	var out []facts.CrowdSecBouncer
+	idx := map[string]int{}
 	for _, b := range c.Bouncers {
-		if !b.Revoked {
+		if b.Revoked {
+			continue
+		}
+		base := bouncerBase(b.Name)
+		i, seen := idx[base]
+		if !seen {
+			idx[base] = len(out)
+			b.Name = base
 			out = append(out, b)
+			continue
+		}
+		m := &out[i]
+		if b.LastPull != nil && (m.LastPull == nil || b.LastPull.After(*m.LastPull)) {
+			m.LastPull = b.LastPull
+		}
+		if m.Kind == "" || m.Kind == "other" {
+			m.Kind = b.Kind
+		}
+		if m.Type == "" {
+			m.Type = b.Type
+		}
+		if m.Version == "" {
+			m.Version = b.Version
 		}
 	}
 	return out
+}
+
+// bouncerBase strips the @IP suffix CrowdSec adds to the rows of a bouncer
+// that connects from more than one address ("traefik@192.0.2.10").
+func bouncerBase(name string) string {
+	base, addr, ok := strings.Cut(name, "@")
+	if !ok || base == "" {
+		return name
+	}
+	if _, err := netip.ParseAddr(addr); err != nil {
+		return name
+	}
+	return base
 }
 
 func bouncersUnread(c *facts.CrowdSec) string {
