@@ -842,6 +842,7 @@
       "evidence": {
         "container": "crm-app-1",
         "image": "ghcr.io/example/crm:3.2.0",
+        "managed_by": "",
         "role": "",
         "running": true,
         "socket_mounts": null
@@ -862,6 +863,7 @@
       "evidence": {
         "container": "crm-db-1",
         "image": "postgres:17.2",
+        "managed_by": "",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -896,7 +898,9 @@
       "message": "crm-app-1 mounts no sensitive host path",
       "evidence": {
         "container": "crm-app-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -913,7 +917,9 @@
       "message": "crm-db-1 mounts no sensitive host path",
       "evidence": {
         "container": "crm-db-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -930,9 +936,12 @@
       "message": "crm-app-1 runs as \"10001\"",
       "evidence": {
         "container": "crm-app-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "10001"
       },
       "fix": {
@@ -949,9 +958,12 @@
       "message": "crm-db-1 runs as \"postgres\"",
       "evidence": {
         "container": "crm-db-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": true,
         "root": false,
+        "running": true,
         "user": "postgres"
       },
       "fix": {
@@ -968,7 +980,9 @@
       "message": "crm-app-1 is not privileged",
       "evidence": {
         "container": "crm-app-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -984,7 +998,9 @@
       "message": "crm-db-1 is not privileged",
       "evidence": {
         "container": "crm-db-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1002,7 +1018,9 @@
         "cap_add": [],
         "container": "crm-app-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1020,7 +1038,9 @@
         "cap_add": [],
         "container": "crm-db-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1037,9 +1057,11 @@
       "evidence": {
         "container": "crm-app-1",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "crm_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1056,9 +1078,11 @@
       "evidence": {
         "container": "crm-db-1",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "crm_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1074,8 +1098,10 @@
       "message": "crm-app-1 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "crm-app-1",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -1095,8 +1121,10 @@
       "message": "crm-db-1 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "crm-db-1",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": true,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },

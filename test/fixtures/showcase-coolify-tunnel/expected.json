@@ -1218,10 +1218,11 @@
       "level": "warn",
       "severity": "critical",
       "subject": "container:coolify-proxy",
-      "message": "coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a proxy, but it is root on the host if compromised",
+      "message": "coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a proxy, but it is root on the host if compromised; a read only mount does not stop connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel does not let you change",
       "evidence": {
         "container": "coolify-proxy",
         "image": "traefik:v3.1.4",
+        "managed_by": "coolify",
         "role": "proxy",
         "running": true,
         "socket_mounts": [
@@ -1244,6 +1245,7 @@
       "evidence": {
         "container": "coolify",
         "image": "ghcr.io/coollabsio/coolify:4.0.0-beta.420",
+        "managed_by": "coolify",
         "role": "paas",
         "running": true,
         "socket_mounts": null
@@ -1264,6 +1266,7 @@
       "evidence": {
         "container": "coolify-db",
         "image": "postgres:15-alpine",
+        "managed_by": "coolify",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -1284,6 +1287,7 @@
       "evidence": {
         "container": "coolify-redis",
         "image": "redis:7-alpine",
+        "managed_by": "coolify",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -1304,6 +1308,7 @@
       "evidence": {
         "container": "coolify-realtime",
         "image": "ghcr.io/coollabsio/coolify-realtime:1.0.6",
+        "managed_by": "coolify",
         "role": "paas",
         "running": true,
         "socket_mounts": null
@@ -1324,6 +1329,7 @@
       "evidence": {
         "container": "shop-db-k4s9d2",
         "image": "postgres:17.2",
+        "managed_by": "",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -1344,6 +1350,7 @@
       "evidence": {
         "container": "shop-web-k4s9d2",
         "image": "ghcr.io/example/shop:2.4.1",
+        "managed_by": "",
         "role": "",
         "running": true,
         "socket_mounts": null
@@ -1364,6 +1371,7 @@
       "evidence": {
         "container": "tunnel-1",
         "image": "cloudflare/cloudflared:2026.10.0",
+        "managed_by": "",
         "role": "tunnel",
         "running": true,
         "socket_mounts": null
@@ -1398,7 +1406,9 @@
       "message": "coolify-proxy mounts no sensitive host path",
       "evidence": {
         "container": "coolify-proxy",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1415,7 +1425,9 @@
       "message": "coolify mounts no sensitive host path",
       "evidence": {
         "container": "coolify",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1432,7 +1444,9 @@
       "message": "coolify-db mounts no sensitive host path",
       "evidence": {
         "container": "coolify-db",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1449,7 +1463,9 @@
       "message": "coolify-redis mounts no sensitive host path",
       "evidence": {
         "container": "coolify-redis",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1466,7 +1482,9 @@
       "message": "coolify-realtime mounts no sensitive host path",
       "evidence": {
         "container": "coolify-realtime",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1483,7 +1501,9 @@
       "message": "shop-db-k4s9d2 mounts no sensitive host path",
       "evidence": {
         "container": "shop-db-k4s9d2",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1500,7 +1520,9 @@
       "message": "shop-web-k4s9d2 mounts no sensitive host path",
       "evidence": {
         "container": "shop-web-k4s9d2",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1517,7 +1539,9 @@
       "message": "tunnel-1 mounts no sensitive host path (worst of 2 replicas)",
       "evidence": {
         "container": "tunnel-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1534,9 +1558,12 @@
       "message": "coolify-proxy runs as \"10001\"",
       "evidence": {
         "container": "coolify-proxy",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "10001"
       },
       "fix": {
@@ -1553,9 +1580,12 @@
       "message": "coolify runs as \"9999\"",
       "evidence": {
         "container": "coolify",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": true,
         "root": false,
+        "running": true,
         "user": "9999"
       },
       "fix": {
@@ -1572,9 +1602,12 @@
       "message": "coolify-db runs as \"postgres\"",
       "evidence": {
         "container": "coolify-db",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "postgres"
       },
       "fix": {
@@ -1591,9 +1624,12 @@
       "message": "coolify-redis runs as \"redis\"",
       "evidence": {
         "container": "coolify-redis",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "redis"
       },
       "fix": {
@@ -1610,9 +1646,12 @@
       "message": "coolify-realtime runs as \"9999\"",
       "evidence": {
         "container": "coolify-realtime",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "9999"
       },
       "fix": {
@@ -1629,9 +1668,12 @@
       "message": "shop-db-k4s9d2 runs as \"postgres\"",
       "evidence": {
         "container": "shop-db-k4s9d2",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "postgres"
       },
       "fix": {
@@ -1648,9 +1690,12 @@
       "message": "shop-web-k4s9d2 runs as \"10001:10001\"",
       "evidence": {
         "container": "shop-web-k4s9d2",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": true,
         "root": false,
+        "running": true,
         "user": "10001:10001"
       },
       "fix": {
@@ -1667,9 +1712,12 @@
       "message": "tunnel-1 runs as \"nonroot\" (worst of 2 replicas)",
       "evidence": {
         "container": "tunnel-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "nonroot"
       },
       "fix": {
@@ -1686,7 +1734,9 @@
       "message": "coolify-proxy is not privileged",
       "evidence": {
         "container": "coolify-proxy",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1702,7 +1752,9 @@
       "message": "coolify is not privileged",
       "evidence": {
         "container": "coolify",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1718,7 +1770,9 @@
       "message": "coolify-db is not privileged",
       "evidence": {
         "container": "coolify-db",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1734,7 +1788,9 @@
       "message": "coolify-redis is not privileged",
       "evidence": {
         "container": "coolify-redis",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1750,7 +1806,9 @@
       "message": "coolify-realtime is not privileged",
       "evidence": {
         "container": "coolify-realtime",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1766,7 +1824,9 @@
       "message": "shop-db-k4s9d2 is not privileged",
       "evidence": {
         "container": "shop-db-k4s9d2",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1782,7 +1842,9 @@
       "message": "shop-web-k4s9d2 is not privileged",
       "evidence": {
         "container": "shop-web-k4s9d2",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1798,7 +1860,9 @@
       "message": "tunnel-1 is not privileged (worst of 2 replicas)",
       "evidence": {
         "container": "tunnel-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1818,7 +1882,9 @@
         ],
         "container": "coolify-proxy",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1836,7 +1902,9 @@
         "cap_add": [],
         "container": "coolify",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1854,7 +1922,9 @@
         "cap_add": [],
         "container": "coolify-db",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1872,7 +1942,9 @@
         "cap_add": [],
         "container": "coolify-redis",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1890,7 +1962,9 @@
         "cap_add": [],
         "container": "coolify-realtime",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1908,7 +1982,9 @@
         "cap_add": [],
         "container": "shop-db-k4s9d2",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1926,7 +2002,9 @@
         "cap_add": [],
         "container": "shop-web-k4s9d2",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1944,7 +2022,9 @@
         "cap_add": [],
         "container": "tunnel-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1961,9 +2041,11 @@
       "evidence": {
         "container": "coolify-proxy",
         "ipc_mode": "",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1980,9 +2062,11 @@
       "evidence": {
         "container": "coolify",
         "ipc_mode": "",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1999,9 +2083,11 @@
       "evidence": {
         "container": "coolify-db",
         "ipc_mode": "",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2018,9 +2104,11 @@
       "evidence": {
         "container": "coolify-redis",
         "ipc_mode": "",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2037,9 +2125,11 @@
       "evidence": {
         "container": "coolify-realtime",
         "ipc_mode": "",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2056,9 +2146,11 @@
       "evidence": {
         "container": "shop-db-k4s9d2",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "k4s9d2",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2075,9 +2167,11 @@
       "evidence": {
         "container": "shop-web-k4s9d2",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "k4s9d2",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2094,9 +2188,11 @@
       "evidence": {
         "container": "tunnel-1",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "host",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -2112,8 +2208,10 @@
       "message": "coolify-proxy keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify-proxy",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -2133,8 +2231,10 @@
       "message": "coolify keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": true,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -2154,8 +2254,10 @@
       "message": "coolify-db keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify-db",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -2173,8 +2275,10 @@
       "message": "coolify-redis keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify-redis",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -2192,8 +2296,10 @@
       "message": "coolify-realtime keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify-realtime",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -2213,8 +2319,10 @@
       "message": "shop-db-k4s9d2 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "shop-db-k4s9d2",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -2232,8 +2340,10 @@
       "message": "shop-web-k4s9d2 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "shop-web-k4s9d2",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": true,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -2253,8 +2363,10 @@
       "message": "tunnel-1 keeps the default seccomp and AppArmor confinement (worst of 2 replicas)",
       "evidence": {
         "container": "tunnel-1",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
