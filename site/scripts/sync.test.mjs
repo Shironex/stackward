@@ -19,6 +19,18 @@ test('catalog prose is escaped, and ids link only when they exist', () => {
   assert.equal(proseWithIds('see SYS-002 and UPD-004', known), 'see [SYS-002](/stackward/checks/sys-002/) and `UPD-004`');
 });
 
+test('flags and code spans in catalog prose survive typography', () => {
+  const known = new Set(['CF-001']);
+  const text = 'Run `grep -c -- --token` or pass --now; CF-001 and --i-own-this use a <host> a - b, not a dash.';
+  const out = proseWithIds(text, known);
+  assert.ok(out.includes('`grep -c -- --token`'), out);
+  assert.ok(out.includes('pass `--now`;'), out);
+  assert.ok(out.includes('`--i-own-this`'), out);
+  assert.ok(out.includes('[CF-001](/stackward/checks/cf-001/)'), out);
+  assert.ok(out.includes('&lt;host&gt;'), out);
+  assert.ok(!/[\u2013\u2014]/.test(out));
+});
+
 test('doc links become site routes or GitHub links, fences untouched', () => {
   const known = new Set(['SYS-001']);
   const md = [
