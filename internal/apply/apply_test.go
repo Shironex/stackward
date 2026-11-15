@@ -345,8 +345,8 @@ func TestTamperedStepsAreRefused(t *testing.T) {
 		"extra command": {"journald-cap", func(s *plan.Step) {
 			s.Commands = append(s.Commands, plan.Command{Args: []string{"rm", "-rf", "/"}})
 		}, "commands"},
-		"undo command": {"journald-cap", func(s *plan.Step) { s.Undo.Commands[0].Args = []string{"rm", "-f", "/etc/passwd"} }, "not one the step runs"},
-		"path":         {"journald-cap", func(s *plan.Step) { s.Edits[0].Path = "/etc/passwd" }, "only ever edits"},
+		"undo command": {"journald-cap", func(s *plan.Step) { s.Undo.Commands[0].Args = []string{"rm", "-f", "/etc/hosts"} }, "not one the step runs"},
+		"path":         {"journald-cap", func(s *plan.Step) { s.Edits[0].Path = "/etc/hosts" }, "only ever edits"},
 		"content": {"journald-cap", func(s *plan.Step) {
 			s.Edits[0].New = strings.ReplaceAll(s.Edits[0].New, "1G", "1K")
 			rehash(&s.Edits[0])
@@ -368,6 +368,16 @@ func TestTamperedStepsAreRefused(t *testing.T) {
 		"restarts":   {"journald-cap", func(s *plan.Step) { s.Restarts = nil }, "restarts"},
 		"redacted":   {"docker-log-rotation", func(s *plan.Step) { s.Edits[0].Redacted = true }, "redacted"},
 		"unknown id": {"journald-cap", func(s *plan.Step) { s.ID = "make-coffee" }, "not a known step"},
+		// The never touched list is judged again at apply time, before the
+		// generator's own rules, from the touches, the edits and the
+		// commands, so dropping a target from touches does not help.
+		"never touched target": {"docker-log-rotation", func(s *plan.Step) { s.Touches = append(s.Touches, "docker-daemon:iptables") }, "never touched: docker-log-rotation reaches docker-daemon:iptables"},
+		"never touched path": {"journald-cap", func(s *plan.Step) {
+			s.Touches, s.Edits[0].Path = nil, "/etc/netplan/50-cloud-init.yaml"
+		}, "never touched: journald-cap reaches file:/etc/netplan/50-cloud-init.yaml"},
+		"never touched command": {"sysctl-hardening", func(s *plan.Step) {
+			s.Commands = append(s.Commands, plan.Command{Args: []string{"sysctl", "-w", "net.ipv4.ip_forward=0"}})
+		}, "never touched: sysctl-hardening reaches cmd:sysctl:net.ipv4.ip_forward=0"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := applytest.Step(t, p, tc.id)
