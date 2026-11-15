@@ -1,0 +1,94 @@
+name: scenarios
+
+# Live host scenarios: set up a real host state on a GitHub runner (a
+# throwaway Ubuntu VM with Docker), run the released style binary as root
+# with the Landlock sandbox on, and assert the levels of specific checks.
+# They catch what golden fixtures cannot: a command that dies under the
+# sandbox, a false positive on a real container, a write the audit should
+# never make. See docs/testing.md.
+on:
+  pull_request:
+    paths:
+      - 'internal/**'
+      - 'cmd/**'
+      - 'test/scenarios/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/scenarios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'internal/**'
+      - 'cmd/**'
+      - 'test/scenarios/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/scenarios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenarios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.x"
+      - name: shellcheck the scenario scripts
+        run: shellcheck -x -P SCRIPTDIR test/scenarios/*.sh
+      - name: build (cgo free, as released)
+        env:
+          CGO_ENABLED: "0"
+        run: go build -trimpath -o dist/stackward ./cmd/stackward
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stackward-linux-amd64
+          path: dist/stackward
+          retention-days: 3
+          if-no-files-found: error
+
+  scenario:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-22.04]
+        scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ssh, read-only, non-root]
+    name: ${{ matrix.scenario }} (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stackward-linux-amd64
+          path: dist
+      - name: run ${{ matrix.scenario }}
+        env:
+          STACKWARD: ${{ github.workspace }}/dist/stackward
+          OUT: ${{ runner.temp }}/scenario-out
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          chmod +x "$STACKWARD"
+          "$STACKWARD" version
+          test/scenarios/run.sh "$SCENARIO"
+      - name: upload reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scenario-${{ matrix.scenario }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/scenario-out
+          retention-days: 14
+          if-no-files-found: warn
