@@ -771,6 +771,7 @@
       "evidence": {
         "container": "app-db-1",
         "image": "postgres:17.2",
+        "managed_by": "",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -791,6 +792,7 @@
       "evidence": {
         "container": "app-web-1",
         "image": "ghcr.io/example/app:2.4.1",
+        "managed_by": "",
         "role": "",
         "running": true,
         "socket_mounts": null
@@ -811,6 +813,7 @@
       "evidence": {
         "container": "proxy",
         "image": "traefik:v3.1.4",
+        "managed_by": "",
         "role": "proxy",
         "running": true,
         "socket_mounts": null
@@ -831,6 +834,7 @@
       "evidence": {
         "container": "tunnel",
         "image": "cloudflare/cloudflared:2026.10.0",
+        "managed_by": "",
         "role": "tunnel",
         "running": true,
         "socket_mounts": null
@@ -865,7 +869,9 @@
       "message": "app-db-1 mounts no sensitive host path",
       "evidence": {
         "container": "app-db-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -882,7 +888,9 @@
       "message": "app-web-1 mounts no sensitive host path",
       "evidence": {
         "container": "app-web-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -899,7 +907,9 @@
       "message": "proxy mounts no sensitive host path",
       "evidence": {
         "container": "proxy",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -916,7 +926,9 @@
       "message": "tunnel mounts no sensitive host path",
       "evidence": {
         "container": "tunnel",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -933,9 +945,12 @@
       "message": "app-db-1 runs as \"postgres\"",
       "evidence": {
         "container": "app-db-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "postgres"
       },
       "fix": {
@@ -952,9 +967,12 @@
       "message": "app-web-1 runs as \"10001:10001\"",
       "evidence": {
         "container": "app-web-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": true,
         "root": false,
+        "running": true,
         "user": "10001:10001"
       },
       "fix": {
@@ -971,9 +989,12 @@
       "message": "proxy runs as \"10001\"",
       "evidence": {
         "container": "proxy",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "10001"
       },
       "fix": {
@@ -990,9 +1011,12 @@
       "message": "tunnel runs as \"nonroot\"",
       "evidence": {
         "container": "tunnel",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "nonroot"
       },
       "fix": {
@@ -1009,7 +1033,9 @@
       "message": "app-db-1 is not privileged",
       "evidence": {
         "container": "app-db-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1025,7 +1051,9 @@
       "message": "app-web-1 is not privileged",
       "evidence": {
         "container": "app-web-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1041,7 +1069,9 @@
       "message": "proxy is not privileged",
       "evidence": {
         "container": "proxy",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1057,7 +1087,9 @@
       "message": "tunnel is not privileged",
       "evidence": {
         "container": "tunnel",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1075,7 +1107,9 @@
         "cap_add": [],
         "container": "app-db-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1093,7 +1127,9 @@
         "cap_add": [],
         "container": "app-web-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1113,7 +1149,9 @@
         ],
         "container": "proxy",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1131,7 +1169,9 @@
         "cap_add": [],
         "container": "tunnel",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1148,9 +1188,11 @@
       "evidence": {
         "container": "app-db-1",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "app_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1167,9 +1209,11 @@
       "evidence": {
         "container": "app-web-1",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "app_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1186,9 +1230,11 @@
       "evidence": {
         "container": "proxy",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "edge_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1205,9 +1251,11 @@
       "evidence": {
         "container": "tunnel",
         "ipc_mode": "",
+        "managed_by": "",
         "network_mode": "edge_default",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1223,8 +1271,10 @@
       "message": "app-db-1 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "app-db-1",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -1242,8 +1292,10 @@
       "message": "app-web-1 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "app-web-1",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": true,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -1263,8 +1315,10 @@
       "message": "proxy keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "proxy",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -1282,8 +1336,10 @@
       "message": "tunnel keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "tunnel",
+        "managed_by": "",
         "no_new_privileges": true,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },

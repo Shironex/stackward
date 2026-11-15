@@ -31,8 +31,8 @@
     ]
   },
   "summary": {
-    "fail": 6,
-    "warn": 10,
+    "fail": 5,
+    "warn": 11,
     "unknown": 89,
     "info": 0,
     "pass": 34,
@@ -805,6 +805,7 @@
       "evidence": {
         "container": "blog-db-1",
         "image": "postgres:16",
+        "managed_by": "",
         "role": "database",
         "running": true,
         "socket_mounts": null
@@ -821,10 +822,11 @@
       "level": "warn",
       "severity": "critical",
       "subject": "container:coolify-proxy",
-      "message": "coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a proxy, but it is root on the host if compromised",
+      "message": "coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a proxy, but it is root on the host if compromised; a read only mount does not stop connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel does not let you change",
       "evidence": {
         "container": "coolify-proxy",
         "image": "traefik:v3.1",
+        "managed_by": "coolify",
         "role": "proxy",
         "running": true,
         "socket_mounts": [
@@ -847,6 +849,7 @@
       "evidence": {
         "container": "shop-web-1",
         "image": "ghcr.io/example/shop:1.2.0",
+        "managed_by": "",
         "role": "",
         "running": true,
         "socket_mounts": null
@@ -863,10 +866,11 @@
       "level": "warn",
       "severity": "critical",
       "subject": "container:socket-proxy",
-      "message": "socket-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a socket-proxy, but it is root on the host if compromised",
+      "message": "socket-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a socket-proxy, but it is root on the host if compromised; a read only mount does not stop connecting to a socket",
       "evidence": {
         "container": "socket-proxy",
         "image": "tecnativa/docker-socket-proxy:0.3.0",
+        "managed_by": "",
         "role": "socket-proxy",
         "running": true,
         "socket_mounts": [
@@ -889,6 +893,7 @@
       "evidence": {
         "container": "tunnel",
         "image": "cloudflare/cloudflared:latest",
+        "managed_by": "",
         "role": "tunnel",
         "running": true,
         "socket_mounts": null
@@ -929,7 +934,9 @@
       "message": "blog-db-1 mounts no sensitive host path",
       "evidence": {
         "container": "blog-db-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -946,7 +953,9 @@
       "message": "coolify-proxy mounts no sensitive host path",
       "evidence": {
         "container": "coolify-proxy",
+        "managed_by": "coolify",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -963,7 +972,9 @@
       "message": "shop-web-1 mounts host /etc:/host-etc writable",
       "evidence": {
         "container": "shop-web-1",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": [
           "/etc:/host-etc"
         ]
@@ -982,7 +993,9 @@
       "message": "socket-proxy mounts no sensitive host path",
       "evidence": {
         "container": "socket-proxy",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -999,7 +1012,9 @@
       "message": "tunnel mounts no sensitive host path",
       "evidence": {
         "container": "tunnel",
+        "managed_by": "",
         "read_only": [],
+        "running": true,
         "writable": []
       },
       "fix": {
@@ -1016,9 +1031,12 @@
       "message": "blog-db-1 runs as \"postgres\"",
       "evidence": {
         "container": "blog-db-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "postgres"
       },
       "fix": {
@@ -1029,15 +1047,18 @@
       "id": "DKR-020",
       "group": "DKR",
       "title": "Containers do not run as root",
-      "level": "fail",
+      "level": "warn",
       "severity": "high",
       "subject": "container:coolify-proxy",
-      "message": "coolify-proxy runs as root and is reachable from outside",
+      "message": "coolify-proxy runs as root and is reachable from outside; managed by Coolify as its proxy: expected, a platform default the panel does not let you change",
       "evidence": {
         "container": "coolify-proxy",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
         "privileged": false,
         "public": true,
         "root": true,
+        "running": true,
         "user": ""
       },
       "fix": {
@@ -1054,9 +1075,12 @@
       "message": "shop-web-1 runs as root and is reachable from outside",
       "evidence": {
         "container": "shop-web-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": true,
         "root": true,
+        "running": true,
         "user": ""
       },
       "fix": {
@@ -1073,9 +1097,12 @@
       "message": "socket-proxy runs as root",
       "evidence": {
         "container": "socket-proxy",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": true,
+        "running": true,
         "user": ""
       },
       "fix": {
@@ -1092,9 +1119,12 @@
       "message": "tunnel runs as \"nonroot\"",
       "evidence": {
         "container": "tunnel",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
         "privileged": false,
         "public": false,
         "root": false,
+        "running": true,
         "user": "nonroot"
       },
       "fix": {
@@ -1111,7 +1141,9 @@
       "message": "blog-db-1 is not privileged",
       "evidence": {
         "container": "blog-db-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1127,7 +1159,9 @@
       "message": "coolify-proxy is not privileged",
       "evidence": {
         "container": "coolify-proxy",
-        "privileged": false
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1143,7 +1177,9 @@
       "message": "shop-web-1 is not privileged",
       "evidence": {
         "container": "shop-web-1",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1159,7 +1195,9 @@
       "message": "socket-proxy is not privileged",
       "evidence": {
         "container": "socket-proxy",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1175,7 +1213,9 @@
       "message": "tunnel is not privileged",
       "evidence": {
         "container": "tunnel",
-        "privileged": false
+        "managed_by": "",
+        "privileged": false,
+        "running": true
       },
       "fix": {
         "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
@@ -1193,7 +1233,9 @@
         "cap_add": [],
         "container": "blog-db-1",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1211,7 +1253,9 @@
         "cap_add": [],
         "container": "coolify-proxy",
         "dangerous": [],
-        "risky": []
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1231,9 +1275,11 @@
         ],
         "container": "shop-web-1",
         "dangerous": [],
+        "managed_by": "",
         "risky": [
           "NET_ADMIN"
-        ]
+        ],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1251,7 +1297,9 @@
         "cap_add": [],
         "container": "socket-proxy",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1269,7 +1317,9 @@
         "cap_add": [],
         "container": "tunnel",
         "dangerous": [],
-        "risky": []
+        "managed_by": "",
+        "risky": [],
+        "running": true
       },
       "fix": {
         "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
@@ -1286,9 +1336,11 @@
       "evidence": {
         "container": "blog-db-1",
         "ipc_mode": "private",
+        "managed_by": "",
         "network_mode": "edge",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1305,9 +1357,11 @@
       "evidence": {
         "container": "coolify-proxy",
         "ipc_mode": "private",
+        "managed_by": "coolify",
         "network_mode": "coolify",
         "pid_mode": "",
-        "root": true
+        "root": true,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1324,9 +1378,11 @@
       "evidence": {
         "container": "shop-web-1",
         "ipc_mode": "private",
+        "managed_by": "",
         "network_mode": "shop_default",
         "pid_mode": "",
-        "root": true
+        "root": true,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1343,9 +1399,11 @@
       "evidence": {
         "container": "socket-proxy",
         "ipc_mode": "private",
+        "managed_by": "",
         "network_mode": "bridge",
         "pid_mode": "",
-        "root": true
+        "root": true,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1362,9 +1420,11 @@
       "evidence": {
         "container": "tunnel",
         "ipc_mode": "private",
+        "managed_by": "",
         "network_mode": "host",
         "pid_mode": "",
-        "root": false
+        "root": false,
+        "running": true
       },
       "fix": {
         "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
@@ -1380,8 +1440,10 @@
       "message": "blog-db-1 keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "blog-db-1",
+        "managed_by": "",
         "no_new_privileges": false,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -1399,8 +1461,10 @@
       "message": "coolify-proxy keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "coolify-proxy",
+        "managed_by": "coolify",
         "no_new_privileges": true,
         "public": true,
+        "running": true,
         "security_opt": [
           "no-new-privileges:true"
         ],
@@ -1420,8 +1484,10 @@
       "message": "shop-web-1 is reachable from outside without no-new-privileges",
       "evidence": {
         "container": "shop-web-1",
+        "managed_by": "",
         "no_new_privileges": false,
         "public": true,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -1439,8 +1505,10 @@
       "message": "socket-proxy keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "socket-proxy",
+        "managed_by": "",
         "no_new_privileges": false,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },
@@ -1458,8 +1526,10 @@
       "message": "tunnel keeps the default seccomp and AppArmor confinement",
       "evidence": {
         "container": "tunnel",
+        "managed_by": "",
         "no_new_privileges": false,
         "public": false,
+        "running": true,
         "security_opt": [],
         "unconfined": []
       },

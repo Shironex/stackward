@@ -481,12 +481,19 @@ func checkSocketMode(in Input) []Result {
 
 // DKR-010: no container gets the Docker socket or a folder holding it.
 func checkSocketMounted(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
-		var socket []string
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+		var socket, what []string
+		readOnly := false
 		for _, m := range c.Mounts {
 			if m.Type == "bind" && facts.IsDockerSocketPath(m.Source) {
 				socket = append(socket, mountText(m))
+				what = append(what, socketMountText(m))
+				readOnly = readOnly || m.ReadOnly
 			}
+		}
+		roNote := ""
+		if readOnly {
+			roNote = "; a read only mount does not stop connecting to a socket"
 		}
 		role := roleOf(c)
 		ev := map[string]any{"container": c.Name, "image": c.Image, "role": role, "socket_mounts": socket, "running": c.Running}
@@ -495,12 +502,12 @@ func checkSocketMounted(in Input) []Result {
 		}
 		switch role {
 		case roleProxy, rolePaaS, roleSocketProxy:
-			return Result{Level: Warn, Message: fmt.Sprintf("%s mounts the Docker socket (%s); expected for a %s, but it is root on the host if compromised%s",
-				c.Name, strings.Join(socket, ", "), role, stateWord(c)), Evidence: ev}
+			return Result{Level: Warn, Message: fmt.Sprintf("%s mounts %s; expected for a %s, but it is root on the host if compromised%s%s",
+				c.Name, strings.Join(what, ", "), role, roNote, stateWord(c)), Evidence: ev}
 		}
-		return Result{Level: Fail, Message: fmt.Sprintf("%s mounts the Docker socket (%s): the container controls the host%s",
-			c.Name, strings.Join(socket, ", "), stateWord(c)), Evidence: ev}
-	})
+		return Result{Level: Fail, Message: fmt.Sprintf("%s mounts %s: the container controls the host%s%s",
+			c.Name, strings.Join(what, ", "), roNote, stateWord(c)), Evidence: ev}
+	}))
 }
 
 // risky socket proxy flags: POST enables every write, EXEC runs commands.
@@ -543,7 +550,7 @@ var sensitiveHostPaths = map[string]bool{"/": true, "/etc": true, "/root": true,
 
 // DKR-012: no bind mount of /, /etc, /root, /home, /proc or /sys.
 func checkHostBinds(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		var rw, ro []string
 		for _, m := range c.Mounts {
 			if m.Type != "bind" || m.Source == "" || !sensitiveHostPaths[path.Clean(m.Source)] {
@@ -563,15 +570,19 @@ func checkHostBinds(in Input) []Result {
 			return Result{Level: Warn, Message: fmt.Sprintf("%s mounts host %s read only%s", c.Name, strings.Join(ro, ", "), stateWord(c)), Evidence: ev}
 		}
 		return Result{Level: Pass, Message: c.Name + " mounts no sensitive host path", Evidence: ev}
-	})
+	}))
 }
 
 // DKR-020: containers should not run as root.
 func checkContainerRoot(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		root := isRootUser(c.User)
 		pub := isPublic(c)
-		ev := map[string]any{"container": c.Name, "user": c.User, "root": root, "privileged": c.Privileged, "public": pub}
+		drops := ""
+		if root && c.User == "" {
+			drops = dropsTo(c.Image)
+		}
+		ev := map[string]any{"container": c.Name, "user": c.User, "root": root, "privileged": c.Privileged, "public": pub, "entrypoint_drops_to": drops}
 		if !root {
 			return Result{Level: Pass, Message: fmt.Sprintf("%s runs as %q", c.Name, c.User), Evidence: ev}
 		}
@@ -584,20 +595,23 @@ func checkContainerRoot(in Input) []Result {
 			return Result{Level: Fail, Message: fmt.Sprintf("%s runs as %s and privileged%s", c.Name, who, stateWord(c)), Evidence: ev}
 		case pub:
 			return Result{Level: Fail, Message: fmt.Sprintf("%s runs as %s and is reachable from outside%s", c.Name, who, stateWord(c)), Evidence: ev}
+		case drops != "":
+			return Result{Level: Info, Message: fmt.Sprintf("%s starts as root, and the %s image entrypoint drops to the %s user; set user: to make it explicit%s",
+				c.Name, imageBase(c.Image), drops, stateWord(c)), Evidence: ev}
 		}
 		return Result{Level: Warn, Message: fmt.Sprintf("%s runs as %s%s", c.Name, who, stateWord(c)), Evidence: ev}
-	})
+	}))
 }
 
 // DKR-021: no privileged containers.
 func checkPrivileged(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		ev := map[string]any{"container": c.Name, "privileged": c.Privileged}
 		if c.Privileged {
 			return Result{Level: Fail, Message: c.Name + " is privileged: it has every capability and every device" + stateWord(c), Evidence: ev}
 		}
 		return Result{Level: Pass, Message: c.Name + " is not privileged", Evidence: ev}
-	})
+	}))
 }
 
 var (
@@ -607,7 +621,7 @@ var (
 
 // DKR-022: no dangerous added capabilities.
 func checkCapAdd(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		dangerous, risky := []string{}, []string{}
 		for _, raw := range c.CapAdd {
 			capName := strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(raw)), "CAP_")
@@ -626,12 +640,12 @@ func checkCapAdd(in Input) []Result {
 			return Result{Level: Warn, Message: fmt.Sprintf("%s adds %s%s", c.Name, strings.Join(risky, ", "), stateWord(c)), Evidence: ev}
 		}
 		return Result{Level: Pass, Message: c.Name + " adds no dangerous capability", Evidence: ev}
-	})
+	}))
 }
 
 // DKR-023: no host network, PID or IPC namespace.
 func checkHostNamespaces(in Input) []Result {
-	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		root := isRootUser(c.User)
 		ev := map[string]any{"container": c.Name, "network_mode": c.NetworkMode, "pid_mode": c.PidMode, "ipc_mode": c.IpcMode, "root": root}
 		level := Pass
@@ -657,13 +671,13 @@ func checkHostNamespaces(in Input) []Result {
 			return Result{Level: Pass, Message: c.Name + " uses its own network, PID and IPC namespaces", Evidence: ev}
 		}
 		return Result{Level: level, Message: fmt.Sprintf("%s uses the %s%s", c.Name, strings.Join(why, ", "), stateWord(c)), Evidence: ev}
-	})
+	}))
 }
 
 // DKR-024: no unconfined seccomp or AppArmor; no-new-privileges on public
 // containers.
 func checkSecurityOpt(in Input) []Result {
-	return eachContainer(in, func(d *facts.Docker, c facts.DockerContainer) Result {
+	return eachContainer(in, posture(in, func(d *facts.Docker, c facts.DockerContainer) Result {
 		var unconfined []string
 		nnp := d.Daemon != nil && d.Daemon.NoNewPrivileges
 		for _, o := range c.SecurityOpt {
@@ -690,7 +704,7 @@ func checkSecurityOpt(in Input) []Result {
 			return Result{Level: Warn, Message: fmt.Sprintf("%s %s%s", c.Name, strings.Join(why, " and "), stateWord(c)), Evidence: ev}
 		}
 		return Result{Level: Pass, Message: c.Name + " keeps the default seccomp and AppArmor confinement", Evidence: ev}
-	})
+	}))
 }
 
 // notSharedNetworks are networks that do not join projects: none, the
@@ -698,7 +712,13 @@ func checkSecurityOpt(in Input) []Result {
 // containers; stackward judges user networks only).
 var notSharedNetworks = map[string]bool{"none": true, "host": true, "bridge": true}
 
+// projectKey groups containers into projects. A platform's own containers
+// (the Coolify panel stack, its proxy and sentinel; Dokploy's services)
+// form one platform project, whatever compose project each carries.
 func projectKey(c facts.DockerContainer) string {
+	if p := platformOf(c); p != "" {
+		return "platform:" + p
+	}
 	if c.Project != "" {
 		return "project:" + c.Project
 	}
