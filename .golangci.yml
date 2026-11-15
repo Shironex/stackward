@@ -6,7 +6,13 @@ linters:
   enable:
     - bodyclose
     - errorlint
+    - dupl
+    - funlen
+    - gocognit
     - gocritic
+    - maintidx
+    - nestif
+    - depguard
     - gosec
     - misspell
     - nolintlint
@@ -14,6 +20,109 @@ linters:
     - unconvert
     - unparam
   settings:
+    depguard:
+      # Package layering from docs/architecture.md. Test files are not
+      # checked: they may reach across packages for fixtures.
+      rules:
+        checks-are-pure:
+          # Checks are pure functions over facts: no renderers, no entry
+          # points, no way to touch the host or the network.
+          files: ["**/internal/checks/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "checks must not import the CLI"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "checks must not import the TUI"}
+            - {pkg: github.com/Shironex/stackward/internal/report, desc: "report imports checks, not the other way round"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "plan imports checks, not the other way round"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "checks never write"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "probe imports checks, not the other way round"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "audit imports checks, not the other way round"}
+            - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "checks never sandbox or touch the host"}
+            - {pkg: net/http, desc: "checks never use the network"}
+        facts-are-leaves:
+          # Collectors read the host and fill the model; judging is the
+          # checks' job and rendering the report's.
+          files: ["**/internal/facts/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/checks, desc: "collectors must not import checks"}
+            - {pkg: github.com/Shironex/stackward/internal/profile, desc: "collectors must not import profile"}
+            - {pkg: github.com/Shironex/stackward/internal/report, desc: "collectors must not import report"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "collectors must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "collectors must not import apply"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "collectors must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "collectors must not import audit"}
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "collectors must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "collectors must not import tui"}
+        plan-is-not-an-entry-point:
+          # plan builds steps; the CLI and apply sit above it.
+          files: ["**/internal/plan/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "plan must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "plan must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "plan must not import apply"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "plan must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "plan must not import audit"}
+        apply-is-not-an-entry-point:
+          # apply is driven by the CLI; it never reaches up.
+          files: ["**/internal/apply/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "apply must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "apply must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "apply must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "apply must not import audit"}
+        report-is-a-renderer:
+          # report folds results into report.v1 and renders it.
+          files: ["**/internal/report/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "report must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "report must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "report must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "report must not import apply"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "report must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "report must not import audit"}
+        tui-only-reads-reports:
+          # The TUI browses a report.Report; it never collects or writes.
+          files: ["**/internal/tui/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "tui must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/facts, desc: "tui must not import facts"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "tui must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "tui must not import apply"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "tui must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "tui must not import audit"}
+        leaf-packages:
+          # No imports from this module at all.
+          files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/, desc: "leaf packages import nothing else from this module"}
+        os-exec-allowlist:
+          # Starting another program: collectors through facts.System.Run
+          # (internal/facts/system.go) and the apply Host. Nothing else.
+          files: ["$all", "!$test", "!**/internal/apply/**", "!**/internal/facts/system.go"]
+          deny:
+            - {pkg: os/exec, desc: "run commands through facts.System.Run (audit) or the apply Host (apply, undo)"}
+    dupl:
+      threshold: 150
+    funlen:
+      lines: 100
+      statements: 70
+    gocognit:
+      min-complexity: 35
+    nestif:
+      min-complexity: 6
+    maintidx:
+      under: 20
+    revive:
+      rules:
+        - name: file-length-limit
+          arguments:
+            - max: 800
+              skipComments: true
+              skipBlankLines: true
+        - name: argument-limit
+          arguments: [7]
+        - name: function-result-limit
+          # Four allows the (value, value, value, ok) shape of small parsers.
+          arguments: [4]
     errcheck:
       exclude-functions:
         # Writes to stdout and stderr; a failing terminal is not actionable.
@@ -33,6 +142,36 @@ linters:
         - G304
   exclusions:
     rules:
+      # Size and complexity limits are for production code; table tests are
+      # long by nature. Test files get their own length limit from the
+      # stackward-guard tool (1000 code lines).
+      - path: _test\.go
+        linters:
+          - dupl
+          - funlen
+          - gocognit
+          - maintidx
+          - nestif
+      - path: _test\.go
+        linters:
+          - revive
+        text: "(argument-limit|function-result-limit|file-length-limit)"
+      # Known over-limit functions, tracked in follow-up issues. Delete each
+      # rule when its function is split.
+      # TODO(#64): split runAudit, runPlan and runProbe.
+      - path: internal/cli/(cli|plan|probe)\.go
+        linters:
+          - funlen
+      # TODO(#65): reduce the cognitive complexity of these three.
+      - path: internal/(checks/dkr(_exposure)?|facts/docker[a-z_]*)\.go
+        linters:
+          - gocognit
+        text: "(checkSharedNetworks|parseIptRule|readUnitFlags)"
+      # TODO(#66): apply and undo, after the access transaction work lands.
+      - path: internal/(cli/apply|apply/undo)\.go
+        linters:
+          - funlen
+          - gocognit
       # Tests plant fake secrets and write temp files on purpose.
       - path: _test\.go
         linters:
