@@ -341,7 +341,7 @@ func TestAccountStepsOrderBeforeTheLock(t *testing.T) {
 			order = append(order, g.ID)
 		}
 	}
-	want := []string{AdminUserID, PaaSUserID, SSHDHardeningID, LockDefaultUserID}
+	want := []string{AdminUserID, PaaSUserID, SSHDHardeningID, LockDefaultUserID, "fail2ban-sshd"}
 	if !slices.Equal(order, want) {
 		t.Errorf("access-critical order %v, want %v", order, want)
 	}
