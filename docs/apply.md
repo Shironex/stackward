@@ -64,6 +64,11 @@ Apply refuses, with the reason and without changing anything, when:
   step does not own, new content it would not write, a command, validate
   command or undo command it would not run (see below);
 - an edit's content was redacted in the plan;
+- another apply or undo is running: every run takes an exclusive lock first
+  (see [One run at a time](#one-run-at-a-time));
+- a restart from an earlier run is still pending and you do not confirm
+  finishing it (see [Pending restarts](#pending-restarts));
+- a sysctl undo value is not the value the host holds now (see below);
 - a file changed since the audit: for `replace` it must still hash to
   `old_sha256`, for `create` it must be absent (a file that already holds
   exactly the new content counts as done). A symlink or a non regular file
@@ -81,8 +86,33 @@ its generator (`plan.Authorize`) before anything runs:
 | `sysctl-hardening` | one created file, `/etc/sysctl.d/90-stackward-hardening.conf`, mode 0644, holding only keys of the hardening baseline at the value the checks want (never `net.ipv4.ip_forward`), rendered again from those keys and compared byte for byte; `sysctl -p` of that file; undo `rm -f` of it and `sysctl -w KEY=NUMBER` for each key it sets |
 | `docker-log-rotation` | `/etc/docker/daemon.json` created or replaced with exactly what merging the rotation keys into the plan's old content gives (the old content itself is pinned by `old_sha256` and the file on the host); validated with `dockerd --validate --config-file`; `systemctl restart docker`; undo the restart (and `rm -f` when it created the file) |
 
+`sysctl-hardening` has one more rule, because its undo restores values the
+plan only states: the plan carries no copy of the audit's facts, so before a
+step runs, `sysctl -w KEY=NUMBER` in its undo must name the value `KEY` has
+on this host now (`/proc/sys`). That is the value the audit recorded, so a
+plan cannot choose what undo sets a key to; a different number, or a value
+that changed since the audit, is refused and the plan must be made again.
+(`kernel.unprivileged_bpf_disabled` has no undo value and is not checked.)
+
 Commands always run as an argument vector, never through a shell, with a
 fixed `PATH` and the C locale.
+
+## One run at a time
+
+`apply` and `undo` take an exclusive `flock` on `/run/stackward/apply.lock`
+(created 0600, directory 0700) before they read anything a run depends on,
+without waiting, and hold it until they exit. The lock file holds the run id
+of its holder (an undo writes `undo of RUN_ID`). A second run is refused,
+changing nothing, with that id:
+
+    stackward apply: another stackward run holds the lock /run/stackward/apply.lock (run 20260301T120000Z-1a2b3c); wait for it to finish; nothing was changed
+
+Two runs could otherwise both read the same old file, both pass its SHA-256
+precondition and interleave writes and journals. The lock belongs to the
+open file, so a run that dies releases it, and a file left behind with no
+live lock is taken over. It is `apply.AcquireRunLock` over the `Host` seam,
+and the access-critical transaction (#26) uses the same lock for "only one
+transaction at a time".
 
 ## How a step runs
 
@@ -110,6 +140,21 @@ Steps run in plan order. For each step:
    whenever the step is not already applied (the file can be in place with
    the running values still off).
 
+### Pending restarts
+
+When a step writes its file, the journal marks the step `restart_pending`;
+the mark is cleared when its commands have run. If the restart fails, or the
+run dies between the write and the restart, the file is in place but the
+service still runs the old settings, and the step's check would call it
+applied. So the next `apply`, before it loads your plan, looks through the
+journals under `/var/backups/stackward` for steps still pending (undone runs
+are skipped), prints them under `Pending restarts:`, asks `[y/N]` (or needs
+`--yes`) and runs their commands first, recording them in the journal of the
+run they belong to. Each step is authorized again, and its files must still
+hold what the run wrote; if one changed since, the restart is dropped and
+apply says so. A restart that fails again stops apply (exit 1) with the step
+still pending, before any other step runs. `undo` clears the mark.
+
 The first failure stops the run. Later steps are marked `not-run`, the
 journal is saved, and apply prints the journal path, `stackward undo --run`
 and the exact commands to undo by hand.
@@ -128,7 +173,8 @@ journal and no backup directory. The format is
 - the plan file applied, with its SHA-256, schema and the version that
   wrote it;
 - per step: its status (`applied`, `failed`, `already`, `not-run`), the plan
-  step as applied, with old and new content redacted; every file with its
+  step as applied, with old and new content redacted; `restart_pending`
+  while its restart is undone; every file with its
   hashes, the mode and owner it was written with, its backup and whether
   this run wrote `FILE.orig`; every command (validate, command, undo) with
   its exit code, duration and redacted output.

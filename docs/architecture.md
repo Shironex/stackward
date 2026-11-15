@@ -280,8 +280,15 @@ plan.Authorize  ->  plan.Check  ->  preconditions  ->  preview, confirm  ->  app
   file still holds what the run wrote, restores or removes files newest
   first, then runs the steps' undo commands except file removals.
 
+- `apply.AcquireRunLock` takes the exclusive run lock (`Host.Lock`, flock on
+  `/run/stackward/apply.lock`) that apply and undo hold; later transactions
+  reuse it. `apply.FindPending` and `apply.FinishPending` run the restarts a
+  journal marks `restart_pending`. `plan.Pin` (a generator's optional `Pin`)
+  ties plan values such as sysctl undo values to the host.
+
 All host access goes through `apply.Host` (`NewHost(root, runner)`):
-`ReadFile`, `Stat`, `WriteAtomic`, `CopyNew`, `MkdirAll`, `Remove`, `Run`.
+`ReadFile`, `Stat`, `WriteAtomic`, `CopyNew`, `MkdirAll`, `Remove`,
+`ReadDir`, `Lock`, `Run`.
 The real host is `NewHost("/", nil)`; tests use `t.TempDir()` and the fake
 runner in `internal/apply/applytest`, and the CLI takes an `applyEnv` (host,
 euid, hostname, stdin, terminal, clock) so its tests never reach the
