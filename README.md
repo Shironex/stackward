@@ -25,7 +25,7 @@
     <a href="SECURITY.md"><strong>Security</strong></a>
   </p>
 
-  <img src="assets/showcase/audit.webp" width="100%" alt="The end of a stackward audit report for a Coolify host behind a tunnel: a Docker Engine warning, info lines for logs and backups, a failure for an open platform SSH key folder, a failure for a panel port open to the world, one unknown, and the summary line: 3 fail, 3 warn, 4 unknown, 9 info, 92 pass, 7 skip.">
+  <img src="assets/showcase/audit.webp" width="100%" alt="The end of a stackward audit report for a Coolify host behind a tunnel: info lines for logs and backups, a failure for an open platform SSH key folder, a failure for a panel port open to the world, one unknown, and the summary line: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip.">
   <p><sub>Real output of <code>stackward audit</code> over the saved facts in <a href="test/fixtures/showcase-coolify-tunnel">test/fixtures/showcase-coolify-tunnel</a>, rendered by <a href="assets/showcase">assets/showcase</a>.</sub></p>
 </div>
 
@@ -53,26 +53,28 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 
 ## What it checks
 
-80 audit checks in 11 groups and 6 outside view checks today, each with its own page in the
+104 audit checks in 14 groups and 6 outside view checks today, each with its own page in the
 [checks catalog](docs/checks/index.md):
 
 | Group | Checks | What it looks at |
 |---|---:|---|
 | `SYS` System | 5 | Tested distribution, pending reboot, running kernel, clock sync, disk space |
-| `SSH` SSH | 14 | The effective config from `sshd -T`: password and root login, drop-in order, where sshd listens, host and authorized keys, weak algorithms |
+| `SSH` SSH | 16 | The effective config from `sshd -T`: password and root login, drop-in order, where sshd listens, host and authorized keys, weak algorithms |
 | `USR` Users and privilege | 7 | Extra uid 0 accounts, empty passwords, the cloud default account, sudoers, docker group members, unused logins |
 | `NET` Firewall and exposure | 9 | UFW defaults and IPv6, every listening socket and who can reach it, `DOCKER-USER`, ufw-docker |
-| `DKR` Docker | 15 | API on TCP, socket mounts and socket proxies, sensitive mounts, root and privileged containers, capabilities, shared networks, log rotation, pinned images, engine support |
+| `DKR` Docker | 16 | API on TCP, socket mounts and socket proxies, sensitive mounts, root and privileged containers, capabilities, shared networks, log rotation, pinned images, engine support |
 | `UPD` Updates | 6 | Automatic security updates, the security pocket, pending security updates, release support, reboot policy |
 | `KRN` Kernel settings | 5 | Forwarding and reverse path filter where Docker runs, network and kernel hardening sysctls, IPv6 router advertisements |
 | `LOG` Logs and monitoring | 5 | Journal size cap and persistence, proxy log rotation, a metrics agent |
 | `SEC` Secrets on disk | 7 | Permissions, never contents: platform `.env` files, the platform SSH key folder, private keys, Docker client config, the proxy dynamic folder |
-| `PAAS` Coolify and Dokploy | 5 | Platform detection, proxy and panel ports, published platform databases, Swarm ports |
+| `PAAS` Coolify and Dokploy | 6 | Platform detection, proxy and panel ports, published platform databases, Swarm ports |
 | `BAK` Backups | 2 | Platform database backups on the host, backup tools present |
+| `TS` Tailscale | 5 | Logged in and running, node key expiry, Funnel and Serve exposure, firewall rules that name `tailscale0`, Tailnet Lock |
+| `CF` Cloudflare Tunnel | 5 | Tunnel presence and connectors, proxy not reachable on a public address, token not on the command line, origin not answering from outside |
+| `CS` CrowdSec and fail2ban | 10 | CrowdSec running, bouncers pulling decisions, L7 bouncer behind a tunnel, whitelists, proxy log acquisition, local API bind, public SSH brute force protection |
 | `PRB` Outside view | 6 | Run by `stackward probe` from another machine: public SSH, web ports on the raw IP, Docker API, panels and dashboards, databases, the app hostname over HTTPS |
 
-The PRB checks run in `stackward probe`, not in `audit`. Tailscale,
-Cloudflare Tunnel, CrowdSec and fail2ban checks are being built.
+The PRB checks run in `stackward probe`, not in `audit`.
 
 ## The read only promise
 
@@ -260,7 +262,7 @@ was available and whether the sandbox was applied. Fix the highest severity
 
 ## Coverage and limits
 
-- **Root matters.** 45 of the 80 checks need root to read what they judge
+- **Root matters.** 53 of the 104 checks need root to read what they judge
   (sshd's effective config, firewall rules, Docker, secret file
   permissions). Without root they report `unknown` with the reason, and the
   coverage line counts them. Run with `sudo` for full coverage.
@@ -279,8 +281,7 @@ could be inspected. It does not mean the server is secure.
 
 ## Roadmap
 
-- **v0.1:** the read only audit: the checks above, plus Tailscale, Cloudflare
-  Tunnel, CrowdSec and fail2ban, and signed releases.
+- **v0.1:** the read only audit: the checks above, and signed releases.
 - **v0.2:** `stackward plan` and `stackward apply`. A plan file lists each
   change with a diff, a risk class and how to undo it, and changes nothing.
   Apply keeps backups and a journal; SSH, firewall and user changes run with

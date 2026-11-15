@@ -42,8 +42,8 @@ export default defineConfig({
     cwd: fixture,
     // Nothing from the environment that renders the pictures reaches them.
     inheritEnv: false,
-    cols: 134,
-    rows: 40,
+    cols: 140,
+    rows: 38,
     quitKey: false,
   },
   ready: '$',
@@ -66,7 +66,7 @@ export default defineConfig({
     {
       id: 'audit',
       title: 'stackward audit',
-      alt: 'A terminal showing the end of a stackward audit report for a Coolify host: a Docker Engine warning, info lines for logs and backups, failures for an open SSH key folder and a panel port open to the world, one unknown, and the summary line with 3 fail, 3 warn and 4 unknown.',
+      alt: 'A terminal showing the end of a stackward audit report for a Coolify host: info lines for logs and backups, failures for an open SSH key folder and a panel port open to the world, one unknown, and the summary line with 4 fail, 5 warn and 3 unknown.',
       keys: typed('stackward audit --facts facts.json'),
       waitFor: 'explain any check with',
     },
@@ -88,11 +88,11 @@ export default defineConfig({
       alt: 'stackward tui in a terminal: the findings list grouped by check group on the left with fail, warn and unknown results first, and PAAS-003, the Coolify panel port open to the world, selected with its explanation, fix and verify steps in the pane on the right.',
       restart: true,
       nav: async (tty) => {
-        await tty.resize(110, 30);
+        await tty.resize(110, 36);
         await tty.press(typed('stackward tui --facts facts.json'));
         await tty.waitForText('FINDINGS');
         // Select PAAS-003, the panel port open to the world.
-        await tty.press('jjjjjjjj');
+        await tty.press('jjjjjjjjjjjjjjjj');
         await tty.waitForText('PAAS-003  Coolify');
         await tty.waitForText('WHY IT MATTERS');
       },
