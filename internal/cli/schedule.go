@@ -209,24 +209,36 @@ func checkUnitValue(name, v string) error {
 	return nil
 }
 
-// systemTrees may never be an output directory: the unit makes its output
-// directories writable, and these hold the system, its configuration, root's
-// home or kernel interfaces. Any /lib* directory counts too.
-var systemTrees = []string{"/etc", "/usr", "/boot", "/root", "/bin", "/sbin", "/proc", "/sys", "/dev"}
+// systemTrees may never hold an output directory: the unit makes its output
+// directories writable, and these hold the system, its configuration, home
+// directories, runtime sockets and state, mail and print spools, or kernel
+// interfaces. Any /lib* directory counts too.
+var systemTrees = []string{
+	"/etc", "/usr", "/boot", "/root", "/home", "/bin", "/sbin", "/proc", "/sys", "/dev", "/run", "/var/spool",
+}
+
+// sharedParents may not be an output directory themselves, only hold one:
+// making all of /var/lib writable would open every service's state.
+var sharedParents = []string{"/var/lib"}
 
 // checkOutputDir checks a directory the unit will make writable: a unit
-// path, not a whole top level directory such as /var, and not in a system
-// tree.
+// path, not a whole top level directory such as /var, not a shared parent
+// such as /var/lib, and not in a system tree.
 func checkOutputDir(name, p string) error {
 	if err := checkUnitPath(name, p); err != nil {
 		return err
 	}
 	first, _, nested := strings.Cut(strings.TrimPrefix(p, "/"), "/")
-	if strings.HasPrefix(first, "lib") || slices.Contains(systemTrees, "/"+first) {
+	if strings.HasPrefix(first, "lib") {
 		return fmt.Errorf("%s must not be in /%s: the unit makes it writable", name, first)
 	}
-	if !nested {
-		return fmt.Errorf("%s must be a directory below %s, not the top level directory itself: the unit makes it writable", name, p)
+	for _, t := range systemTrees {
+		if p == t || strings.HasPrefix(p, t+"/") {
+			return fmt.Errorf("%s must not be in %s: the unit makes it writable", name, t)
+		}
+	}
+	if !nested || slices.Contains(sharedParents, p) {
+		return fmt.Errorf("%s must be a directory of its own below %s, not %s itself: the unit makes it writable", name, p, p)
 	}
 	return nil
 }
