@@ -44,39 +44,6 @@ export ASSERT_LOG="$OUT/$name.assertions.tsv"
 # shellcheck source=/dev/null
 . "$here/$name.sh"
 
-summary() {
-	local total failed
-	total="$(wc -l <"$ASSERT_LOG" | tr -d ' ')"
-	failed="$(grep -c '^no' "$ASSERT_LOG" || true)"
-	echo
-	echo "scenario $name: $((total - failed)) of $total assertions held"
-	[ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-	{
-		if [ "$failed" -eq 0 ]; then
-			echo "### $name: all $total assertions held"
-		else
-			echo "### $name: $failed of $total assertions failed"
-		fi
-		echo
-		echo "| | Assertion | Expected | Actual | Detail |"
-		echo "|---|---|---|---|---|"
-		# Failures first, so they are what a reader sees.
-		{ grep '^no' "$ASSERT_LOG" || true; grep '^yes' "$ASSERT_LOG" || true; } |
-			while IFS=$'\t' read -r ok what expected actual detail; do
-				mark="ok"
-				[ "$ok" = yes ] || mark="**FAIL**"
-				# Pipes would end the table cell.
-				printf '| %s | %s | %s | %s | %s |\n' "$mark" "${what//|/\\|}" "${expected//|/\\|}" \
-					"${actual//|/\\|}" "$(printf '%s' "${detail//|/\\|}" | cut -c1-300)"
-			done
-		echo
-	} >>"$GITHUB_STEP_SUMMARY"
-	# One annotation per failure, readable from the run page.
-	grep '^no' "$ASSERT_LOG" | while IFS=$'\t' read -r _ what expected actual detail; do
-		echo "::error title=scenario $name::$what: expected $expected, got $actual${detail:+ ($detail)}"
-	done || true
-}
-
 cleanup() {
 	local code=$?
 	log "cleanup"
@@ -90,5 +57,5 @@ scenario_setup
 apt_caches
 log "verify $name"
 scenario_verify
-summary
+summary "$name"
 [ "$FAILED" -eq 0 ] || exit 1
