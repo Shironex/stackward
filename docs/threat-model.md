@@ -124,6 +124,9 @@ for:
   the user running the audit with mode 600 or stricter. It is not kept in
   facts, reports, dumps or logs, and the redaction pass masks it as a
   literal value as a safety net;
+- the TLS stack honours `SSL_CERT_FILE`, `SSL_CERT_DIR` and `GODEBUG` from
+  root's environment, so whoever controls those can redirect trust; see
+  [provider-firewall.md](provider-firewall.md#tls-and-roots-environment);
 - `stackward-guard` allows the network in one file of one package
   (`internal/provider/http.go`) for this.
 

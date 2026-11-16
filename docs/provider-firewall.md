@@ -2,7 +2,8 @@
 
 A cloud provider's network firewall drops traffic before it reaches the host
 and before Docker's iptables rules. The host cannot see it, so by default
-`NET-009` says so and the `PFW` checks are `unknown`. With `--provider`,
+`NET-009` says so and `PFW-001` reports one `skip` row saying the provider
+firewall was not checked (the other PFW checks leave no row). With `--provider`,
 `stackward audit` (and `stackward plan`, which audits first) reads that
 firewall over the provider's API and judges it next to the host firewall.
 
@@ -75,8 +76,29 @@ connect and cannot be loosened afterwards (see
 and in force, the state, how many firewalls, and the normalised rules
 (direction, action, protocol, sources, ports). Names, descriptions, labels,
 server, firewall, project and account ids are never kept, because facts files
-are attached to bug reports. `--dump-facts` also masks the last octet of the
-matched address (`203.0.113.x`).
+are attached to bug reports. `--dump-facts` also masks, in
+`provider_firewall` only:
+
+- the matched address, to its first three octets (`203.0.113.x`);
+- every IPv4 address in a reason (a failed request's URL carries one);
+- every rule network, which keeps its prefix length but loses its host bits
+  past the first three octets (IPv4) or the first 64 bits (IPv6), so
+  `198.51.100.7/32` becomes `198.51.100.0/32` and the checks still see how
+  wide it is.
+
+The interface addresses in `listeners.addresses` are not masked; that is a
+decision for the whole dump, not for this module. The live report keeps
+every value in full.
+
+## TLS and root's environment
+
+The client uses Go's TLS stack with the system certificate store. Like any
+Go program, it honours `SSL_CERT_FILE` and `SSL_CERT_DIR` (which change the
+trusted certificate authorities) and `GODEBUG` (which can change TLS
+behaviour) in the environment it runs in. Under `sudo` that is root's
+environment after sudo's `env_reset`. Anyone who can set those variables for
+root can make the client trust another server, and it would then send that
+server the credential. Keep them unset for root unless you mean them.
 
 ## The checks
 
@@ -94,7 +116,19 @@ matched address (`203.0.113.x`).
 How they read the rules:
 
 - Several firewalls on one Hetzner server combine: a rule counts if any of
-  them has it. A firewall whose status is `pending` is not in force yet.
+  them has it. A firewall whose status is `pending` is not in force yet, so
+  the checks skip when no applied firewall is left.
+- A pending permit (being created, being removed, or a rule of a firewall
+  still being applied next to an applied one) counts as in force; a pending
+  deny does not. Both err on the side of a finding.
+- On a stateless firewall a sender picks its own source port, so every
+  "from anywhere" question is also asked for each source port that a
+  source-port-only permit names: `permit tcp from any source port 443`
+  before the final deny opens every TCP port, SSH included (PFW-002 and
+  PFW-005 fail).
+- A rule network that does not parse is refused by the client (the rule
+  read becomes partial, so the checks say `unknown`); in a hand edited facts
+  file it counts as anywhere.
 - On an ordered firewall (OVH) the first matching rule wins, so a deny
   before a permit makes the permit dead and the other way round.
 - A source of a /8 or wider counts as anywhere.
