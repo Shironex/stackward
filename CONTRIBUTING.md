@@ -73,8 +73,11 @@ Package layering (depguard, from [docs/architecture.md](docs/architecture.md)):
   `apply`.
 - `redact`, `catalog`, `sandbox`, `schemacheck`, `version` and `waiver`
   import nothing else from this module.
-- `os/exec` is imported only by `internal/apply` and
-  `internal/facts/system.go`.
+- `os/exec` is imported only by `internal/apply`,
+  `internal/facts/system.go` and `internal/fleet/ssh.go` (the user's ssh for
+  `audit --ssh`).
+- `internal/fleet` never imports `cli`, `tui`, `plan`, `apply`, `probe`,
+  `audit`, `provider` or `net/http`.
 
 `stackward-guard` (`internal/lint/guard`) enforces the safety model in code:
 any call that writes to the filesystem, starts a program, uses the network

@@ -101,6 +101,10 @@ The PRB checks run in `stackward probe`, not in `audit`.
   to its API host only, using a read only token from the environment or a
   file ([docs/provider-firewall.md](docs/provider-firewall.md)).
 
+`audit --ssh` is the one way the audit writes to a host: the copied binary,
+in a private temporary directory that is removed again (see
+[below](#audit-other-hosts-over-ssh)).
+
 What it reads, what it never does and what it does not cover:
 [docs/threat-model.md](docs/threat-model.md).
 
@@ -191,6 +195,8 @@ stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
 stackward audit --textfile F.prom.tmp also write a Prometheus textfile metric (rename it after the run)
+stackward audit --ssh [--ssh-sudo] [--] HOST...
+                                      audit other hosts over your own ssh, one fleet report
 stackward explain [id]                explain a check, or list them all
 stackward schedule --print [-- FLAGS] print a systemd service and timer for a scheduled audit (installs nothing)
 stackward tui [--report FILE | --facts FILE]
@@ -246,6 +252,29 @@ report and a Prometheus textfile metric for node_exporter, each through a
 temporary file and a rename. [docs/schedule.md](docs/schedule.md) shows how to
 install and remove the units, lists the metric names and labels, and has
 alerting rules to start from.
+
+### Audit other hosts over ssh
+
+```sh
+stackward audit --ssh web1 admin@db1                 # one fleet report, text
+stackward audit --ssh --ssh-sudo --md --out fleet.md -- web1 web2
+stackward audit --ssh-hosts hosts.txt --json         # one host per line, # comments
+stackward audit --ssh --ssh-binary ./stackward-arm64 --ssh-binary ./stackward-amd64 -- pi1 web1
+```
+
+Runs the same read only audit on each host through your own `ssh` and ssh
+config (keys, agent, jump hosts; batch mode, so set up key login first).
+stackward reads the host's architecture, streams a matching binary into a
+new private temporary directory (mode 700), runs `audit --json` there
+(with `sudo -n` only for `--ssh-sudo`), reads the report and removes the
+directory, even on failure. On macOS, or for a host of another architecture,
+pass the Linux build from the release page with `--ssh-binary`. The fleet
+report lists each host with its counts and coverage line, then each host's
+full report; a host that fails is listed with its error without stopping the
+others, and the run exits `2`. Hosts are audited 4 at a time
+(`--ssh-parallel`). The JSON follows [schema/fleet.v1.json](schema/fleet.v1.json).
+The [threat model](docs/threat-model.md#auditing-other-hosts-over-ssh) says
+exactly what runs where.
 
 ### Explain a check
 
