@@ -1,11 +1,13 @@
 package apply_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Shironex/stackward/internal/apply"
 	"github.com/Shironex/stackward/internal/apply/applytest"
@@ -15,8 +17,8 @@ import (
 // What the v0.2.0-rc.1 VPS test found: on a fresh image (empty package
 // lists) the fail2ban install failed, the rollback's purge failed too
 // (exit 100) and the transaction ended rollback-failed. Here the install
-// runs before the jail is written, and a purge of a package dpkg never
-// heard of counts as undone.
+// runs before the jail is written, a purge of a package dpkg never heard
+// of counts as undone, and a rolled back step leaves no pending restart.
 
 // failInstall makes apt-get install of pkg exit 100 ("Unable to locate
 // package"), and the purge too, as apt does for a package it does not
@@ -97,5 +99,47 @@ func TestFailedInstallRollsBackCleanly(t *testing.T) {
 	}
 	if pending, _, _ := apply.FindPending(h); len(pending) != 0 {
 		t.Errorf("the next apply would find pending restarts: %+v", pending)
+	}
+}
+
+// A transaction whose rollback failed leaves its restart to nobody: the
+// next apply must not finish it.
+func TestRollbackFailedLeavesNoPendingRestart(t *testing.T) {
+	root := t.TempDir()
+	h, r, _ := applytest.NewTxnHost(t, root)
+	p := applytest.FixturePlan(t, "plan-updates-fail2ban-jail")
+	steps := mustSelect(t, p, []string{"fail2ban-sshd"}, false)
+	r.Exit["systemctl"] = 0
+	next := r.Respond
+	r.Respond = func(args []string) (apply.CmdResult, bool) {
+		if len(args) == 3 && args[0] == "systemctl" && args[1] == "reload" && args[2] == "fail2ban" {
+			return apply.CmdResult{ExitCode: 1, Output: []byte("fail2ban.service is not active\n")}, true
+		}
+		return next(args)
+	}
+	ctx := context.Background()
+	prepared, err := apply.Prepare(h, steps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := apply.Preflight(ctx, h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, st, err := apply.RunTransaction(ctx, prepared, apply.TxnOptions{
+		Options: options(h, "20260301T120000Z-f3f3f3"), ConfirmWithin: time.Minute, Session: applying, Exe: applytest.Exe, Baseline: base,
+	})
+	if err == nil || st.Status != apply.TxnRollbackFailed {
+		t.Fatalf("transaction %v %+v, want rollback-failed (the reload fails both ways)", err, st)
+	}
+	saved, err := apply.LoadJournal(h, j.RunID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Steps[0].RestartPending {
+		t.Error("the restored step is still restart pending")
+	}
+	if pending, _, _ := apply.FindPending(h); len(pending) != 0 {
+		t.Errorf("pending after a failed rollback: %+v", pending)
 	}
 }
