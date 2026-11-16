@@ -29,10 +29,14 @@ const (
 )
 
 // dims returns the list width, the detail width and the body height.
-func (m Model) dims() (lw, dw, bh int) {
-	lw = min(max(m.width*48/100, 36), 64)
-	dw = max(m.width-lw-ansi.StringWidth(gutter), 10)
-	bh = max(m.height-chromeHeight, 1)
+func (m Model) dims() (lw, dw, bh int) { return paneDims(m.width, m.height) }
+
+// paneDims splits a w x h screen into the list width, the detail width and
+// the body height.
+func paneDims(w, h int) (lw, dw, bh int) {
+	lw = min(max(w*48/100, 36), 64)
+	dw = max(w-lw-ansi.StringWidth(gutter), 10)
+	bh = max(h-chromeHeight, 1)
 	return lw, dw, bh
 }
 
@@ -80,28 +84,31 @@ func (m Model) render() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) tooSmall() string {
+func (m Model) tooSmall() string { return tooSmallScreen(m.st, m.width, m.height) }
+
+// tooSmallScreen asks for a bigger terminal, centred on a w x h screen.
+func tooSmallScreen(st styles, w, h int) string {
 	msg := []string{
-		m.st.brand.Render("stackward"),
+		st.brand.Render("stackward"),
 		"",
-		m.st.text.Render(fmt.Sprintf("needs a terminal of at least %dx%d", minWidth, minHeight)),
-		m.st.quiet.Render(fmt.Sprintf("this one is %dx%d; resize it, or press q to quit", m.width, m.height)),
+		st.text.Render(fmt.Sprintf("needs a terminal of at least %dx%d", minWidth, minHeight)),
+		st.quiet.Render(fmt.Sprintf("this one is %dx%d; resize it, or press q to quit", w, h)),
 	}
 	var out []string
-	for range max(0, (m.height-len(msg))/2) {
+	for range max(0, (h-len(msg))/2) {
 		out = append(out, "")
 	}
 	for _, l := range msg {
-		pad := max(0, (m.width-ansi.StringWidth(l))/2)
+		pad := max(0, (w-ansi.StringWidth(l))/2)
 		out = append(out, strings.Repeat(" ", pad)+l)
 	}
-	for len(out) < m.height {
+	for len(out) < h {
 		out = append(out, "")
 	}
 	for i := range out {
-		out[i] = ansi.Truncate(out[i], max(m.width, 0), "")
+		out[i] = ansi.Truncate(out[i], max(w, 0), "")
 	}
-	return strings.Join(out[:max(m.height, 0)], "\n")
+	return strings.Join(out[:max(h, 0)], "\n")
 }
 
 // header is three lines: what was audited, how, and the counts.
@@ -480,7 +487,6 @@ func (m Model) footer() string {
 	case m.status != "":
 		return " " + st.accentS.Render(m.status)
 	}
-	type hint struct{ k, v string }
 	var hints []hint
 	if m.help {
 		hints = []hint{{"?", "close help"}, {"q", "quit"}}
@@ -491,6 +497,15 @@ func (m Model) footer() string {
 	if m.help {
 		tail = nil
 	}
+	return keyHints(st, m.width, hints, tail)
+}
+
+// hint is one key and what it does, for the footer.
+type hint struct{ k, v string }
+
+// keyHints renders as many hints as fit in w cells, dropping them from the
+// end; the tail hints always stay.
+func keyHints(st styles, w int, hints, tail []hint) string {
 	render := func(hs []hint) string {
 		parts := make([]string, 0, len(hs))
 		for _, h := range hs {
@@ -500,7 +515,7 @@ func (m Model) footer() string {
 	}
 	for n := len(hints); n >= 0; n-- {
 		line := render(append(append([]hint{}, hints[:n]...), tail...))
-		if ansi.StringWidth(line) <= m.width {
+		if ansi.StringWidth(line) <= w {
 			return line
 		}
 	}
