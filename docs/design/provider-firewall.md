@@ -415,6 +415,10 @@ not only at its first port. After the third: the reply checks of PFW-007,
 whose finding is a dropped packet, swap the two readings (a deny from a wide
 or unparsable source counts, a permit only from an empty or true /0 source),
 and only an IPv4 /0 (or `::ffff:0.0.0.0/96`) counts as every IPv4 sender.
+After the fourth: pending rules swap the same way in the reply checks (a
+pending deny counts, a pending permit does not), and there a deny from
+reserved space only (private, CGNAT, loopback, link local, multicast,
+reserved) does not count.
 
 Two details differ from the table above: a firewall that is not in force
 makes PFW-002 to PFW-005 and PFW-007 `skip` with a pointer to PFW-001

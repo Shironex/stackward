@@ -119,9 +119,15 @@ How they read the rules:
 - Several firewalls on one Hetzner server combine: a rule counts if any of
   them has it. A firewall whose status is `pending` is not in force yet, so
   the checks skip when no applied firewall is left.
-- A pending permit (being created, being removed, or a rule of a firewall
-  still being applied next to an applied one) counts as in force; a pending
-  deny does not. Both err on the side of a finding.
+- A pending rule (being created, being removed, or a rule of a firewall
+  still being applied next to an applied one) is read, per check, in the
+  direction that leans toward that check's finding. In PFW-002 to PFW-005 a
+  pending permit counts as in force and a pending deny does not. In
+  PFW-007, where a dropped reply is the finding, a pending deny counts and
+  a pending permit does not.
+- A firewall that is still being enabled (`enableFirewallPending`) is not
+  in force yet, so PFW-007 skips with the other checks until it is; the
+  replies it will drop are judged once it filters.
 - On a stateless firewall a sender picks its own source port, so every
   "from anywhere" question is also asked from the edges of every source
   port range the rules name (its first and last port and the ports just
@@ -141,7 +147,10 @@ How they read the rules:
     deny counts when its source is loose and a permit only when it is
     exact. So `deny ipv4 from 0.0.0.0/1` before `permit tcp established`
     fails PFW-007, and `permit tcp established from 10.0.0.0/8` does not
-    let replies in from anywhere.
+    let replies in from anywhere. A deny whose sources all lie in reserved
+    space (`0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`,
+    `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16`, `224.0.0.0/4`,
+    `240.0.0.0/4`) does not count there: no internet reply comes from it.
   - IPv4-mapped IPv6 sources are unmapped before their width is judged.
 - A rule network that does not parse is refused by the client, so the rule
   read becomes partial and the checks say `unknown`. The rules above only
