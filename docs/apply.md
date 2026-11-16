@@ -110,9 +110,9 @@ its generator (`plan.Authorize`) before anything runs:
 | `journald-cap` | one created file, `/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf`, mode 0644, with exactly the content stackward writes; `systemctl restart systemd-journald`; undo `rm -f` of that file and the restart |
 | `sysctl-hardening` | one created file, `/etc/sysctl.d/90-stackward-hardening.conf`, mode 0644, holding only keys of the hardening baseline at the value the checks want (never `net.ipv4.ip_forward`), rendered again from those keys and compared byte for byte; `sysctl -p` of that file; undo `rm -f` of it and `sysctl -w KEY=NUMBER` for each key it sets |
 | `docker-log-rotation` | `/etc/docker/daemon.json` created or replaced with exactly what merging the rotation keys into the plan's old content gives (the old content itself is pinned by `old_sha256` and the file on the host); validated with `dockerd --validate --config-file`; `systemctl restart docker`; undo the restart (and `rm -f` when it created the file) |
-| `unattended-upgrades`, `unattended-upgrades-install` | one created file, `/etc/apt/apt.conf.d/90stackward-unattended-upgrades`, mode 0644, with exactly the content stackward writes, validated with `apt-config dump -c`; no command, `systemctl enable` (and `start`) of `apt-daily-upgrade.timer`, with the undo reversing exactly those; the install step adds `apt-get install -y unattended-upgrades` in front and its `purge` to the undo, and nothing else |
+| `unattended-upgrades`, `unattended-upgrades-install` | one created file, `/etc/apt/apt.conf.d/90stackward-unattended-upgrades`, mode 0644, with exactly the content stackward writes, validated with `apt-config dump -c`; no command, `systemctl enable` (and `start`) of `apt-daily-upgrade.timer`, with the undo reversing exactly those; the install step adds `apt-get install -y unattended-upgrades` before the file (after `apt-get update` when the lists were stale) and its `purge` to the undo, and nothing else; no other step may run commands before its edits |
 | `unattended-upgrades-reboot` | one created file, `/etc/apt/apt.conf.d/91stackward-automatic-reboot`, mode 0644, with exactly the content stackward writes (the 04:00 window), validated with `apt-config dump -c`; no command at all; undo `rm -f` of it |
-| `fail2ban-sshd` | one created file, `/etc/fail2ban/jail.d/90-stackward-sshd.local`, mode 0644, read back (ports, `ignoreip` entries that are addresses or networks and start with loopback, the journal backend only in the install shape) and rendered again byte for byte; `fail2ban-client -t` then `systemctl reload fail2ban`, or `apt-get install -y fail2ban`, the test and `systemctl restart fail2ban`; undo `rm -f` and the reload, or the `purge` |
+| `fail2ban-sshd` | one created file, `/etc/fail2ban/jail.d/90-stackward-sshd.local`, mode 0644, read back (ports, `ignoreip` entries that are addresses or networks and start with loopback, the journal backend only in the install shape) and rendered again byte for byte; `fail2ban-client -t` then `systemctl reload fail2ban`, or `apt-get install -y fail2ban` before the file (after `apt-get update` when the lists were stale), the test and `systemctl restart fail2ban`; undo `rm -f` and the reload, or the `purge` |
 | `ufw-policy` | `/etc/ufw/user.rules` and `user6.rules` replaced by the plan's old content plus only rule blocks the step adds (allow from anywhere on one TCP port, or `allow in on tailscale0`), each tuple and iptables line read back, each test loaded with `iptables-restore --test --noflush` (`ip6tables-restore` for v6); `/etc/default/ufw` with only `DEFAULT_INPUT_POLICY` set to `"DROP"`; `/etc/ufw/ufw.conf` with only `ENABLED=yes`; `ufw --force enable` with undo `ufw disable` when it edits `ufw.conf`, otherwise `ufw reload` both ways |
 | `paas-env-perms` | three created files, mode 0644: `/etc/systemd/system/stackward-paas-env-perms.service`, `.timer` and `/etc/systemd/system/timers.target.d/90-stackward-paas-env-perms.conf`, rendered again from the `file-mode:` targets in `touches` (only the platform `.env` folders the step knows, in its order) and compared byte for byte; `systemctl daemon-reload`, `systemctl start` of the service, then of the timer; undo exactly `systemctl stop` of the timer, `rm -f` of the three files and `systemctl daemon-reload`. Before it runs, the platform's data folder and every covered folder must exist on the host |
 | `ufw-docker` | `/etc/ufw/after.rules` replaced by its old content with exactly the ufw-docker block appended, test loaded; optionally first `user.rules` with only `route allow` blocks for one port or on `tailscale0`; `ufw reload`; undo exactly `iptables -F DOCKER-USER`, `iptables -A DOCKER-USER -j RETURN` (only when Docker's rule was there), `ufw reload`, `iptables -F` and `-X ufw-docker-logging-deny` |
@@ -156,19 +156,25 @@ Steps run in plan order. For each step:
    nothing and says so. `journald-cap` and `docker-log-rotation` are in
    place when the file holds the planned content; `sysctl-hardening` when
    the drop-in holds it and every running value matches.
-2. **Edits.** For each file, the precondition is checked again, then:
+2. **First commands.** A step that installs a package (`fail2ban-sshd` when
+   fail2ban is missing, `unattended-upgrades-install`) runs `apt-get
+   install` before any file is written, after `apt-get update` when the
+   plan saw the package lists empty (a fresh cloud image) or stale. A failed
+   install stops the step with nothing written. The journal records them
+   with kind `before`.
+3. **Edits.** For each file, the precondition is checked again, then:
    - `replace`: `FILE.orig` is written the first time stackward replaces
      the file and never replaced after; the current file is copied to
      `/var/backups/stackward/<run-id>/<path>`; mode and owner are kept;
-   - `create`: missing directories are created (0755) and the file gets the
-     plan's mode;
+   - `create`: missing directories are created (0755), and journaled with
+     the file so undo removes them again, and the file gets the plan's mode;
    - the new content is written to a temporary file in the same directory,
      with its mode and owner, and synced;
    - the step's `validate` command runs on that staged file; a failure
      removes it and leaves the real file untouched;
    - the staged file is renamed over the real one and the directory synced;
    - the file must then hash to `new_sha256`.
-3. **Commands.** They run after the edits. The restart of journald and of
+4. **Commands.** They run after the edits. The restart of journald and of
    Docker runs only when the run changed the file; `sysctl -p` runs
    whenever the step is not already applied (the file can be in place with
    the running values still off).
@@ -186,7 +192,9 @@ are skipped), prints them under `Pending restarts:`, asks `[y/N]` (or needs
 run they belong to. Each step is authorized again, and its files must still
 hold what the run wrote; if one changed since, the restart is dropped and
 apply says so. A restart that fails again stops apply (exit 1) with the step
-still pending, before any other step runs. `undo` clears the mark.
+still pending, before any other step runs. `undo` clears the mark as soon
+as it has restored the step's files, and a transaction that rolled back (or
+tried to) is never finished this way: its files are the rollback's.
 
 The first failure stops the run. Later steps are marked `not-run`, the
 journal is saved, and apply prints the journal path, `stackward undo --run`
@@ -384,8 +392,10 @@ journal and no backup directory. The format is
   step as applied, with old and new content redacted; `restart_pending`
   while its restart is undone; every file with its
   hashes, the mode and owner it was written with, its backup and whether
-  this run wrote `FILE.orig`; every command (validate, command, undo) with
-  its exit code, duration and redacted output.
+  this run wrote `FILE.orig`, and the directories created for it; every
+  command (validate, before, command, undo) with its exit code, duration and
+  redacted output, and for an undo command that did not run, why
+  (`skipped`).
 
 ## Undo
 
@@ -393,7 +403,13 @@ journal and no backup directory. The format is
 first: each file the run replaced is restored from its backup with the mode
 and owner it had, each file it created is removed, and then each step's own
 undo commands run (the restarts, `sysctl -w` of the old running values).
-`FILE.orig` copies stay. It refuses, changing nothing, when:
+Directories apply created for a new file are removed again while they are
+empty. An undo command whose do command never got anywhere is skipped and
+journaled with the reason, so it cannot turn a clean undo into a failed
+one: `apt-get purge` of a package whose install never ran or that dpkg has
+no record of (the install failed before unpacking it), `userdel` of an
+account `useradd` never created. `FILE.orig` copies stay. It refuses,
+changing nothing, when:
 
 - not root, not Linux, or the run id is not one apply gave;
 - the journal is for another host (or this host has no hostname) or the run

@@ -285,7 +285,9 @@ plan.Authorize  ->  plan.Check  ->  preconditions  ->  preview, confirm  ->  app
   journal after every change and stops at the first failure.
 - `apply.Undo` loads the journal, authorizes every step again, checks every
   file still holds what the run wrote, restores or removes files newest
-  first, then runs the steps' undo commands except file removals.
+  first, removes the directories apply created for them while empty, then
+  runs the steps' undo commands except file removals, skipping those
+  `plan.UndoSkip` finds nothing left to undo for.
 
 - `apply.AcquireRunLock` takes the exclusive run lock (`Host.Lock`, flock on
   `/run/stackward/apply.lock`) that apply, undo and confirm hold;
