@@ -10,10 +10,11 @@ import (
 )
 
 // realAccessCritical lists the access-critical steps a released binary may
-// carry: the account and sshd steps and the fail2ban jail.
+// carry: the account and sshd steps, the firewall steps and the fail2ban
+// jail.
 var realAccessCritical = map[string]bool{
 	plan.AdminUserID: true, plan.PaaSUserID: true, plan.LockDefaultUserID: true, plan.SSHDHardeningID: true,
-	"fail2ban-sshd": true,
+	"fail2ban-sshd": true, plan.UFWPolicyID: true,
 }
 
 // The binary as released (no build tag) must not contain the test-only

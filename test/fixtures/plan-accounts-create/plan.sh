@@ -107,6 +107,8 @@ STACKWARD_EOF
 # paas-user (passing): no platform (Coolify, Dokploy) was found; a PaaS
 # account is only for one
 # lock-default-user (passing): USR-003 already passes or does not apply
+# ufw-policy (unknown): NET-001 is unknown; nothing to plan until the audit
+# can inspect it
 # fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 
