@@ -5,6 +5,64 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.2.0-rc.1 (2026-11-16)
+
+The first pre-release of 0.2: stackward can now fix what it finds. It writes
+a plan you can read, applies only the steps you choose, keeps backups and a
+journal, and undoes any run. This is a release candidate for testing on a
+throwaway server; `install.sh` keeps installing 0.1.2 unless you pass
+`--version v0.2.0-rc.1`. Audit, probe and tui stay read only.
+
+### Added
+
+- `stackward plan`: writes the changes that would fix the findings, as file
+  diffs and commands with a risk class (safe, networking, access-critical)
+  and an undo for every step. Nothing on the host changes. `--out` saves the
+  plan.v1 JSON, `--emit-script` prints it as a script to read.
+- `stackward apply`: applies the steps you name from a saved plan. Every file
+  is checked against the plan first, every overwrite is backed up under
+  `/var/backups/stackward/<run-id>/`, writes are atomic, and a run journal
+  records everything. One lock covers apply and undo.
+- `stackward undo --run ID`: reverses a run from its journal. A file that
+  changed after the run is left alone.
+- Access-critical steps (SSH, firewall, accounts) run alone inside a
+  transaction: a systemd timer and a boot unit roll them back unless
+  `stackward confirm` runs from a new SSH session before the deadline
+  (`--confirm-within`, 5 minutes by default; `--console` for the provider
+  console).
+- The lockout guard: before a step narrows a way in, stackward proves from
+  the live host that a second way in stays open for the session applying it,
+  at plan time and again at apply time. It refuses when it cannot prove it.
+- The never touched list: things no step may change (Docker's data root, the
+  data directories and SSH keys of Coolify and Dokploy, and more), checked at
+  plan, apply and undo time.
+- Steps: journald size cap, kernel sysctls, Docker log rotation, the
+  admin-user and paas-user accounts, lock-default-user, sshd hardening,
+  unattended upgrades, fail2ban for sshd, a default deny UFW policy, and the
+  opt in ufw-docker, unattended-upgrades reboot and paas-env-perms (a timer
+  that keeps Coolify and Dokploy `.env` files closed) steps.
+- `stackward tui --plan plan.json`: a guided step list grouped by risk class,
+  with each step's change, the checks it fixes, its undo and the guard's
+  proof. It applies through `stackward apply` after a review screen.
+- `install.sh`: guided install, update and uninstall.
+
+### Changed
+
+- Apply refuses to run in a CI job unless the job declares a throwaway VM
+  (`STACKWARD_CI_APPLY=throwaway-vm`). Undo and confirm are never refused.
+- USR-004 reports the sudoers drop-in stackward wrote as info, when it
+  matches what stackward writes byte for byte.
+
+### Fixed
+
+- CF-003 and NET-004 judge published ports through Docker's forward filter.
+- Probe warns before probing the machine it runs on.
+
+### Testing
+
+- A VM matrix boots Ubuntu 22.04 and 24.04 and Debian 12 and 13 and checks
+  rollback, confirm, a guard refusal and the account steps over real SSH.
+
 ## 0.1.2 (2026-11-15)
 
 A patch release: an easier to read text report, and three fixes found while
