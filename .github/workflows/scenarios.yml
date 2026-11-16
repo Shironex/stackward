@@ -73,7 +73,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04]
-        scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ufw-docker, ssh, read-only, non-root, apply, transaction, updates]
+        scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ufw-docker, ssh, read-only, non-root, apply, transaction, updates, firewall]
     name: ${{ matrix.scenario }} (${{ matrix.os }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
