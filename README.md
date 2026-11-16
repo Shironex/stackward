@@ -41,10 +41,12 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 `unknown`, never as a pass.
 
 > [!NOTE]
-> **v0.1 is the first release line (newest: v0.1.2).** The checks below are tested against saved
-> facts and on real Ubuntu hosts. v0.1 is read only: it reports and changes
-> nothing. `plan` and `apply` come in v0.2. Read the report before acting on
-> it, and see the [known limits](CHANGELOG.md).
+> **Newest: v0.2.0.** The checks below are tested against saved facts and on
+> real Ubuntu hosts. `audit`, `probe`, `explain` and `tui` only read: they
+> report and change nothing. Since v0.2, `plan` writes the fixes down and
+> `apply` runs the steps you choose, with backups, a journal and `undo`.
+> Read the report before acting on it, and see the
+> [known limits](CHANGELOG.md).
 
 ## A run, start to finish
 
@@ -79,7 +81,9 @@ The PRB checks run in `stackward probe`, not in `audit`.
 
 ## The read only promise
 
-Version 0.1 only reads. stackward:
+`audit`, `probe`, `explain` and `tui` only read. `plan` changes nothing either;
+`apply`, `undo` and `confirm` are the only commands that change a system (see
+[docs/apply.md](docs/apply.md)). The audit:
 
 - writes no file except the report you ask for with `--out`;
 - confines itself with a Landlock sandbox where the kernel supports it
@@ -97,7 +101,7 @@ What it reads, what it never does and what it does not cover:
 
 ## Install
 
-The newest release is [`v0.1.2`](https://github.com/Shironex/stackward/releases/latest).
+The newest release is [`v0.2.0`](https://github.com/Shironex/stackward/releases/latest).
 Every release holds Linux archives for amd64 and arm64,
 archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
@@ -123,7 +127,7 @@ installed) before it installs anything. Options, `update` and `uninstall`:
 To do every step by hand instead, download, check and run:
 
 ```sh
-VERSION=v0.1.2
+VERSION=v0.2.0
 ARCH=amd64   # or arm64
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -180,14 +184,14 @@ stackward audit --facts FILE          evaluate a saved facts file
 stackward explain [id]                explain a check, or list them all
 stackward tui [--report FILE | --facts FILE]
                                       browse the findings in the terminal
-stackward tui --plan PLAN.json        0.2 pre-release: pick plan steps in a guided list, apply what you confirm (root)
+stackward tui --plan PLAN.json        pick plan steps in a guided list, apply what you confirm (root)
 stackward probe HOST [--hostname NAME] [--ports LIST] [--profile P] [--json] [--out FILE] [--i-own-this]
 stackward plan [--out FILE] [--json | --emit-script]
-                                      0.2 pre-release: the changes that would fix the findings, changing nothing
+                                      the changes that would fix the findings, changing nothing
 stackward apply [--step ID]... [--all-safe] [--confirm-within 5m] [--yes] PLAN.json
-                                      0.2 pre-release: apply the chosen steps with backups and a journal (root)
-stackward undo --run RUN_ID           0.2 pre-release: reverse an apply run from its journal (root)
-stackward confirm ID                  0.2 pre-release: keep an access-critical change, from a new SSH session (root)
+                                      apply the chosen steps with backups and a journal (root)
+stackward undo --run RUN_ID           reverse an apply run from its journal (root)
+stackward confirm ID                  keep an access-critical change, from a new SSH session (root)
 stackward version
 ```
 
@@ -297,7 +301,7 @@ every key, `q` quits. Copying uses the terminal clipboard sequence (OSC 52)
 and only happens when you press `y`; the browser writes no file. It needs
 at least 60x16 and is laid out for 80x24. `NO_COLOR` turns colors off.
 
-In 0.2 (pre-release), `sudo stackward tui --plan plan.json` opens a guided
+Since 0.2, `sudo stackward tui --plan plan.json` opens a guided
 step list over a saved plan instead: steps grouped safe, networking and
 access-critical, each with what it changes, why, its diff, its undo and,
 for access-critical steps, the lockout guard's proof. Nothing changes until
@@ -335,9 +339,10 @@ could be inspected. It does not mean the server is secure.
 
 ## Roadmap
 
-- **v0.1:** the read only audit: the checks above, and signed releases.
-- **v0.2:** `stackward plan` and `stackward apply`, with backups and a
-  rollback timer for SSH, firewall and user changes.
+- **v0.1 (released):** the read only audit: the checks above, and signed
+  releases.
+- **v0.2 (released):** `stackward plan` and `stackward apply`, with backups
+  and a rollback timer for SSH, firewall and user changes.
 - **v0.3 and later:** waivers, drift against a baseline, several hosts over
   SSH, read only API modules and more platforms.
 

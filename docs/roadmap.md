@@ -4,7 +4,9 @@ This is the public plan for stackward. Each milestone below is a GitHub mileston
 
 Version 0.1 is released (`v0.1.0` on 2026-11-15, patches `v0.1.1` and `v0.1.2` the same day): the read only audit, `probe`, `explain`, the TUI and signed releases.
 
-## v0.2: Harden with plan and apply
+Version 0.2 is released (`v0.2.0` on 2026-11-16): `plan`, `apply`, `undo` and `confirm`, and the guided step list in the TUI.
+
+## v0.2: Harden with plan and apply (released)
 
 `stackward plan` writes down every change with a diff, a risk class and an undo, and changes nothing. `stackward apply` runs the steps you pick, with backups and a journal. Changes to SSH, the firewall and users run in a transaction with a rollback timer that only a new SSH session can confirm, and public SSH is never closed without a proven second way in. The safety rules are in [safety.md](safety.md).
 
