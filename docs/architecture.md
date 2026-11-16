@@ -36,6 +36,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press), and the guided step list of `tui --plan`, which only presents steps the CLI judged and returns a choice; it imports neither plan nor apply |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
+| `internal/provider` | the opt in provider firewall client (`--provider`): credentials from env or a file, GET only to fixed API hosts, normalised into `facts.ProviderFirewall` before the sandbox; the PFW checks judge it |
 | `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |
 | `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
 | `internal/lint/guard` | `stackward-guard`, a static analyzer for the safety model: filesystem writes, program starts and network use only in an allowlist of packages; also caps test file length. Run by CI, see CONTRIBUTING |
@@ -365,11 +366,15 @@ The run order of `audit` (also with `--dump-facts`), `tui` and `plan`:
    or `--report`.
 2. For a live audit with the sandbox on, take the socket ownership
    snapshot (`facts.SnapshotSocketOwners`, read only, bounded) and attach
-   it to the host System (`facts.WithSocketOwners`).
+   it to the host System (`facts.WithSocketOwners`). With `--provider`
+   (`audit` and `plan`), read the public IPv4 addresses
+   (`facts.PublicIPv4Candidates`) and fetch the provider firewall
+   (`provider.Fetch`), because the sandbox denies TCP connect.
 3. `sandbox.Apply`.
 4. Run the collectors; the listeners collector joins socket inodes to the
    snapshot (it asks for it through `facts.SocketOwnerSource`, which test
-   fakes simply do not implement).
+   fakes simply do not implement). The provider result is set on
+   `Facts.ProviderFirewall` after them.
 5. Evaluate checks and write the report.
 
 The snapshot exists because the sandbox scopes ptrace access, which reading
