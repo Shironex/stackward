@@ -309,6 +309,14 @@
         "undone": {
           "description": "Set by stackward undo once the file is restored or removed.",
           "type": "boolean"
+        },
+        "created_dirs": {
+          "description": "Optional. The directories apply created for a new file, outermost first, whether the write then happened or not. Undo removes them again, innermost first, while they are empty.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          }
         }
       }
     },

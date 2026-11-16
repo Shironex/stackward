@@ -395,7 +395,14 @@ func (r *runner) edit(ctx context.Context, js *JournalStep, e plan.FileEdit, pen
 			return false, fmt.Errorf("%s: bad mode %q", e.Path, e.Mode)
 		}
 		write = FileState{Mode: fs.FileMode(mode), UID: -1, GID: -1}
+		// The directories MkdirAll creates are journaled with the file,
+		// written or not, so undo removes them again.
+		if jf.CreatedDirs, err = missingDirs(h, path.Dir(e.Path)); err != nil {
+			return false, err
+		}
 		if err := h.MkdirAll(path.Dir(e.Path), 0o755); err != nil {
+			js.Files = append(js.Files, jf)
+			_ = r.save()
 			return false, fmt.Errorf("creating the directory of %s: %w", e.Path, err)
 		}
 	}
@@ -433,6 +440,24 @@ func (r *runner) edit(ctx context.Context, js *JournalStep, e plan.FileEdit, pen
 		return true, fmt.Errorf("%s does not hold the planned content after the write", e.Path)
 	}
 	return true, r.save()
+}
+
+// missingDirs lists the directories from dir up that do not exist yet,
+// outermost first: the ones MkdirAll will create.
+func missingDirs(h Host, dir string) ([]string, error) {
+	var out []string
+	for d := dir; d != "/" && d != "."; d = path.Dir(d) {
+		st, err := h.Stat(d)
+		if err != nil {
+			return nil, err
+		}
+		if st.Exists {
+			break
+		}
+		out = append(out, d)
+	}
+	slices.Reverse(out)
+	return out, nil
 }
 
 // command runs args and records it; a non zero exit is an error.

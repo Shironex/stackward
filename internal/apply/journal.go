@@ -134,6 +134,9 @@ type JournalFile struct {
 	OrigCreated bool   `json:"orig_created"`
 	// Undone is set by stackward undo once the file is restored.
 	Undone bool `json:"undone,omitempty"`
+	// CreatedDirs are the directories apply created for a new file,
+	// outermost first; undo removes them again when they are empty.
+	CreatedDirs []string `json:"created_dirs,omitempty"`
 }
 
 // JournalCommand is one command run, with its outcome.
