@@ -38,8 +38,9 @@ Everything is read through one small interface that has no write method.
 - **The waivers file, as untrusted input.** `.stackward.yml` (or
   `--waivers FILE`) is read before the sandbox by a strict parser for its one
   shape, size capped, never through a symlink, and only if it is a regular
-  file not writable by others (the default file also owned by the user
-  running stackward or by root). A waiver accepts warnings unless it says
+  file not writable by others and owned by the user running stackward, by
+  root, or under sudo by the user who ran it (`SUDO_UID`), whether it is the
+  default file or named with `--waivers`. A waiver accepts warnings unless it says
   `level: fail`, and matches the raw subject, so redaction cannot merge two
   subjects. A malformed file
   is an error, never ignored ([waivers.md](waivers.md#safety)).
