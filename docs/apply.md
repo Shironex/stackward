@@ -67,6 +67,10 @@ asks `[y/N]`; without a terminal it refuses unless `--yes` is given.
 
 Apply refuses, with the reason and without changing anything, when:
 
+- it runs in a CI job (`CI`, `GITHUB_ACTIONS` and the like, also when
+  `sudo` dropped them) that did not set `STACKWARD_CI_APPLY=throwaway-vm`,
+  which only jobs that own a throwaway VM set (see
+  [testing.md](testing.md#apply-refuses-in-ci));
 - it is not running as root (effective uid 0), or not on Linux;
 - the plan file is not `stackward.plan.v1`, has a field this version does
   not know, or breaks the plan's own invariants (hashes, known step ids);
@@ -479,4 +483,9 @@ binary as root on a disposable GitHub runner VM: plan, apply, apply again,
 undo. The `transaction` scenario runs a real timer there with the test-only
 access-critical steps of `internal/plan/txntest`, which only the scenario
 binary carries (`go build -tags stackward_scenario`); released builds do not
-contain them, and a test in `cmd/stackward` proves it.
+contain them, and a test in `cmd/stackward` proves it. The
+[VM matrix](testing.md#vm-matrix) runs the real access-critical steps on
+Ubuntu and Debian cloud images in QEMU, over real SSH sessions: a fired
+rollback that gives back access, a confirm from a second session that
+survives the deadline and a reboot, a lockout guard refusal, and the
+account steps undone byte for byte.

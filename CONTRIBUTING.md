@@ -34,8 +34,10 @@ go test ./test/ -update    # after an intended report change; review the diff
 ```
 
 The live host scenarios under `test/scenarios/` run the real binary on a
-GitHub runner; [docs/testing.md](docs/testing.md) explains them and how to run
-one in a throwaway VM.
+GitHub runner, and the VM matrix under `test/vm/` runs apply over SSH in
+Ubuntu and Debian VMs; [docs/testing.md](docs/testing.md) explains both and how
+to run them in a throwaway VM. Never run `stackward apply` on your own
+machine.
 
 ## Code limits and guardrails
 
