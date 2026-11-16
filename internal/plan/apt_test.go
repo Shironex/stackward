@@ -175,3 +175,41 @@ func TestBeforeIsRefusedElsewhere(t *testing.T) {
 		t.Error("the never touched list does not see a Before command")
 	}
 }
+
+// An undo command whose do command never got anywhere counts as undone:
+// apt-get purge of a package dpkg never heard of exits 100, userdel of a
+// missing account exits 6, and either would turn a clean rollback into a
+// failed one.
+func TestUndoSkip(t *testing.T) {
+	purge := aptPurge("fail2ban")
+	install := aptInstall("fail2ban")
+	userdel := []string{"userdel", "--remove", "ops"}
+	useradd := []string{"useradd", "--create-home", "--home-dir", "/home/ops", "--user-group", "--shell", "/bin/bash", "ops"}
+	for name, tc := range map[string]struct {
+		host fakeReader
+		u    []string
+		ran  [][]string
+		skip string
+	}{
+		"install never ran":               {fakeReader{}, purge, [][]string{aptUpdate}, "never ran"},
+		"install failed, dpkg knows none": {fakeReader{dpkgStatus: "Package: vim\nStatus: install ok installed\n"}, purge, [][]string{aptUpdate, install}, "dpkg has no record of fail2ban"},
+		"no dpkg status file":             {fakeReader{}, purge, [][]string{install}, "dpkg has no record"},
+		"purged before":                   {fakeReader{dpkgStatus: "Package: fail2ban\nStatus: purge ok not-installed\n"}, purge, [][]string{install}, "dpkg has no record"},
+		"installed":                       {fakeReader{dpkgStatus: "Package: fail2ban\nStatus: install ok installed\n"}, purge, [][]string{install}, ""},
+		"half installed":                  {fakeReader{dpkgStatus: "Package: fail2ban\nStatus: install reinstreq half-installed\n"}, purge, [][]string{install}, ""},
+		"config files left":               {fakeReader{dpkgStatus: "Package: fail2ban\nStatus: deinstall ok config-files\n"}, purge, [][]string{install}, ""},
+		"useradd never ran":               {fakeReader{}, userdel, nil, "never ran"},
+		"useradd failed":                  {fakeReader{passwdFile: passwdBefore}, userdel, [][]string{useradd}, "does not exist"},
+		"account created":                 {fakeReader{passwdFile: passwdBefore + "ops:x:1001:1001::/home/ops:/bin/bash\n"}, userdel, [][]string{useradd}, ""},
+		"another undo":                    {fakeReader{}, []string{"systemctl", "reload", "fail2ban"}, nil, ""},
+		"a purge of another shape":        {fakeReader{}, []string{"apt-get", "purge", "-y", "fail2ban"}, nil, ""},
+	} {
+		got, err := UndoSkip(tc.host, tc.u, tc.ran)
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+		if (tc.skip == "") != (got == "") || !strings.Contains(got, tc.skip) {
+			t.Errorf("%s: skip %q, want %q", name, got, tc.skip)
+		}
+	}
+}

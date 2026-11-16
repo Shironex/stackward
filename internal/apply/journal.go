@@ -148,6 +148,10 @@ type JournalCommand struct {
 	// Output is stdout and stderr, redacted and cut to 4 KiB.
 	Output string `json:"output,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Skipped, for an undo command, says why it did not run: what it
+	// would undo was never done (a purge of a package whose install
+	// failed before it unpacked anything).
+	Skipped string `json:"skipped,omitempty"`
 }
 
 var runIDPattern = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$`)

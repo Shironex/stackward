@@ -112,6 +112,59 @@ func installs(s Step, pkg string) bool {
 	return false
 }
 
+// UndoSkip says why undo command u of a step has nothing left to undo on
+// the host, or "" when it must run. ran are the commands of the step the
+// run started (before and after the edits, whatever their exit), as the
+// journal recorded them. A purge whose install never ran, or of a package
+// dpkg has no record of (the install failed before it unpacked anything),
+// counts as undone: apt-get would exit 100 and turn a clean rollback into
+// a failed one. The same holds for userdel of an account whose useradd
+// never ran or that is not in /etc/passwd.
+func UndoSkip(r Reader, u []string, ran [][]string) (string, error) {
+	if pkg, ok := purgedPackage(u); ok {
+		if !slices.ContainsFunc(ran, func(c []string) bool { return slices.Equal(c, aptInstall(pkg)) }) {
+			return "the install of " + pkg + " never ran, so there is nothing to purge", nil
+		}
+		known, err := dpkgKnows(r, pkg)
+		if err != nil || known {
+			return "", err
+		}
+		return "dpkg has no record of " + pkg + " (its install did not get as far as unpacking it), so there is nothing to purge", nil
+	}
+	if len(u) == 3 && u[0] == "userdel" && u[1] == "--remove" {
+		name := u[2]
+		if !slices.ContainsFunc(ran, func(c []string) bool { return len(c) > 1 && c[0] == "useradd" && c[len(c)-1] == name }) {
+			return "useradd " + name + " never ran, so there is no account to delete", nil
+		}
+		exists, err := passwdHas(r, name)
+		if err != nil || exists {
+			return "", err
+		}
+		return "the account " + name + " does not exist (useradd did not create it), so there is nothing to delete", nil
+	}
+	return "", nil
+}
+
+// purgedPackage returns the package an undo purges, for the purge shape
+// the install steps write.
+func purgedPackage(u []string) (string, bool) {
+	head := aptPurge("")
+	head = head[:len(head)-1]
+	if len(u) != len(head)+1 || !slices.Equal(u[:len(head)], head) {
+		return "", false
+	}
+	return u[len(head)], true
+}
+
+// dpkgKnows reports whether dpkg's status file has pkg in any state but
+// not-installed: then apt-get purge can remove it (a half installed or
+// unpacked package, or one with only its config files left).
+func dpkgKnows(r Reader, pkg string) (bool, error) {
+	status, err := dpkgStatusOf(r, pkg)
+	f := strings.Fields(status)
+	return len(f) == 3 && f[2] != "not-installed", err
+}
+
 // dpkgStatusOf returns the Status line dpkg's status file has for pkg
 // ("install ok installed"), or "" when it lists no such package. A
 // missing status file lists none.
