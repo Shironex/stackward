@@ -1,0 +1,18 @@
+stackward diff: 2 drift items, 1 added, 0 removed, 1 changed, 2 new findings
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+DRIFT
+  ROOT CONTAINER  DKR-020  container:db/postgres
+      postgres runs as root (reachable from outside)
+  ROOT CONTAINER  DKR-020  container:web/app
+      app runs as root now, and did not
+
+ADDED
+  FAIL  DKR-020  container:db/postgres  [new finding]
+      new: db/postgres runs as root
+
+CHANGED
+  WARN  DKR-020  container:web/app  [new finding]
+      pass to warn: web/app runs as root

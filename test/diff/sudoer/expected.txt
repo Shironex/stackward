@@ -1,0 +1,14 @@
+stackward diff: 2 drift items, 1 added, 0 removed, 0 changed, 1 new finding
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+DRIFT
+  SUDOER  USR-004  file:/etc/sudoers.d/ci
+      new NOPASSWD sudo rule for %ops in /etc/sudoers.d/ci
+  SUDOER  USR-004  file:/etc/sudoers.d/ci
+      new NOPASSWD sudo rule for ci in /etc/sudoers.d/ci
+
+ADDED
+  WARN  USR-004  file:/etc/sudoers.d/ci  [new finding]
+      new: NOPASSWD sudo for ci (line 1), %ops (line 2)

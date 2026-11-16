@@ -1,0 +1,162 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 0,
+    "coverage_lost": 0,
+    "added": 0,
+    "removed": 1,
+    "changed": 5,
+    "new_findings": 1
+  },
+  "drift": [],
+  "coverage_lost": [],
+  "changes": [
+    {
+      "kind": "changed",
+      "id": "USR-005",
+      "group": "USR",
+      "title": "Docker group has no extra members",
+      "severity": "moderate",
+      "subject": "user:deploy",
+      "what": [
+        "waiver"
+      ],
+      "old": {
+        "level": "warn",
+        "message": "deploy is in the docker group"
+      },
+      "new": {
+        "level": "warn",
+        "waiver": "accepted",
+        "expires": "2027-01-31",
+        "message": "deploy is in the docker group"
+      },
+      "new_finding": false
+    },
+    {
+      "kind": "removed",
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "severity": "low",
+      "subject": "user:gone",
+      "old": {
+        "level": "warn",
+        "waiver": "accepted",
+        "expires": "2026-12-31",
+        "message": "login account gone has not logged in for 200 days"
+      },
+      "new_finding": false
+    },
+    {
+      "kind": "changed",
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "severity": "low",
+      "subject": "user:legacy",
+      "what": [
+        "level",
+        "waiver"
+      ],
+      "old": {
+        "level": "warn",
+        "waiver": "accepted",
+        "expires": "2026-12-31",
+        "message": "login account legacy has never logged in"
+      },
+      "new": {
+        "level": "pass",
+        "message": "login account legacy logged in recently"
+      },
+      "new_finding": false
+    },
+    {
+      "kind": "changed",
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "severity": "low",
+      "subject": "user:old",
+      "what": [
+        "waiver"
+      ],
+      "old": {
+        "level": "warn",
+        "waiver": "accepted",
+        "expires": "2026-12-31",
+        "message": "login account old has not logged in for 120 days"
+      },
+      "new": {
+        "level": "warn",
+        "waiver": "accepted",
+        "expires": "2027-03-31",
+        "message": "login account old has not logged in for 150 days"
+      },
+      "new_finding": false
+    },
+    {
+      "kind": "changed",
+      "id": "NET-003",
+      "group": "NET",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "severity": "high",
+      "subject": "host",
+      "what": [
+        "level"
+      ],
+      "old": {
+        "level": "fail",
+        "message": "SSH is open to anywhere"
+      },
+      "new": {
+        "level": "pass",
+        "message": "SSH is reachable only over the tailnet"
+      },
+      "new_finding": false
+    },
+    {
+      "kind": "changed",
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "severity": "critical",
+      "subject": "container:ci/runner",
+      "what": [
+        "waiver"
+      ],
+      "old": {
+        "level": "fail",
+        "waiver": "accepted",
+        "expires": "2026-10-15",
+        "message": "runner is privileged"
+      },
+      "new": {
+        "level": "fail",
+        "waiver": "expired",
+        "expires": "2026-10-15",
+        "message": "runner is privileged"
+      },
+      "new_finding": true
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 2,
+    "results": 2,
+    "checked": 2,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 2,
+    "unknown": 0,
+    "info": 0,
+    "pass": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "warn",
+      "severity": "high",
+      "subject": "file:/etc/sudoers.d/deploy",
+      "message": "NOPASSWD sudo for deploy (line 3)",
+      "fix": {
+        "hint": "see stackward explain USR-004"
+      },
+      "evidence": {
+        "perm": "0440",
+        "uid": 0,
+        "gid": 0,
+        "nopasswd": [
+          "deploy (line 3)"
+        ]
+      }
+    },
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "warn",
+      "severity": "high",
+      "subject": "file:/etc/sudoers.d/ci",
+      "message": "NOPASSWD sudo for ci (line 1), %ops (line 2)",
+      "fix": {
+        "hint": "see stackward explain USR-004"
+      },
+      "evidence": {
+        "perm": "0440",
+        "uid": 0,
+        "gid": 0,
+        "nopasswd": [
+          "ci (line 1)",
+          "%ops (line 2)"
+        ]
+      }
+    }
+  ]
+}

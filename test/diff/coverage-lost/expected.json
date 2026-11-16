@@ -1,0 +1,60 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 0,
+    "coverage_lost": 2,
+    "added": 1,
+    "removed": 0,
+    "changed": 0,
+    "new_findings": 0
+  },
+  "drift": [],
+  "coverage_lost": [
+    {
+      "check": "NET-004",
+      "kind": "listener",
+      "now": "unknown",
+      "detail": "NET-004 judged the baseline and is unknown now: a new listener would not show"
+    },
+    {
+      "check": "DKR-020",
+      "kind": "root-container",
+      "now": "skip",
+      "detail": "DKR-020 judged the baseline and is skip now: a new root container would not show"
+    }
+  ],
+  "changes": [
+    {
+      "kind": "added",
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "severity": "moderate",
+      "subject": "host",
+      "new": {
+        "level": "unknown",
+        "message": "listeners not inspected: ss failed"
+      },
+      "new_finding": false
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 5,
+    "results": 5,
+    "checked": 5,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 1,
+    "warn": 0,
+    "unknown": 0,
+    "info": 0,
+    "pass": 2,
+    "skip": 0,
+    "accepted": 2
+  },
+  "results": [
+    {
+      "id": "USR-005",
+      "group": "USR",
+      "title": "Docker group has no extra members",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "user:deploy",
+      "message": "deploy is in the docker group",
+      "fix": {
+        "hint": "see stackward explain USR-005"
+      },
+      "evidence": {
+        "group": "docker"
+      },
+      "waiver": {
+        "status": "accepted",
+        "level": "warn",
+        "reason": "reviewed in OPS-12",
+        "expires": "2027-01-31"
+      }
+    },
+    {
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "level": "warn",
+      "severity": "low",
+      "subject": "user:old",
+      "message": "login account old has not logged in for 150 days",
+      "fix": {
+        "hint": "see stackward explain USR-006"
+      },
+      "evidence": {
+        "days": 150
+      },
+      "waiver": {
+        "status": "accepted",
+        "level": "warn",
+        "reason": "reviewed in OPS-12",
+        "expires": "2027-03-31"
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "container:ci/runner",
+      "message": "runner is privileged",
+      "fix": {
+        "hint": "see stackward explain DKR-021"
+      },
+      "evidence": {
+        "container": "runner",
+        "privileged": true
+      },
+      "waiver": {
+        "status": "expired",
+        "level": "warn",
+        "reason": "reviewed in OPS-12",
+        "expires": "2026-10-15"
+      }
+    },
+    {
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "level": "pass",
+      "severity": "low",
+      "subject": "user:legacy",
+      "message": "login account legacy logged in recently",
+      "fix": {
+        "hint": "see stackward explain USR-006"
+      },
+      "evidence": {
+        "days": 1
+      }
+    },
+    {
+      "id": "NET-003",
+      "group": "NET",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "SSH is reachable only over the tailnet",
+      "fix": {
+        "hint": "see stackward explain NET-003"
+      },
+      "evidence": {}
+    }
+  ]
+}

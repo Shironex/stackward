@@ -1,0 +1,82 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 2,
+    "coverage_lost": 0,
+    "added": 1,
+    "removed": 0,
+    "changed": 1,
+    "new_findings": 2
+  },
+  "drift": [
+    {
+      "kind": "root-container",
+      "check": "DKR-020",
+      "subject": "container:db/postgres",
+      "value": "postgres",
+      "detail": "postgres runs as root (reachable from outside)"
+    },
+    {
+      "kind": "root-container",
+      "check": "DKR-020",
+      "subject": "container:web/app",
+      "value": "app",
+      "detail": "app runs as root now, and did not"
+    }
+  ],
+  "coverage_lost": [],
+  "changes": [
+    {
+      "kind": "added",
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "severity": "high",
+      "subject": "container:db/postgres",
+      "new": {
+        "level": "fail",
+        "message": "db/postgres runs as root"
+      },
+      "new_finding": true
+    },
+    {
+      "kind": "changed",
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "severity": "high",
+      "subject": "container:web/app",
+      "what": [
+        "level"
+      ],
+      "old": {
+        "level": "pass",
+        "message": "web/app runs as app"
+      },
+      "new": {
+        "level": "warn",
+        "message": "web/app runs as root"
+      },
+      "new_finding": true
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 2,
+    "coverage_lost": 0,
+    "added": 1,
+    "removed": 0,
+    "changed": 0,
+    "new_findings": 1
+  },
+  "drift": [
+    {
+      "kind": "sudoer",
+      "check": "USR-004",
+      "subject": "file:/etc/sudoers.d/ci",
+      "value": "%ops",
+      "detail": "new NOPASSWD sudo rule for %ops in /etc/sudoers.d/ci"
+    },
+    {
+      "kind": "sudoer",
+      "check": "USR-004",
+      "subject": "file:/etc/sudoers.d/ci",
+      "value": "ci",
+      "detail": "new NOPASSWD sudo rule for ci in /etc/sudoers.d/ci"
+    }
+  ],
+  "coverage_lost": [],
+  "changes": [
+    {
+      "kind": "added",
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "severity": "high",
+      "subject": "file:/etc/sudoers.d/ci",
+      "new": {
+        "level": "warn",
+        "message": "NOPASSWD sudo for ci (line 1), %ops (line 2)"
+      },
+      "new_finding": true
+    }
+  ]
+}
