@@ -193,6 +193,8 @@ func TestPFWPendingRules(t *testing.T) {
 	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Fail, "no catch-all deny")
 }
 
+// TestPFWUnparsableSourceFailsClosed: an unparsable permit source counts as
+// anywhere (deny sources are the strict case above).
 func TestPFWUnparsableSourceFailsClosed(t *testing.T) {
 	stubTailnet(t, false, true)
 	for _, src := range []string{"0.0.0.0", "garbage", "203.0.113.7"} {
@@ -201,6 +203,95 @@ func TestPFWUnparsableSourceFailsClosed(t *testing.T) {
 		}
 		wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(hetznerPF(rules))), Warn, "tcp/22")
 	}
+}
+
+// TestPFWDenySourcesAreStrict covers the second gate review's probes: a
+// deny only counts against a sender anywhere when its source is empty or a
+// true /0; a wide, narrow or unparsable source never makes it block the
+// internet.
+func TestPFWDenySourcesAreStrict(t *testing.T) {
+	stubTailnet(t, false, true)
+	ssh22 := facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", DstPorts: port(22)}
+	cases := []struct {
+		name    string
+		rules   []facts.ProviderRule
+		want002 Level
+		want005 Level
+	}{
+		{"deny from garbage as the only catch-all", []facts.ProviderRule{
+			{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"garbage"}},
+		}, Fail, Warn},
+		{"deny from 10.0.0.0/8 with the default allow", []facts.ProviderRule{
+			{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"10.0.0.0/8"}},
+		}, Fail, Warn},
+		{"deny from 0.0.0.0/1", []facts.ProviderRule{
+			{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"0.0.0.0/1"}},
+		}, Fail, Warn},
+		{"deny tcp 22 from 10.0.0.0/8, no catch-all", []facts.ProviderRule{
+			{Order: 0, Direction: "in", Action: "deny", Protocol: "tcp", Sources: []string{"10.0.0.0/8"}, DstPorts: port(22)},
+		}, Fail, Warn},
+		{"deny tcp 22 from bogus, then permit ipv4", []facts.ProviderRule{
+			{Order: 0, Direction: "in", Action: "deny", Protocol: "tcp", Sources: []string{"bogus"}, DstPorts: port(22)},
+			{Order: 1, Direction: "in", Action: "permit", Protocol: "ipv4"},
+		}, Fail, Warn},
+		// True /0 denies still count, IPv4-mapped included.
+		{"deny from 0.0.0.0/0", []facts.ProviderRule{
+			{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"0.0.0.0/0"}},
+		}, Pass, Pass},
+		{"deny from ::ffff:0.0.0.0/96", []facts.ProviderRule{
+			{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"::ffff:0.0.0.0/96"}},
+		}, Pass, Pass},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := pfwFacts(ovhPF(c.rules))
+			wantLevel(t, runOne(t, checkPFWDefaultDeny, f), c.want002, "")
+			wantLevel(t, runOne(t, checkPFWSSH, f), c.want005, "")
+		})
+	}
+	// The SSH permit behind a strict catch-all is still judged.
+	f := pfwFacts(ovhPF([]facts.ProviderRule{ssh22, {Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"}}))
+	wantLevel(t, runOne(t, checkPFWSSH, f), Warn, "tcp/22 (seq 1)")
+}
+
+func TestPFWMappedPermitCoversIPv4(t *testing.T) {
+	stubTailnet(t, false, true)
+	rules := []facts.ProviderRule{{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", Sources: []string{"::ffff:0.0.0.0/96"}, DstPorts: port(22)}}
+	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(hetznerPF(rules))), Warn, "tcp/22")
+	rules[0].Sources = []string{"::ffff:203.0.113.7/128"}
+	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(hetznerPF(rules))), Pass, "")
+}
+
+// TestPFWSourcePortRangeEdges: a deny for source port 1000 in front of a
+// permit for 1000-2000 still lets source port 1001 reach everything.
+func TestPFWSourcePortRangeEdges(t *testing.T) {
+	stubTailnet(t, false, true)
+	rules := []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "deny", Protocol: "tcp", SrcPorts: port(1000)},
+		{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", SrcPorts: pr(1000, 2000)},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"},
+	}
+	f := pfwFacts(ovhPF(rules))
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Fail, "source port 1001 (seq 1)")
+	wantLevel(t, runOne(t, checkPFWSSH, f), Warn, "from source port 1001")
+
+	// The same shape for UDP is PFW-003's source port warning.
+	udp := []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "deny", Protocol: "udp", SrcPorts: port(1000)},
+		{Order: 1, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: pr(1000, 2000)},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"},
+	}
+	wantLevel(t, runOne(t, checkPFWOpenUDP, pfwFacts(ovhPF(udp))), Warn, "seq 1 (source port 1000-2000)")
+	// Fully shadowed, it is not reported.
+	udp[0].SrcPorts = pr(1000, 2000)
+	wantLevel(t, runOne(t, checkPFWOpenUDP, pfwFacts(ovhPF(udp))), Pass, "")
+
+	// A range starting at 0 is a real range, not "no source port".
+	zero := []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", SrcPorts: pr(0, 0)},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"},
+	}
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, pfwFacts(ovhPF(zero))), Fail, "source port 0")
 }
 
 func TestPFWOVHWorkingRuleSet(t *testing.T) {
