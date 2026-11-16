@@ -96,6 +96,9 @@ func proveChange(id string, c change, in GuardInput) (Proof, error) {
 	if err := banSpares(id, c.access, in.Source); err != nil {
 		return p, err
 	}
+	if c.access.Firewall != nil {
+		return proveFirewall(id, p, *c.access.Firewall, in)
+	}
 	if len(p.Narrows) == 0 {
 		return p, nil
 	}

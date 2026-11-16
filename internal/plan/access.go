@@ -36,6 +36,10 @@ type Access struct {
 	// so a failed login from the owner's own address cannot ban it.
 	Bans           bool
 	IgnoredSources []string
+	// Firewall, for a step that changes the host firewall, says what UFW
+	// holds afterwards. The lockout guard then proves from the live
+	// rules that sshd's ports still let the applying session in.
+	Firewall *FirewallChange
 }
 
 // narrowingSSHD are the sshd keywords that decide who can log in, how and
@@ -113,6 +117,9 @@ func (c change) narrows() []string {
 	}
 	if len(a.RemovesKeys) > 0 {
 		out = append(out, "removes the authorized keys of "+strings.Join(a.RemovesKeys, ", "))
+	}
+	if a.Firewall != nil {
+		out = append(out, a.Firewall.What)
 	}
 	return out
 }
