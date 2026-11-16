@@ -104,8 +104,15 @@ func maskIPv4(s string) string {
 	return fmt.Sprintf("%d.%d.%d.x", b[0], b[1], b[2])
 }
 
+// unparsedNetwork replaces, in a dump, a rule network that does not parse:
+// it may hold an address. It does not parse either, so a replay judges it
+// the same way (a permit from it reaches anywhere, a deny from it blocks
+// nothing).
+const unparsedNetwork = "unparsed"
+
 // maskNetworks zeroes the host bits of each network past the first 24
-// (IPv4) or 64 (IPv6) bits, keeping its prefix length.
+// (IPv4) or 64 (IPv6) bits, keeping its prefix length; a network that does
+// not parse becomes unparsedNetwork.
 func maskNetworks(ns []string) []string {
 	if ns == nil {
 		return nil
@@ -114,7 +121,7 @@ func maskNetworks(ns []string) []string {
 	for i, n := range ns {
 		p, err := netip.ParsePrefix(n)
 		if err != nil {
-			out[i] = n
+			out[i] = unparsedNetwork
 			continue
 		}
 		keep := 24
@@ -126,7 +133,7 @@ func maskNetworks(ns []string) []string {
 		}
 		masked, err := p.Addr().Prefix(keep)
 		if err != nil {
-			out[i] = n
+			out[i] = unparsedNetwork
 			continue
 		}
 		out[i] = netip.PrefixFrom(masked.Addr(), p.Bits()).String()
