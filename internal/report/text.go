@@ -92,10 +92,14 @@ func WriteText(w io.Writer, r *Report, o TextOptions) error {
 	} else {
 		t.byLevel(r)
 	}
+	t.waiversToReview(r)
 	s := r.Summary
+	counts := fmt.Sprintf("%d fail, %d warn, %d unknown, %d info, %d pass, %d skip", s.Fail, s.Warn, s.Unknown, s.Info, s.Pass, s.Skip)
+	if s.Accepted > 0 {
+		counts += fmt.Sprintf(", %d accepted", s.Accepted)
+	}
 	t.blank()
-	t.hang(indent+t.st.dim("summary: "), width(indent)+9,
-		fmt.Sprintf("%d fail, %d warn, %d unknown, %d info, %d pass, %d skip", s.Fail, s.Warn, s.Unknown, s.Info, s.Pass, s.Skip), plainText)
+	t.hang(indent+t.st.dim("summary: "), width(indent)+9, counts, plainText)
 	t.hang(indent+t.st.dim("explain any check with: "), width(indent)+24, "stackward explain <id>", plainText)
 	_, err := io.WriteString(w, t.b.String())
 	return err
@@ -104,6 +108,9 @@ func WriteText(w io.Writer, r *Report, o TextOptions) error {
 // byLevel writes one section per level, most urgent first.
 func (t *textWriter) byLevel(r *Report) {
 	for _, l := range sectionLevels {
+		if l == checks.Pass {
+			t.acceptedSection(r)
+		}
 		items := ofLevel(r.Results, l)
 		if len(items) == 0 || (!t.o.Passing && (l == checks.Pass || l == checks.Skip)) {
 			continue
@@ -196,6 +203,42 @@ func (t *textWriter) group(g string, items []Item) {
 			t.result(it, true, false)
 		}
 	}
+	for _, it := range acceptedItems(items) {
+		t.result(it, true, false)
+	}
+}
+
+// acceptedSection lists the findings a waiver accepts, after the info
+// results: shown in full with their real level and the waiver's reason and
+// expiry, never hidden.
+func (t *textWriter) acceptedSection(r *Report) {
+	items := acceptedItems(r.Results)
+	if len(items) == 0 {
+		return
+	}
+	bySeverity(items)
+	t.section(fmt.Sprintf("ACCEPTED (%d), by a waiver until it expires", len(items)), "")
+	for _, it := range items {
+		t.result(it, false, false)
+	}
+}
+
+// waiversToReview lists the waivers that did not apply: expired, stale or
+// for an unknown check.
+func (t *textWriter) waiversToReview(r *Report) {
+	ws := WaiversToReview(r.Waivers)
+	if len(ws) == 0 {
+		return
+	}
+	t.section(fmt.Sprintf("WAIVERS TO REVIEW (%d)", len(ws)), checks.Warn)
+	lead := indent + t.st.mark(checks.Warn) + " "
+	leadWidth := width(indent) + width(t.st.marks[checks.Warn]) + 1
+	sub := strings.Repeat(" ", leadWidth)
+	for _, w := range ws {
+		t.blank()
+		t.hang(lead, leadWidth, w.Check+" on "+w.Subject+": "+WaiverProblem(w), plainText)
+		t.labelled(sub, leadWidth, "reason:", w.Reason, t.st.dim)
+	}
 }
 
 // section writes a blank line and a rule with a label in it.
@@ -225,6 +268,9 @@ func (t *textWriter) result(it Item, withLevel, brief bool) {
 
 	sub := strings.Repeat(" ", leadWidth)
 	t.hang(sub, leadWidth, metaLine(it, withLevel, st.box.sep), st.dim)
+	if it.Waiver != nil {
+		t.labelled(sub, leadWidth, "waiver:", AcceptedNote(it.Waiver), plainText)
+	}
 	if brief {
 		return
 	}
@@ -232,15 +278,15 @@ func (t *textWriter) result(it Item, withLevel, brief bool) {
 	if actionable && it.Message != "" && it.Title != "" {
 		t.labelled(sub, leadWidth, "rule:", it.Title, st.dim)
 	}
-	if (it.Level == checks.Fail || it.Level == checks.Warn) && it.Fix.Hint != "" {
+	if (it.Level == checks.Fail || it.Level == checks.Warn) && !it.Accepted() && it.Fix.Hint != "" {
 		t.labelled(sub, leadWidth, "fix:", it.Fix.Hint, plainText)
 	}
 }
 
 // labelled writes "label text" with the text wrapped under itself.
 func (t *textWriter) labelled(sub string, subWidth int, label, text string, paint func(string) string) {
-	const labelWidth = 6 // "rule: "
-	t.hang(sub+t.st.dim(fmt.Sprintf("%-*s", labelWidth, label)), subWidth+labelWidth, text, paint)
+	lw := max(6, len(label)+1) // "rule: "; longer labels take their own width
+	t.hang(sub+t.st.dim(fmt.Sprintf("%-*s", lw, label)), subWidth+lw, text, paint)
 }
 
 // metaLine is the dimmed line under a headline: id, severity and subject.
@@ -248,7 +294,10 @@ func (t *textWriter) labelled(sub string, subWidth int, label, text string, pain
 // out of info, pass and skip results, where it would read as a finding.
 func metaLine(it Item, withLevel bool, sep string) string {
 	var parts []string
-	if withLevel {
+	switch {
+	case it.Accepted():
+		parts = append(parts, "ACCEPTED "+strings.ToUpper(string(it.Level)))
+	case withLevel:
 		parts = append(parts, strings.ToUpper(string(it.Level)))
 	}
 	parts = append(parts, it.ID)
@@ -336,10 +385,22 @@ func bySeverity(items []Item) {
 	sort.SliceStable(items, func(i, j int) bool { return severityRank[items[i].Severity] < severityRank[items[j].Severity] })
 }
 
+// ofLevel returns the results of level l that no waiver accepts.
 func ofLevel(items []Item, l checks.Level) []Item {
 	var out []Item
 	for _, it := range items {
-		if it.Level == l {
+		if it.Level == l && !it.Accepted() {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// acceptedItems returns the results a waiver accepts.
+func acceptedItems(items []Item) []Item {
+	var out []Item
+	for _, it := range items {
+		if it.Accepted() {
 			out = append(out, it)
 		}
 	}

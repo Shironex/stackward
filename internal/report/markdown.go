@@ -47,6 +47,9 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	p("- **Root:** %s\n", yesNo(r.Coverage.Root))
 	p("- **Sandbox:** %s\n", mdEscape(sandboxLine(r.Coverage.Sandbox)))
 	p("- **Coverage:** %s, root: %s\n", CoverageLine(r.Coverage), yesNo(r.Coverage.Root))
+	if l := WaiversLine(r.Waivers); l != "" {
+		p("- **Waivers:** %s\n", l)
+	}
 	for _, c := range r.Coverage.Collectors {
 		if c.Status == "ok" {
 			continue
@@ -62,11 +65,18 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	}{{"fail", s.Fail}, {"warn", s.Warn}, {"unknown", s.Unknown}, {"info", s.Info}, {"pass", s.Pass}, {"skip", s.Skip}} {
 		p("| %s | %d |\n", row.name, row.n)
 	}
+	if s.Accepted > 0 {
+		p("| accepted | %d |\n", s.Accepted)
+	}
 
 	// Full sections only for what needs a decision; everything else is a
 	// compact table so a mostly unknown run stays readable.
-	var full, info, unknown, passing []Item
+	var full, accepted, info, unknown, passing []Item
 	for _, it := range r.Results {
+		if it.Accepted() {
+			accepted = append(accepted, it)
+			continue
+		}
 		switch it.Level {
 		case checks.Fail, checks.Warn:
 			full = append(full, it)
@@ -81,7 +91,10 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 		}
 	}
 
-	if len(full) == 0 {
+	switch {
+	case len(full) == 0 && len(accepted) > 0:
+		p("\nNo open findings; %s below.\n", plural(len(accepted), "accepted finding is", "accepted findings are"))
+	case len(full) == 0:
 		p("\nNo findings.\n")
 	}
 	for _, g := range groupIDs(full) {
@@ -93,6 +106,7 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 		}
 	}
 
+	writeMarkdownWaivers(&b, accepted, WaiversToReview(r.Waivers))
 	if len(info) > 0 {
 		p("\n## Notes\n")
 		writeCompact(&b, "", info, "Result")
@@ -120,6 +134,9 @@ func writeMarkdownItem(b *strings.Builder, it Item) {
 	fmt.Fprintf(b, "- **Subject:** %s\n", codeSpan(it.Subject))
 	if it.Message != "" {
 		fmt.Fprintf(b, "- **Result:** %s\n", mdEscape(it.Message))
+	}
+	if it.Waiver != nil {
+		fmt.Fprintf(b, "- **Waiver:** %s\n", mdEscape(AcceptedNote(it.Waiver)))
 	}
 	if it.Fix.Hint != "" && (it.Level == checks.Fail || it.Level == checks.Warn) {
 		// The hint is catalog text and may carry its own code spans.
@@ -255,4 +272,25 @@ func plural(n int, one, many string) string {
 		return "1 " + one
 	}
 	return fmt.Sprintf("%d %s", n, many)
+}
+
+// writeMarkdownWaivers writes the findings a waiver accepts, shown with
+// their real level, reason and expiry, and the waivers that did not apply.
+func writeMarkdownWaivers(b *strings.Builder, accepted []Item, review []WaiverEntry) {
+	if len(accepted) > 0 {
+		b.WriteString("\n## Accepted\n\nFindings a waiver accepts until it expires. The level and evidence are the real ones.\n\n")
+		b.WriteString("| Check | Level | Subject | Result | Reason | Until |\n|---|---|---|---|---|---|\n")
+		for _, it := range accepted {
+			fmt.Fprintf(b, "| [%s](%s%s.md) | %s %s | %s | %s | %s | %s |\n", it.ID, CheckDocsBase, it.ID,
+				it.Level, mdEscape(string(it.Severity)), strings.ReplaceAll(codeSpan(it.Subject), "|", "\\|"),
+				mdEscape(Headline(it)), mdEscape(it.Waiver.Reason), mdEscape(it.Waiver.Expires))
+		}
+	}
+	if len(review) > 0 {
+		b.WriteString("\n## Waivers to review\n\n| Check | Subject | Problem | Reason |\n|---|---|---|---|\n")
+		for _, w := range review {
+			fmt.Fprintf(b, "| %s | %s | %s | %s |\n", mdEscape(w.Check), strings.ReplaceAll(codeSpan(w.Subject), "|", "\\|"),
+				mdEscape(WaiverProblem(w)), mdEscape(w.Reason))
+		}
+	}
 }

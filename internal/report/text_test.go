@@ -26,7 +26,7 @@ func exposureReport() *Report {
 	add := func(it Item) {
 		it.Group = catalog.GroupOf(it.ID)
 		r.Results = append(r.Results, it)
-		r.count(it.Level)
+		r.count(it)
 	}
 	add(Item{ID: "SYS-002", Title: "No reboot pending", Level: checks.Warn, Severity: catalog.Moderate, Subject: "host",
 		Message: "a reboot has been pending for 20 days", Fix: Fix{Hint: "Reboot in a maintenance window."}})

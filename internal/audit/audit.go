@@ -15,6 +15,7 @@ import (
 	"github.com/Shironex/stackward/internal/redact"
 	"github.com/Shironex/stackward/internal/report"
 	"github.com/Shironex/stackward/internal/sandbox"
+	"github.com/Shironex/stackward/internal/waiver"
 )
 
 // Options carries what the report needs beyond the facts.
@@ -25,6 +26,8 @@ type Options struct {
 	Profile      profile.Name
 	ProfileSet   bool
 	ShowHostname bool
+	// Waivers are the entries of the waivers file (--waivers), if any.
+	Waivers []waiver.Waiver
 }
 
 // Evaluate runs every registered check over f and builds the report.
@@ -41,7 +44,7 @@ func Evaluate(f *facts.Facts, o Options) (*report.Report, error) {
 	results := checks.EvaluateChecks(all, checks.Input{Facts: f, Profile: prof})
 	return report.Build(f, results, cat, report.Meta{
 		Version: o.Version, Sandbox: o.Sandbox, Profile: prof, ProfileSource: src,
-		ShowHostname: o.ShowHostname, ChecksRun: len(all),
+		ShowHostname: o.ShowHostname, ChecksRun: len(all), Waivers: o.Waivers,
 	}), nil
 }
 

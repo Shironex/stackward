@@ -66,6 +66,13 @@ func (t *textWriter) auditHeader(r *Report) {
 	}
 	t.kv("sandbox", sandboxLine(r.Coverage.Sandbox))
 	t.kv("coverage", CoverageLine(r.Coverage))
+	if l := WaiversLine(r.Waivers); l != "" {
+		paint := plainText
+		if len(WaiversToReview(r.Waivers)) > 0 {
+			paint = t.warnPaint
+		}
+		t.kvPaint("waivers", l, paint)
+	}
 	if n := NotRootNote(r); n != "" {
 		t.kv("note", n)
 	}
@@ -139,12 +146,7 @@ func (t *textWriter) countLines(s Summary, limit int) []boxLine {
 	const gap = "   "
 	var out []boxLine
 	var cur boxLine
-	for _, c := range counts {
-		plain := fmt.Sprintf("%s %d %s", t.st.marks[c.l], c.n, c.l)
-		styled := t.st.dim(plain)
-		if c.n > 0 {
-			styled = t.st.mark(c.l) + " " + t.st.levelBold(c.l, fmt.Sprintf("%d %s", c.n, c.l))
-		}
+	add := func(plain, styled string) {
 		if cur.w > 0 && cur.w+len(gap)+width(plain) > limit {
 			out, cur = append(out, cur), boxLine{}
 		}
@@ -152,6 +154,18 @@ func (t *textWriter) countLines(s Summary, limit int) []boxLine {
 			cur.text, cur.w = cur.text+gap, cur.w+len(gap)
 		}
 		cur.text, cur.w = cur.text+styled, cur.w+width(plain)
+	}
+	for _, c := range counts {
+		plain := fmt.Sprintf("%s %d %s", t.st.marks[c.l], c.n, c.l)
+		styled := t.st.dim(plain)
+		if c.n > 0 {
+			styled = t.st.mark(c.l) + " " + t.st.levelBold(c.l, fmt.Sprintf("%d %s", c.n, c.l))
+		}
+		add(plain, styled)
+	}
+	if s.Accepted > 0 {
+		plain := fmt.Sprintf("%d accepted", s.Accepted)
+		add(plain, t.st.bold(plain))
 	}
 	return append(out, cur)
 }
@@ -168,6 +182,9 @@ func (t *textWriter) topList(r *Report, limit int) []boxLine {
 		msg := "No fails and no warnings."
 		if r.Summary.Unknown > 0 {
 			msg = fmt.Sprintf("No fails and no warnings, but %s could not be inspected.", plural(r.Summary.Unknown, "result", "results"))
+		}
+		if r.Summary.Accepted > 0 {
+			msg += fmt.Sprintf(" %s by a waiver.", plural(r.Summary.Accepted, "finding is accepted", "findings are accepted"))
 		}
 		return t.wrapBox(msg, limit, plainText)
 	}
