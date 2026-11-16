@@ -107,6 +107,10 @@ archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
 provenance, `install.sh` and `get.sh`.
 
+A step by step guide is on the [install page](docs/install.md): which method to
+pick, the `.deb` for amd64 and arm64, checking the download, the first run, and
+upgrading or removing each method. The shortest safe path is below.
+
 The guided way is `install.sh`: install, update and uninstall with a step by
 step display, a checksum check before anything is written, and `apt` on
 Debian and Ubuntu. Download it, read it, run it:
