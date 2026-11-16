@@ -26,10 +26,14 @@ comment that names the file it belongs in.
 |---|---|---|
 | `--print` | (required) | print the units |
 | `--on-calendar` | `daily` | when to run, a systemd `OnCalendar` expression. Check it with `systemd-analyze calendar 'Mon *-*-* 03:00'` |
-| `--randomized-delay` | `1h` | spread the start over up to this long, so a fleet of servers does not audit at the same second; `0` for none |
+| `--randomized-delay` | `1h` | spread the start over up to this long, so a fleet of servers does not audit at the same second; `0` for none, otherwise whole seconds and at least `1s` |
 | `--user` | `root` | the account the audit runs as (see [the account](#the-account)) |
 | `--report-dir` | `/var/lib/stackward` | where `report.json` goes |
 | `--textfile-dir` | `/var/lib/prometheus/node-exporter` | the node_exporter textfile directory, where `stackward.prom` goes; empty for no metric |
+
+The unit makes both output directories writable, so neither may be a top
+level directory (`/var`, `/srv`) or lie in `/etc`, `/usr`, `/boot`, `/root`,
+`/bin`, `/sbin`, any `/lib*`, `/proc`, `/sys` or `/dev`.
 | `--binary` | this binary | absolute path of the stackward the unit runs |
 
 Audit flags after `--` are added to the scheduled audit:
@@ -46,12 +50,14 @@ scheduled run audits the live host inside the sandbox).
 
 ### Nothing can be smuggled into the unit
 
-Every value that ends up in a unit is checked first. A newline would start a
-new directive and a `%` is a systemd specifier, so both are refused in
-`--on-calendar` and in every audit flag; paths must be clean absolute paths
-of letters, digits and `. _ / @ + -`; `--user` must be a plain account name.
-Audit flags are printed quoted where needed, with `%` and `$` escaped, so
-systemd neither expands a specifier nor a variable in `ExecStart`.
+Every value that ends up in a unit is checked first. A newline or other
+control character would start a new directive, a `%` is a systemd specifier
+and a backslash is an escape (or a line continuation at the end of a line),
+so all of them are refused in `--on-calendar` and in every audit flag; paths
+must be clean absolute paths of letters, digits and `. _ / @ + -`; `--user`
+must be a plain account name. Audit flags are then printed quoted where
+needed, with `$` escaped (and `%`, as a second line of defence), so systemd
+neither expands a specifier nor a variable in `ExecStart`.
 
 ## What the scheduled run does
 
@@ -59,16 +65,27 @@ systemd neither expands a specifier nor a variable in `ExecStart`.
 ExecStart=/usr/local/bin/stackward audit --format json --fail-on never \
   --out /var/lib/stackward/report.json.tmp \
   --textfile /var/lib/prometheus/node-exporter/stackward.prom.tmp
-ExecStartPost=/bin/mv -f /var/lib/stackward/report.json.tmp /var/lib/stackward/report.json
-ExecStartPost=/bin/mv -f /var/lib/prometheus/node-exporter/stackward.prom.tmp /var/lib/prometheus/node-exporter/stackward.prom
+ExecStartPost=/bin/mv -fT /var/lib/stackward/report.json.tmp /var/lib/stackward/report.json
+ExecStartPost=/bin/mv -fT /var/lib/prometheus/node-exporter/stackward.prom.tmp /var/lib/prometheus/node-exporter/stackward.prom
+TimeoutStartSec=30min
 ```
 
 - The audit is the ordinary read only audit, with the Landlock sandbox on.
   It writes the report (mode 0600) and the metric (mode 0644, so a
   node_exporter running as its own user can read it) to temporary names.
+- Output paths are opened without following a symlink and must turn out to
+  be a regular file with a single link: a hard link to another file, a FIFO
+  (which would block the run) or a device is refused. The textfile
+  directory is often shared with other programs, so whatever sits at
+  `stackward.prom.tmp` is unlinked first (its target is left alone) and the
+  file is created fresh.
 - `ExecStartPost` renames each file into place. A rename within a directory
   is atomic: readers see the old file or the new one, never half of one.
-  node_exporter only reads `*.prom`, so it ignores the temporary file.
+  `-T` makes `mv` refuse to move the file into a directory planted at the
+  final name. node_exporter only reads `*.prom`, so it ignores the
+  temporary file.
+- A run that hangs is stopped after 30 minutes (`TimeoutStartSec`) and
+  counts as failed.
 - The renames run only when the audit succeeded. When it fails (exit 2) the
   previous files stay, the unit is marked failed, and the timestamp in the
   metric stops moving, which is what the [stale run alert](#alerting) catches.
@@ -86,9 +103,13 @@ The service is confined by systemd on top of stackward's own sandbox. The
 whole file system is read only except the two output directories
 (`ProtectSystem=strict` and `ReadWritePaths`), home directories are read only,
 `/tmp` is private, `NoNewPrivileges`, no new namespaces, no realtime, no
-SUID files, kernel tunables, modules, logs and the clock are protected, and
-`IPAddressDeny=any` blocks all IP traffic (the audit makes none). Nothing in
-it hides what the audit inspects: there is no `PrivateNetwork` (the audit
+SUID files, kernel tunables, modules, logs, control groups and the clock are
+protected, and `IPAddressDeny=any` blocks all IP traffic (the audit makes
+none). `SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation
+@obsolete @raw-io @debug` makes those system calls fail with `EPERM`: no
+collector mounts, loads a module, reboots, sets the clock, does raw I/O or
+traces a process (`@debug` holds `ptrace` and `process_vm_writev`). Nothing
+in it hides what the audit inspects: there is no `PrivateNetwork` (the audit
 reads the host's listeners), no `PrivateDevices` and no `ProtectProc`.
 
 With `--provider` among the audit flags, `IPAddressDeny` is left out, because
@@ -99,19 +120,51 @@ never in `ExecStart` (see [provider-firewall.md](provider-firewall.md)).
 
 ### The account
 
-Full coverage needs root: many checks read root only files, the firewall
-ruleset or which process owns a socket. As root, the unit keeps only these
-capabilities (`CapabilityBoundingSet`):
+Full coverage needs root: some checks read the firewall ruleset, files root
+does not own or which process owns a socket. As root, the unit keeps only
+these capabilities (`CapabilityBoundingSet`). Each one was measured: in a
+Debian 12 container running systemd, with nftables, iptables-legacy, sshd, a
+listener owned by another user and an account's `.ssh` at mode 0700, the
+printed unit gave the same results as an unconfined `sudo stackward audit`,
+and dropping each capability changed them as the table says.
 
-| Capability | What the audit uses it for |
-|---|---|
-| `CAP_DAC_READ_SEARCH` | read root only files: sshd host keys, `/etc/shadow` for `passwd -S` |
-| `CAP_DAC_OVERRIDE` | connect to the root owned Docker and tailscaled sockets; write into a textfile directory owned by another user |
-| `CAP_NET_ADMIN`, `CAP_NET_RAW` | list the nftables and iptables ruleset |
-| `CAP_SYS_PTRACE` | read other processes' `/proc/<pid>/fd` for the socket owner snapshot ([safety.md](safety.md#read-before-the-sandbox)) |
+| Capability | What the audit uses it for | Without it | What else it allows |
+|---|---|---|---|
+| `CAP_NET_ADMIN` | the kernel asks for it before it lists the nftables ruleset at all, read or write (`nft list ruleset`, `iptables-nft -S`) | the firewall collector ends partial, NET-001 and the checks that build on it say `unknown` | changing the firewall, routes and links over netlink |
+| `CAP_NET_RAW` | `iptables-legacy -S` opens a raw socket to read the tables | the same, on hosts that use iptables-legacy | sending raw packets (but `IPAddressDeny=any` drops IP traffic) |
+| `CAP_SYS_PTRACE` | read other processes' `/proc/<pid>/fd` for the socket owner snapshot ([safety.md](safety.md#read-before-the-sandbox)) | listeners lose their process names (NET-004 and the checks that infer SSH, cloudflared or tailscaled from them fall back to weaker guesses) | reaching other processes' files through `/proc/<pid>/root`, which sits outside the read only mounts. The `ptrace` system call itself is filtered (`@debug`) |
+| `CAP_DAC_READ_SEARCH` | look into directories root does not own, such as an account's `~/.ssh` for `authorized_keys` | those accounts' key files cannot be seen | reading any file |
 
-Every other capability is dropped, so even a root run cannot load modules,
-change the network, mount, kill other processes or change ownership.
+`CAP_DAC_OVERRIDE` is left out on purpose: the audit only reads, and
+without it a root run cannot write a file it does not own. The output
+directories must therefore be owned by root, as `/var/lib/stackward` and
+the Debian and Ubuntu package's `/var/lib/prometheus/node-exporter`
+(root:root 0755) are. If your textfile directory belongs to another user,
+the unit fails with `--textfile: ... permission denied`; give it to root
+(`chown root: DIR`, node_exporter only needs to read it).
+
+What a root run can still do, should stackward or a command it starts be
+compromised, is what the kept capabilities and uid 0 allow:
+
+- change the firewall, routes and links (`CAP_NET_ADMIN`; there is no way to
+  grant only the read half);
+- send signals to other root processes (uid 0 needs no capability for that);
+- read any file (`CAP_DAC_READ_SEARCH`);
+- write files root owns, outside the read only mounts, through another
+  process's `/proc/<pid>/root` (`CAP_SYS_PTRACE`).
+
+On a kernel with Landlock (5.13 and later; the report and the
+`stackward_sandbox_confined` metric say so) the audit process and every
+command it starts hold no file write right anywhere, so the last point
+falls away; the first two remain either way. If you would rather trade the
+process names for a smaller root, drop `CAP_SYS_PTRACE` with a drop in:
+
+```sh
+systemctl edit stackward-audit.service
+# [Service]
+# CapabilityBoundingSet=
+# CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW
+```
 
 With `--user NAME` the audit runs as that account with no capabilities at
 all. Checks that need root then say `unknown` (the report and the
@@ -132,7 +185,7 @@ sed -n '/^# \/etc\/systemd\/system\/stackward-audit.timer/,$p' units > stackward
 
 # 2. create the output directories (ReadWritePaths needs them to exist)
 install -d -m 0750 /var/lib/stackward
-install -d -m 0755 /var/lib/prometheus/node-exporter
+install -d -m 0755 /var/lib/prometheus/node-exporter   # owned by root (see "The account")
 
 # 3. install the units, check them, start the timer
 install -m 0644 stackward-audit.service stackward-audit.timer /etc/systemd/system/
