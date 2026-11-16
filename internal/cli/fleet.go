@@ -78,6 +78,8 @@ func (s sshFlags) check(af auditFlags, hosts []string) error {
 		return fmt.Errorf("--ssh cannot be combined with --textfile yet: the metric describes one host, and a fleet metric needs its own labels and design")
 	case af.waivers != "":
 		return fmt.Errorf("--ssh cannot be combined with --waivers yet: a local waivers file would have to apply to every host's report, which needs its own design")
+	case af.base.file != "":
+		return fmt.Errorf("--ssh cannot be combined with --baseline yet: one baseline file names one host, and a fleet diff needs a baseline per host; run stackward diff on each host's saved report instead")
 	case af.noSandbox:
 		return fmt.Errorf("--ssh always runs the remote audit in its sandbox; --no-sandbox is refused")
 	case s.parallel < 1 || s.parallel > fleet.MaxParallel:

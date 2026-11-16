@@ -28,7 +28,7 @@ import (
 
 const usage = `stackward audits a Linux server running Docker, a PaaS, tunnels and
 intrusion prevention, and reports what is exposed and misconfigured.
-audit, probe, tui, schedule and plan only read; only apply, undo and confirm change
+audit, diff, probe, tui, schedule and plan only read; only apply, undo and confirm change
 the host, and only what the plan's selected steps say.
 
 Usage:
@@ -38,13 +38,14 @@ Usage:
   stackward version           print the version
   stackward probe <host>      check a host from outside (run from another machine)
   stackward tui [flags]       browse the findings in the terminal
+  stackward diff OLD NEW      compare two saved reports of one host: drift, added, removed, changed
   stackward schedule --print  print a systemd service and timer for a daily audit (installs nothing)
   stackward plan [flags]      write the changes that would fix the findings (changes nothing)
   stackward apply PLAN.json   apply the selected steps of a plan, with backups and a journal (root)
   stackward undo --run ID     reverse an apply run from its journal (root)
   stackward confirm ID        keep an access-critical change, from a new SSH session (root)
 
-Run "stackward <command> -h" for the flags of audit, probe, tui, schedule, plan,
+Run "stackward <command> -h" for the flags of audit, diff, probe, tui, schedule, plan,
 apply, undo and confirm.
 
 Exit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.
@@ -62,6 +63,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runAudit(args[1:], stdout, stderr)
 	case "explain":
 		return runExplain(args[1:], stdout, stderr)
+	case "diff":
+		return runDiff(args[1:], stdout, stderr)
 	case "version", "--version":
 		return runVersion(stdout)
 	case "tui":
@@ -116,6 +119,10 @@ type auditFlags struct {
 	prov         providerFlags
 	ssh          sshFlags
 	args         []string // hosts, with --ssh
+	base         baselineFlags
+	// failOnSet is true when --fail-on was given; with --baseline only
+	// an explicit --fail-on counts toward the exit code.
+	failOnSet bool
 }
 
 // parseAuditArgs parses and checks the audit flags. done is true when the
@@ -142,12 +149,14 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.StringVar(&af.waivers, "waivers", "", waiversHelp)
 	addProviderFlags(fs, &af.prov)
 	addSSHFlags(fs, &af.ssh)
+	addBaselineFlags(fs, &af.base)
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n       stackward audit --ssh [flags] [--] HOST...\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprint(stderr, providerHelp)
 		fmt.Fprint(stderr, sshHelp)
 		fmt.Fprintf(stderr, "\nExit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.\n")
+		fmt.Fprintf(stderr, "With --baseline: 0 nothing at or above --fail-on-drift (or an explicit --fail-on), 1 drift or findings at it, 2 error.\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -160,14 +169,14 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 		fmt.Fprintf(stderr, "stackward audit: unexpected argument %q\n", fs.Arg(0))
 		return af, "", report.ExitError, true
 	}
-	if af.jsonOut {
-		af.format = "json"
+	set := visited(fs)
+	af.failOnSet = set["fail-on"]
+	var err error
+	if af.format, err = outputFormat(af.format, af.jsonOut, af.mdOut); err == nil {
+		err = af.base.check(set)
 	}
-	if af.mdOut {
-		af.format = "md"
-	}
-	if af.format != "text" && af.format != "json" && af.format != "md" {
-		fmt.Fprintf(stderr, "stackward audit: --format must be text, json or md, not %q\n", af.format)
+	if err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return af, "", report.ExitError, true
 	}
 	if af.textfile != "" && af.dumpFacts {
@@ -209,11 +218,18 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// Everything that needs a file descriptor is opened before the
-	// sandbox: afterwards no new file can be created.
+	// sandbox: afterwards no new file can be created. The inputs come
+	// first, so --out can be checked against the opened baseline.
+	var ws []waiver.Waiver
+	if ws, err = loadAuditInputs(&af); err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
+		return report.ExitError
+	}
+	defer af.base.close()
 	w := stdout
 	var outFile *os.File
 	if af.out != "" {
-		outFile, err = createOutput(af.out)
+		outFile, err = createOutput(af.out, af.base.opened()...)
 		if err != nil {
 			fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 			return report.ExitError
@@ -240,14 +256,6 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 			return report.ExitError
 		}
 	}
-	var ws []waiver.Waiver
-	if !af.dumpFacts {
-		if ws, err = loadWaivers(af.waivers); err != nil {
-			fmt.Fprintf(stderr, "stackward audit: %v\n", err)
-			return report.ExitError
-		}
-	}
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var sys facts.System
@@ -283,11 +291,42 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return report.ExitError
 	}
-	if err := writeAuditOutputs(w, metricFile, rep, af, textOpts); err != nil {
+	if code, err = auditOutputs(w, metricFile, rep, af, failOn, textOpts); err != nil {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
-		return report.ExitError
 	}
-	return rep.ExitCode(failOn)
+	return code
+}
+
+// loadAuditInputs reads the waivers file and opens the --baseline file,
+// both before the sandbox. --dump-facts reads neither.
+func loadAuditInputs(af *auditFlags) ([]waiver.Waiver, error) {
+	if af.dumpFacts {
+		return nil, nil
+	}
+	ws, err := loadWaivers(af.waivers)
+	if err != nil {
+		return nil, err
+	}
+	return ws, af.base.open()
+}
+
+// auditOutputs writes what the audit prints and returns the exit code:
+// the report and its exit code, or with --baseline the diff against the
+// baseline and the diff's exit code.
+func auditOutputs(w io.Writer, metricFile *os.File, rep *report.Report, af auditFlags, failOn report.FailOn, textOpts report.TextOptions) (int, error) {
+	if af.base.fh == nil {
+		if err := writeAuditOutputs(w, metricFile, rep, af, textOpts); err != nil {
+			return report.ExitError, err
+		}
+		return rep.ExitCode(failOn), nil
+	}
+	code, err := baselineDiff(w, rep, af, failOn)
+	if err == nil && metricFile != nil {
+		if err = report.WriteTextfile(metricFile, rep); err != nil {
+			return report.ExitError, fmt.Errorf("writing --textfile: %w", err)
+		}
+	}
+	return code, err
 }
 
 // writeAuditOutputs writes the report in the chosen format to w and, when

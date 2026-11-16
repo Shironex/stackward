@@ -14,9 +14,11 @@ import (
 // overwriting another file through a planted link, refuses anything but a
 // regular file with a single link (a hard link to another file, a FIFO that
 // would block the run, a device), and creates the file readable by its owner
-// only. An existing file keeps its mode.
-func createOutput(path string) (*os.File, error) {
-	return openOutput("--out", path, 0o600, false)
+// only. An existing file keeps its mode. inputs are files the run reads
+// (diff reports, a --baseline): --out may not be one of them, which is
+// checked before anything is truncated.
+func createOutput(path string, inputs ...*os.File) (*os.File, error) {
+	return openOutput("--out", path, 0o600, false, inputs)
 }
 
 // createTextfile opens the Prometheus textfile for writing. The textfile
@@ -26,13 +28,14 @@ func createOutput(path string) (*os.File, error) {
 // made readable by everyone (0644, despite the umask): node_exporter usually
 // runs as its own user, and the file holds counts only.
 func createTextfile(path string) (*os.File, error) {
-	return openOutput("--textfile", path, 0o644, true)
+	return openOutput("--textfile", path, 0o644, true, nil)
 }
 
 // openOutput opens path for writing with the checks above. fresh unlinks
 // what is at path and creates a new file with mode; otherwise an existing
-// regular file is truncated after the checks, keeping its mode.
-func openOutput(flagName, path string, mode os.FileMode, fresh bool) (*os.File, error) {
+// regular file is truncated after the checks, keeping its mode. A file
+// that is one of inputs is refused before it is truncated.
+func openOutput(flagName, path string, mode os.FileMode, fresh bool, inputs []*os.File) (*os.File, error) {
 	flags := os.O_WRONLY | os.O_CREATE | syscall.O_NOFOLLOW | syscall.O_NONBLOCK
 	if fresh {
 		if err := syscall.Unlink(path); err != nil && !errors.Is(err, syscall.ENOENT) {
@@ -62,6 +65,9 @@ func openOutput(flagName, path string, mode os.FileMode, fresh bool) (*os.File, 
 		if err := f.Chmod(mode); err != nil {
 			return fail(err)
 		}
+	}
+	if err := notAnInput(fi, inputs); err != nil {
+		return fail(err)
 	}
 	if !fresh {
 		if err := f.Truncate(0); err != nil {
