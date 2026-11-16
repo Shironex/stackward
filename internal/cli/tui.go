@@ -21,6 +21,7 @@ import (
 	"github.com/Shironex/stackward/internal/sandbox"
 	"github.com/Shironex/stackward/internal/tui"
 	"github.com/Shironex/stackward/internal/version"
+	"github.com/Shironex/stackward/internal/waiver"
 )
 
 type tuiFlags struct {
@@ -30,6 +31,7 @@ type tuiFlags struct {
 	timeout      time.Duration
 	showHostname bool
 	noSandbox    bool
+	waivers      string
 	// The step list: a saved plan, the transaction deadline and --plain.
 	planFile string
 	within   time.Duration
@@ -83,6 +85,7 @@ func parseTUIFlags(args []string, stderr io.Writer) (tf tuiFlags, ok bool, code 
 	fs.DurationVar(&tf.timeout, "timeout", facts.DefaultTimeout, "time limit for each collector")
 	fs.BoolVar(&tf.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&tf.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
+	fs.StringVar(&tf.waivers, "waivers", "", waiversHelp)
 	fs.StringVar(&tf.planFile, "plan", "", "open the guided step list over this plan file (stackward plan --out writes one); applies only what you confirm (root)")
 	fs.DurationVar(&tf.within, "confirm-within", apply.DefaultConfirmWithin, fmt.Sprintf("with --plan, access-critical steps: roll back unless confirmed within this time (%s to %s)", apply.MinConfirmWithin, apply.MaxConfirmWithin))
 	fs.BoolVar(&tf.plain, "plain", false, "with --plan: print the plan as text instead of opening the list, as without a terminal")
@@ -112,7 +115,7 @@ func checkTUIFlags(fs *flag.FlagSet, tf tuiFlags) error {
 	set := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
 	if tf.planFile != "" {
-		for _, n := range []string{"report", "facts", "profile", "timeout", "show-hostname", "no-sandbox"} {
+		for _, n := range []string{"report", "facts", "profile", "timeout", "show-hostname", "no-sandbox", "waivers"} {
 			if set[n] {
 				return fmt.Errorf("--%s does not go with --plan: the step list reads a saved plan; give it to stackward plan instead", n)
 			}
@@ -144,6 +147,9 @@ func prepareTUI(tf tuiFlags, stdout, stderr io.Writer) (*tuiSession, int) {
 	if tf.reportFile != "" && profSet {
 		return fail("--profile applies when checks run; a saved report already has one")
 	}
+	if tf.reportFile != "" && tf.waivers != "" {
+		return fail("--waivers applies when checks run; a saved report already shows its waivers")
+	}
 	// Open everything before the sandbox: afterwards no file can be
 	// opened for writing, and the terminal is opened read and write.
 	var loadedRep *report.Report
@@ -159,6 +165,12 @@ func prepareTUI(tf tuiFlags, stdout, stderr io.Writer) (*tuiSession, int) {
 	}
 	if err != nil {
 		return fail("%v", err)
+	}
+	var ws []waiver.Waiver
+	if loadedRep == nil {
+		if ws, err = loadWaivers(tf.waivers); err != nil {
+			return fail("%v", err)
+		}
 	}
 	if !isTerminal(stdout) {
 		return fail("needs a terminal; use \"stackward audit\" for plain or JSON output")
@@ -186,6 +198,7 @@ func prepareTUI(tf tuiFlags, stdout, stderr io.Writer) (*tuiSession, int) {
 		}
 		rep, err = audit.Evaluate(f, audit.Options{
 			Version: version.String(), Sandbox: sb, Profile: prof, ProfileSet: profSet, ShowHostname: tf.showHostname,
+			Waivers: ws,
 		})
 		if err != nil {
 			closeIn()

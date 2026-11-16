@@ -23,6 +23,7 @@ import (
 	"github.com/Shironex/stackward/internal/report"
 	"github.com/Shironex/stackward/internal/sandbox"
 	"github.com/Shironex/stackward/internal/version"
+	"github.com/Shironex/stackward/internal/waiver"
 )
 
 const usage = `stackward audits a Linux server running Docker, a PaaS, tunnels and
@@ -106,6 +107,7 @@ type auditFlags struct {
 	info         bool
 	group        bool
 	plain        bool
+	waivers      string
 	prov         providerFlags
 }
 
@@ -129,6 +131,7 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.BoolVar(&af.info, "info", false, "text output: list every info result in full instead of one line each")
 	fs.BoolVar(&af.group, "group", false, "text output: lay results out by check group instead of fail, warn, unknown, info")
 	fs.BoolVar(&af.plain, "plain", false, "text output: no colors, Unicode or box lines, as when piped (NO_COLOR drops only colors)")
+	fs.StringVar(&af.waivers, "waivers", "", waiversHelp)
 	addProviderFlags(fs, &af.prov)
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n\nFlags:\n")
@@ -202,6 +205,13 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 			return report.ExitError
 		}
 	}
+	var ws []waiver.Waiver
+	if !af.dumpFacts {
+		if ws, err = loadWaivers(af.waivers); err != nil {
+			fmt.Fprintf(stderr, "stackward audit: %v\n", err)
+			return report.ExitError
+		}
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -232,6 +242,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 
 	rep, err := audit.Evaluate(f, audit.Options{
 		Version: version.String(), Sandbox: sb, Profile: prof, ProfileSet: profSet, ShowHostname: af.showHostname,
+		Waivers: ws,
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
