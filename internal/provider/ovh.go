@@ -269,9 +269,11 @@ func normaliseOVH(r ovhRule) (facts.ProviderRule, error) {
 }
 
 // ovhSource normalises a rule source: "any" (or empty, or 0.0.0.0/0) is any
-// source, a prefix stays as it is, a bare address becomes a host prefix
-// (/32, or /128 for IPv6). Anything else is refused, so the read counts as
-// partial instead of the checks guessing how wide the source is.
+// source, an IPv4 prefix stays as it is, a bare IPv4 address becomes a /32
+// (a bare 0.0.0.0 too: it names one host, not every one). The Edge Network
+// Firewall filters IPv4 only, so an IPv6 or IPv4-mapped source is refused,
+// like anything else that does not parse: the read counts as partial
+// instead of the checks guessing what the source covers.
 func ovhSource(s string) ([]string, error) {
 	s = strings.TrimSpace(s)
 	switch s {
@@ -279,13 +281,19 @@ func ovhSource(s string) ([]string, error) {
 		return nil, nil
 	}
 	if p, err := netip.ParsePrefix(s); err == nil {
+		if !p.Addr().Is4() {
+			return nil, fmt.Errorf("source %q is not IPv4", s)
+		}
 		return []string{p.String()}, nil
 	}
 	a, err := netip.ParseAddr(s)
 	if err != nil {
 		return nil, fmt.Errorf("source %q is neither an address nor a prefix", s)
 	}
-	return []string{netip.PrefixFrom(a, a.BitLen()).String()}, nil
+	if !a.Is4() {
+		return nil, fmt.Errorf("source %q is not IPv4", s)
+	}
+	return []string{netip.PrefixFrom(a, 32).String()}, nil
 }
 
 // parseOVHPorts reads the port strings OVH prints: "53", "eq 53",

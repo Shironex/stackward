@@ -268,7 +268,7 @@ func TestAutoPicksByCredentials(t *testing.T) {
 
 func TestOVHSource(t *testing.T) {
 	for in, want := range map[string]string{"any": "", "": "", "0.0.0.0/0": "", "203.0.113.7/32": "203.0.113.7/32",
-		"203.0.113.7": "203.0.113.7/32", "2001:db8::7": "2001:db8::7/128", "198.51.100.0/24": "198.51.100.0/24"} {
+		"203.0.113.7": "203.0.113.7/32", "0.0.0.0": "0.0.0.0/32", "198.51.100.0/24": "198.51.100.0/24"} {
 		got, err := ovhSource(in)
 		if err != nil {
 			t.Errorf("%q: %v", in, err)
@@ -282,7 +282,8 @@ func TestOVHSource(t *testing.T) {
 			t.Errorf("%q = %q, want %q", in, s, want)
 		}
 	}
-	for _, bad := range []string{"garbage", "203.0.113.300", "203.0.113.7/40"} {
+	for _, bad := range []string{"garbage", "203.0.113.300", "203.0.113.7/40",
+		"2001:db8::7", "2001:db8::/32", "::/0", "::ffff:0.0.0.0/96", "::ffff:203.0.113.7"} {
 		if _, err := ovhSource(bad); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
