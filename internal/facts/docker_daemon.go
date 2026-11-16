@@ -62,6 +62,30 @@ func readDaemonConfig(sys System) *DockerDaemon {
 // unit file systemd would load, then drop-ins by name; an empty ExecStart=
 // resets the list, so the last one after a reset wins.
 func readUnitFlags(sys System, dd *DockerDaemon) {
+	var exec, execFrom string
+	for _, f := range dockerUnitPaths(sys) {
+		b, err := sys.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		dd.UnitFiles = append(dd.UnitFiles, f)
+		for _, line := range unitLines(b) {
+			k, v, ok := strings.Cut(line, "=")
+			if !ok || strings.TrimSpace(k) != "ExecStart" {
+				continue
+			}
+			exec, execFrom = strings.TrimSpace(v), f
+		}
+	}
+	if exec == "" {
+		return
+	}
+	applyExecFlags(dd, strings.Fields(exec), execFrom)
+}
+
+// dockerUnitPaths lists the files that make up docker.service in the order
+// systemd reads them: the unit file, then drop-ins by name.
+func dockerUnitPaths(sys System) []string {
 	var files []string
 	for _, p := range dockerUnitFiles {
 		if _, err := sys.ReadFile(p); err == nil {
@@ -92,39 +116,25 @@ func readUnitFlags(sys System, dd *DockerDaemon) {
 	for _, n := range names {
 		files = append(files, dropIns[n])
 	}
+	return files
+}
 
-	var exec, execFrom string
-	for _, f := range files {
-		b, err := sys.ReadFile(f)
-		if err != nil {
-			continue
-		}
-		dd.UnitFiles = append(dd.UnitFiles, f)
-		for _, line := range unitLines(b) {
-			k, v, ok := strings.Cut(line, "=")
-			if !ok || strings.TrimSpace(k) != "ExecStart" {
-				continue
-			}
-			exec, execFrom = strings.TrimSpace(v), f
-		}
-	}
-	if exec == "" {
-		return
-	}
-	args := strings.Fields(exec)
+// applyExecFlags reads the dockerd flags of the effective ExecStart (from
+// names the file that set it).
+func applyExecFlags(dd *DockerDaemon, args []string, from string) {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
 		case a == "-H" || a == "--host":
 			if i+1 < len(args) {
-				dd.Hosts = append(dd.Hosts, DockerHost{Addr: args[i+1], Source: execFrom})
+				dd.Hosts = append(dd.Hosts, DockerHost{Addr: args[i+1], Source: from})
 				i++
 			}
 		case strings.HasPrefix(a, "-H="), strings.HasPrefix(a, "--host="):
 			_, v, _ := strings.Cut(a, "=")
-			dd.Hosts = append(dd.Hosts, DockerHost{Addr: v, Source: execFrom})
+			dd.Hosts = append(dd.Hosts, DockerHost{Addr: v, Source: from})
 		case strings.HasPrefix(a, "-H") && len(a) > 2:
-			dd.Hosts = append(dd.Hosts, DockerHost{Addr: a[2:], Source: execFrom})
+			dd.Hosts = append(dd.Hosts, DockerHost{Addr: a[2:], Source: from})
 		case a == "--tlsverify" || a == "--tlsverify=true":
 			dd.TLSVerify = true
 		case a == "--iptables=false":
