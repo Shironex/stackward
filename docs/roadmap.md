@@ -4,7 +4,9 @@ This is the public plan for stackward. Each milestone below is a GitHub mileston
 
 Version 0.1 is released (`v0.1.0` on 2026-11-15, patches `v0.1.1` and `v0.1.2` the same day): the read only audit, `probe`, `explain`, the TUI and signed releases.
 
-Version 0.2 is released (`v0.2.0` on 2026-11-16): `plan`, `apply`, `undo` and `confirm`, and the guided step list in the TUI. A patch, `v0.2.1` (2026-11-16), adds the opt in provider firewall audit (`--provider hetzner|ovh`, the PFW checks), an early part of the v0.4 provider firewall item (#41).
+Version 0.2 is released (`v0.2.0` on 2026-11-16): `plan`, `apply`, `undo` and `confirm`, and the guided step list in the TUI.
+
+Version 0.3 is released (`v0.3.0` on 2026-11-16) with the opt in provider firewall audit (`--provider hetzner|ovh`, the PFW checks), the first part of the provider firewall item (#41). The items planned under the v0.3 heading below (waivers, diff, `audit --ssh`, `schedule`) move to the next minor release; the GitHub milestones keep their names for now.
 
 ## v0.2: Harden with plan and apply (released)
 
@@ -24,7 +26,7 @@ Version 0.2 is released (`v0.2.0` on 2026-11-16): `plan`, `apply`, `undo` and `c
 
 [Milestone on GitHub](https://github.com/Shironex/stackward/milestone/1)
 
-## v0.3: Make it a habit
+## Next minor (planned as v0.3 on GitHub): Make it a habit
 
 Audits become something you repeat. Waivers come first, so an accepted finding stops being noise without being hidden.
 
