@@ -190,7 +190,7 @@ stackward audit [--info] [--group] [--plain]
 stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
-stackward audit --textfile FILE       also write a Prometheus textfile metric
+stackward audit --textfile F.prom.tmp also write a Prometheus textfile metric (rename it after the run)
 stackward explain [id]                explain a check, or list them all
 stackward schedule --print [-- FLAGS] print a systemd service and timer for a scheduled audit (installs nothing)
 stackward tui [--report FILE | --facts FILE]

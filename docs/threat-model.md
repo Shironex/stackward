@@ -169,11 +169,16 @@ then quoted with `$` escaped. The printed service makes the file system read
 only except the two output directories, blocks IP traffic, filters mount,
 module, reboot, clock, raw I/O and ptrace system calls, and keeps only
 `CAP_DAC_READ_SEARCH`, `CAP_NET_ADMIN`, `CAP_NET_RAW` and `CAP_SYS_PTRACE`.
-Those are not harmless: `CAP_NET_ADMIN` can change the firewall as well as
-read it, uid 0 can signal other root processes, and without Landlock
-`CAP_SYS_PTRACE` reaches other processes' files through `/proc/<pid>/root`.
-[schedule.md](schedule.md#the-account) says what each one is for and what
-it allows. The rename of each output into place is done by `mv` in the
+This hardening does not contain a compromised root audit: treat one as
+full root. The audit connects to root daemons' UNIX sockets (Docker,
+systemd and D-Bus, tailscaled) to read them, those daemons trust uid 0, and
+nothing in the unit, the capability set or Landlock stops `connect()` to a
+socket file; hiding the sockets would blind the checks that read them.
+`CAP_NET_ADMIN` can change the firewall as well as read it, uid 0 can signal
+other root processes, and without Landlock `CAP_SYS_PTRACE` can write other
+processes' memory through `/proc/<pid>/mem` and their files through
+`/proc/<pid>/root`. [schedule.md](schedule.md#what-a-compromised-root-run-can-do)
+spells this out; running the audit as an account is the way to avoid it. The rename of each output into place is done by `mv` in the
 unit, so the audit process keeps its Landlock sandbox unchanged.
 
 ## What is out of scope
