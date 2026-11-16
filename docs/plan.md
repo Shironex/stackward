@@ -63,7 +63,7 @@ Every step has one of three risk classes.
 |---|---|---|
 | `safe` | Changes a setting that cannot cut you off or stop your services; may restart a logging daemon. | journald size cap, sysctl hardening drop-in |
 | `networking` | Can interrupt traffic: restarts Docker, so containers stop and start. Always says what it restarts. | Docker log rotation in `daemon.json` |
-| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | admin and PaaS accounts, the sshd drop-in, locking the default cloud account, the fail2ban sshd jail |
+| `access-critical` | Touches SSH, the firewall or users, where a mistake can lock you out. Apply runs these only when named, alone, inside a transaction with a rollback timer and a confirm from a new SSH session ([apply.md](apply.md#the-access-critical-transaction)). | admin and PaaS accounts, the sshd drop-in, locking the default cloud account, the fail2ban sshd jail, the UFW policy and ufw-docker |
 
 Some steps are **opt in** (`opt_in: true`): apply runs them only when you
 select them by id. The Docker step is opt in because of its restart.
@@ -83,6 +83,8 @@ select them by id. The Docker step is opt in because of its restart.
 | `unattended-upgrades-install` | UPD-001 | safe, opt in | the same drop-in and timer, plus `apt-get install -y unattended-upgrades` as a named command, when the package is missing; undo purges it |
 | `unattended-upgrades-reboot` | SYS-002, SYS-003, UPD-004 | networking, opt in | the reboot decision: creates `/etc/apt/apt.conf.d/91stackward-automatic-reboot` with `Automatic-Reboot "true"` and `Automatic-Reboot-Time "04:00"`; runs nothing |
 | `fail2ban-sshd` | CS-010, SSH-011 | access-critical, opt in | creates `/etc/fail2ban/jail.d/90-stackward-sshd.local` turning on the sshd jail on sshd's ports, checks it with `fail2ban-client -t`, reloads fail2ban; installs fail2ban first (a named command) when it is missing |
+| `ufw-policy` | NET-001 | access-critical | turns UFW on with a default deny incoming policy (or sets the default to deny on an active UFW): adds the allow rules SSH needs on sshd's ports, the tailnet (`allow in on tailscale0`) and the web ports the profile keeps public to `/etc/ufw/user.rules` and `user6.rules` (each test loaded with `iptables-restore --test`), sets `DEFAULT_INPUT_POLICY="DROP"` and `ENABLED=yes`, then `ufw --force enable` (or `ufw reload`); undo restores the files and runs `ufw disable` (or `ufw reload`) |
+| `ufw-docker` | DKR-001, PAAS-002, PAAS-003 | access-critical, opt in | filters published container ports: appends the published ufw-docker block to `/etc/ufw/after.rules`, adds `ufw route allow` rules for the container ports the profile keeps public (and on `tailscale0`), test loads both, then `ufw reload`; undo restores the files, puts `DOCKER-USER` back to Docker's own rule and deletes the logging chain |
 
 The account and SSH steps, in the order apply should run them:
 
@@ -148,6 +150,44 @@ Rules they follow:
   says so; the [lockout guard](safety.md#lockout-guard) then refuses to
   apply the jail from an SSH session whose address it would not ignore.
 
+The firewall steps, in the order apply should run them:
+
+1. **`ufw-policy`** never turns on a default deny without the
+   [lockout guard](safety.md#lockout-guard)'s proof that SSH stays
+   reachable for the session that applies, on every port sshd listens on
+   (from sshd's facts, never an assumed 22). SSH that no rule restricts gets
+   an allow from anywhere; SSH that the rules already restrict to some
+   networks is kept as it is (the step says public SSH closes), and on a
+   host with a PaaS panel that case is `manual`. The rules are written
+   into UFW's files before the policy loads, so they load in one step.
+   Host services listening publicly close, and the step lists them: on
+   `public-web` and `paas-panel` hosts 80 and 443 stay open, on `tunnel`
+   and `tailnet-only` hosts they close, and with an unknown or mixed
+   profile a public web port makes the step `manual` (plan again with
+   `--profile`). The forward policy, `ip_forward`, Docker's settings and
+   `/etc/ufw/sysctl.conf` are left alone. It is `manual` when UFW is not
+   installed (nothing is installed), firewalld runs, or `ufw.conf` says
+   enabled while UFW is not loaded. On a fresh install `user.rules` is still
+   the short template ufw ships; the step writes it in the full format ufw
+   itself writes when it first saves rules (at its default log level, low),
+   so the rewrite on `ufw enable` changes nothing and undo finds the file
+   it wrote. With another log level that case is `manual`.
+2. **`ufw-docker`** is opt in and needs UFW on with a deny default first.
+   Docker forwards published ports past UFW's input rules (DKR-001); this
+   step writes the well known ufw-docker rules into
+   `/etc/ufw/after.rules` (nothing is downloaded, no script runs), after
+   which new connections to a published port are dropped unless a
+   `ufw route allow` rule lets the container port in. It says so, lists
+   the ports that close and the ones that stay reachable and from where:
+   the ones the profile keeps (the proxy's 80 and 443 and the panel on
+   `public-web` and `paas-panel`; none on `tunnel` and `tailnet-only`),
+   the tailnet, the private ranges the ufw-docker rules let through, and
+   ports published on loopback. A panel is closed only when the profile
+   says so. It is `manual` with Docker's nftables backend (the rules
+   need iptables' `DOCKER-USER` chain), with Docker's iptables off, when
+   `DOCKER-USER` holds rules Docker did not write, or when ufw-docker is
+   there already. The rules cover IPv4 only.
+
 ## The plan file (plan.v1)
 
 The JSON contract is [schema/plan.v1.json](../schema/plan.v1.json). Adding an
@@ -190,7 +230,7 @@ Each step:
 | `fixes` | the check ids it makes pass |
 | `risk`, `opt_in` | risk class; whether apply runs it only when selected |
 | `restarts` | services it restarts, in order |
-| `touches` | everything it changes, as `file:`, `sysctl:`, `service:`, `docker-daemon:`, `account:` or `authorized-keys:` targets |
+| `touches` | everything it changes, as `file:`, `sysctl:`, `service:`, `docker-daemon:`, `account:`, `authorized-keys:` or `firewall:` targets |
 | `edits` | file changes, applied in order before `commands` |
 | `commands` | programs it runs, as argument vectors (no shell), each with a `why` |
 | `undo` | how to reverse it by hand, with commands |
