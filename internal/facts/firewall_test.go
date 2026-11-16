@@ -233,7 +233,8 @@ func TestFirewallCollectorNonRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw := out.Firewall
-	want := &UFW{Installed: true, Source: "files", Status: "active", Enabled: "yes", DefaultIncoming: "deny", IPv6: "no"}
+	want := &UFW{Installed: true, Source: "files", Status: "active", Enabled: "yes", DefaultIncoming: "deny", IPv6: "no",
+		Files: map[string]string{UFWConfPath: "ENABLED=yes\n", UFWDefaultPath: "IPV6=no\nDEFAULT_INPUT_POLICY=\"DROP\"\n"}}
 	if !reflect.DeepEqual(fw.UFW, want) {
 		t.Errorf("ufw = %+v, want %+v", fw.UFW, want)
 	}

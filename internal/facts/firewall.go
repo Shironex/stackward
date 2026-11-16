@@ -58,6 +58,12 @@ type UFW struct {
 	// empty and proves nothing.
 	RulesKnown bool      `json:"rules_known"`
 	Rules      []UFWRule `json:"rules,omitempty"`
+	// Files is the text of the UFW files a firewall plan step edits
+	// (UFWFilePaths), keyed by path, for those that were readable and at
+	// most MaxUFWFileBytes long. They hold settings and rules, no
+	// secrets; a plan needs them to write an exact edit and to restore
+	// it.
+	Files map[string]string `json:"files,omitempty"`
 }
 
 // UFWRule is one UFW rule.
@@ -304,6 +310,7 @@ func collectUFW(sys System, ipt *Iptables, nft *NFTables) *UFW {
 		rules = append(rules, ParseUFWUserRules(b, p == ufwUser6Rules)...)
 	}
 	u.Rules, u.RulesKnown = rules, readAny
+	u.Files = readUFWFiles(sys)
 
 	loaded, known := ufwLoaded(ipt, nft)
 	if known {
