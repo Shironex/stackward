@@ -35,7 +35,7 @@ func TestWaiverScreen(t *testing.T) {
 		t.Fatalf("five presses of l must reach the accepted level, got %q", m.Level())
 	}
 	out := screen(m)
-	for _, want := range []string{"2 accepted", "review 3 waivers", "ACCEPTED USR-004", "ACCEPTED USR-005", "level accepted"} {
+	for _, want := range []string{"3 accepted", "review 5 waivers", "ACCEPTED USR-004", "ACCEPTED USR-005", "ACCEPTED USR-006", "level accepted"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
@@ -45,7 +45,7 @@ func TestWaiverScreen(t *testing.T) {
 	}
 	golden.RequireEqual(t, out)
 	for _, w := range []int{60, 80} {
-		if l2 := ansi.Strip(strings.Split(screen(drive(t, waivedReport(t), Options{}, w, 24)), "\n")[1]); !strings.Contains(l2, "review 3 waivers") {
+		if l2 := ansi.Strip(strings.Split(screen(drive(t, waivedReport(t), Options{}, w, 24)), "\n")[1]); !strings.Contains(l2, "review 5 waivers") {
 			t.Errorf("width %d: the header drops the waivers to review: %q", w, l2)
 		}
 	}
@@ -69,6 +69,7 @@ func TestWaiverDetail(t *testing.T) {
 	for key, want := range map[string][]string{
 		"USR-004 file:/etc/sudoers.d/deploy": {"ACCEPTED · FAIL · high severity", "WAIVER", "accepted until 2026-03-01: the deploy tool"},
 		"USR-006 user:carol":                 {"WARN · low severity", "expired after 2026-02-01, the finding is back"},
+		"USR-002 user:ubuntu":                {"FAIL · critical severity", "not accepted, the waiver covers up to warn only"},
 	} {
 		for _, w := range want {
 			if !strings.Contains(details[key], w) {

@@ -166,6 +166,9 @@ type Item struct {
 	// accepted, or expired with the finding back at its level. Level and
 	// evidence are always the real ones.
 	Waiver *ResultWaiver `json:"waiver,omitempty"`
+	// rawSubject is the subject before redaction, which waivers match on
+	// so two subjects that redact alike stay apart. Never rendered.
+	rawSubject string
 }
 
 // Fix is the short fix hint and an optional docs link.
@@ -218,7 +221,7 @@ func Build(f *facts.Facts, results []checks.Result, cat *catalog.Catalog, m Meta
 	for _, res := range results {
 		it := Item{
 			ID: res.ID, Group: catalog.GroupOf(res.ID), Level: res.Level,
-			Subject: redact.String(res.Subject), Message: redact.String(res.Message),
+			Subject: redact.String(res.Subject), Message: redact.String(res.Message), rawSubject: res.Subject,
 		}
 		if e, ok := cat.Lookup(res.ID); ok {
 			it.Title, it.Severity, it.Fix = e.Title, e.Severity, Fix{Hint: e.Fix, Docs: e.Docs}

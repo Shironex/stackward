@@ -45,12 +45,18 @@ func waivedReport(t *testing.T, collected time.Time, ws []waiver.Waiver) *Report
 }
 
 func w(check, subject, expires string) waiver.Waiver {
-	return waiver.Waiver{Check: check, Subject: subject, Reason: "accepted for " + subject, Expires: expires}
+	return waiver.Waiver{Check: check, Subject: subject, Level: waiver.LevelWarn, Reason: "accepted for " + subject, Expires: expires}
+}
+
+// withFail sets level: fail.
+func withFail(v waiver.Waiver) waiver.Waiver {
+	v.Level = waiver.LevelFail
+	return v
 }
 
 func TestWaiverAccepts(t *testing.T) {
 	plain := waivedReport(t, waiverDay, nil)
-	r := waivedReport(t, waiverDay, []waiver.Waiver{w("NET-004", "port:tcp/443", "2026-03-01"), w("SYS-002", "host", "2027-01-01")})
+	r := waivedReport(t, waiverDay, []waiver.Waiver{w("NET-004", "port:tcp/443", "2026-03-01"), withFail(w("SYS-002", "host", "2027-01-01"))})
 
 	if r.Summary != (Summary{Warn: 1, Accepted: 2, Unknown: 1, Pass: 1}) {
 		t.Errorf("summary = %+v", r.Summary)
@@ -71,7 +77,7 @@ func TestWaiverAccepts(t *testing.T) {
 	if !r.Results[0].Accepted() || r.Results[1].Accepted() || !r.Results[3].Accepted() {
 		t.Errorf("accepted flags wrong: %+v", r.Results)
 	}
-	if got := r.Results[0].Waiver; *got != (ResultWaiver{Status: WaiverAccepted, Reason: "accepted for port:tcp/443", Expires: "2026-03-01"}) {
+	if got := r.Results[0].Waiver; *got != (ResultWaiver{Status: WaiverAccepted, Level: "warn", Reason: "accepted for port:tcp/443", Expires: "2026-03-01"}) {
 		t.Errorf("waiver = %+v", got)
 	}
 	for _, e := range r.Waivers {
@@ -88,7 +94,7 @@ func TestWaiverStates(t *testing.T) {
 		w("SYS-001", "host", "2027-01-01"), // matches a pass only
 		w("SYS-003", "host", "2027-01-01"), // matches an unknown only
 		w("ZZZ-999", "host", "2027-01-01"),
-		w("SYS-002", "host", "2027-01-01"),
+		withFail(w("SYS-002", "host", "2027-01-01")),
 	})
 	want := []string{WaiverExpired, WaiverStale, WaiverStale, WaiverStale, WaiverUnknownCheck, WaiverApplied}
 	for i, e := range r.Waivers {
@@ -115,7 +121,7 @@ func TestWaiverStates(t *testing.T) {
 }
 
 func TestWaiverWithoutCollectionTime(t *testing.T) {
-	r := waivedReport(t, time.Time{}, []waiver.Waiver{w("SYS-002", "host", "2099-01-01")})
+	r := waivedReport(t, time.Time{}, []waiver.Waiver{withFail(w("SYS-002", "host", "2099-01-01"))})
 	if r.Summary.Accepted != 0 || r.Summary.Fail != 1 || r.Waivers[0].Status != WaiverExpired {
 		t.Errorf("without a collection time no waiver may apply: %+v %+v", r.Summary, r.Waivers)
 	}
@@ -123,7 +129,7 @@ func TestWaiverWithoutCollectionTime(t *testing.T) {
 
 func TestWaiverRedacts(t *testing.T) {
 	secret := "hunter" + "2-not-real"
-	ws := []waiver.Waiver{{Check: "SYS-002", Subject: "host", Reason: "DB_PASSWORD=" + secret, Expires: "2027-01-01"}}
+	ws := []waiver.Waiver{{Check: "SYS-002", Subject: "host", Level: waiver.LevelFail, Reason: "DB_PASSWORD=" + secret, Expires: "2027-01-01"}}
 	r := waivedReport(t, waiverDay, ws)
 	var buf bytes.Buffer
 	if err := WriteJSON(&buf, r); err != nil {
@@ -181,7 +187,7 @@ func TestWaiverJSONMatchesSchema(t *testing.T) {
 
 func TestWaiverText(t *testing.T) {
 	r := waivedReport(t, waiverDay, []waiver.Waiver{
-		w("SYS-002", "host", "2027-01-01"), w("NET-004", "port:tcp/22", "2026-01-01"), w("ZZZ-999", "host", "2027-01-01"),
+		withFail(w("SYS-002", "host", "2027-01-01")), w("NET-004", "port:tcp/22", "2026-01-01"), w("ZZZ-999", "host", "2027-01-01"),
 	})
 	for _, o := range []TextOptions{{}, {Group: true}} {
 		out := writeText(t, r, o)
@@ -207,7 +213,7 @@ func TestWaiverText(t *testing.T) {
 }
 
 func TestWaiverMarkdown(t *testing.T) {
-	r := waivedReport(t, waiverDay, []waiver.Waiver{w("SYS-002", "host", "2027-01-01"), w("NET-004", "port:tcp/9", "2027-01-01")})
+	r := waivedReport(t, waiverDay, []waiver.Waiver{withFail(w("SYS-002", "host", "2027-01-01")), w("NET-004", "port:tcp/9", "2027-01-01")})
 	var buf bytes.Buffer
 	if err := WriteMarkdown(&buf, r, MarkdownOptions{}); err != nil {
 		t.Fatal(err)
@@ -227,5 +233,77 @@ func TestWaiverMarkdown(t *testing.T) {
 	}
 	if strings.Contains(out, "### FAIL") {
 		t.Errorf("an accepted fail is listed as an open finding:\n%s", out)
+	}
+}
+
+// A waiver for a warning never accepts a fail on the same subject.
+func TestWaiverLevelExceeded(t *testing.T) {
+	r := waivedReport(t, waiverDay, []waiver.Waiver{w("SYS-002", "host", "2027-01-01")})
+	it := r.Results[3]
+	if it.Accepted() || it.Waiver == nil || it.Waiver.Status != WaiverLevelExceeded || r.Waivers[0].Status != WaiverLevelExceeded {
+		t.Errorf("result %+v, entry %+v", it, r.Waivers[0])
+	}
+	if r.Summary.Fail != 1 || r.Summary.Accepted != 0 || r.ExitCode(FailOnFail) != ExitFindings {
+		t.Errorf("the fail must count and trip --fail-on: %+v", r.Summary)
+	}
+	if !strings.Contains(AcceptedNote(it.Waiver), "not accepted, the waiver covers up to warn only") {
+		t.Errorf("note = %q", AcceptedNote(it.Waiver))
+	}
+}
+
+func TestWaiverLongLived(t *testing.T) {
+	r := waivedReport(t, waiverDay, []waiver.Waiver{w("NET-004", "port:tcp/443", "2027-03-02"), w("NET-004", "port:tcp/22", "2027-03-01")})
+	if r.Waivers[0].Status != WaiverLongLived || !r.Results[0].Accepted() {
+		t.Errorf("a far expiry still applies and is listed: %+v %+v", r.Waivers[0], r.Results[0].Waiver)
+	}
+	if r.Waivers[1].Status != WaiverApplied {
+		t.Errorf("exactly a year is not long-lived: %+v", r.Waivers[1])
+	}
+	if got := WaiversToReview(r.Waivers); len(got) != 1 || got[0].Status != WaiverLongLived {
+		t.Errorf("to review = %+v", got)
+	}
+}
+
+// Matching uses the raw subject: two subjects that redact alike stay apart,
+// a waiver naming the redacted text matches nothing, and a waiver matching
+// more than one result accepts none.
+func TestWaiverRawSubjectAndAmbiguity(t *testing.T) {
+	cat, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &facts.Facts{CollectedAt: waiverDay}
+	results := []checks.Result{
+		{ID: "USR-004", Subject: "file:/etc/sudoers.d/token=alpha", Level: checks.Warn},
+		{ID: "USR-004", Subject: "file:/etc/sudoers.d/token=omega", Level: checks.Warn},
+		{ID: "USR-005", Subject: "user:bob", Level: checks.Warn},
+		{ID: "USR-005", Subject: "user:bob", Level: checks.Warn},
+	}
+	r := Build(f, results, cat, Meta{Waivers: []waiver.Waiver{
+		w("USR-004", "file:/etc/sudoers.d/token=alpha", "2027-01-01"),
+		w("USR-004", "file:/etc/sudoers.d/token=[REDACTED]", "2027-01-01"),
+		w("USR-005", "user:bob", "2027-01-01"),
+	}})
+	if !r.Results[0].Accepted() || r.Results[1].Accepted() {
+		t.Errorf("raw subjects must stay apart: %+v %+v", r.Results[0].Waiver, r.Results[1].Waiver)
+	}
+	if r.Waivers[1].Status != WaiverStale {
+		t.Errorf("a waiver naming the redacted subject must match nothing: %+v", r.Waivers[1])
+	}
+	if r.Waivers[2].Status != WaiverAmbiguous || r.Waivers[2].Results != 2 || r.Results[2].Waiver != nil || r.Results[3].Waiver != nil {
+		t.Errorf("ambiguous waiver: %+v", r.Waivers[2])
+	}
+	var buf bytes.Buffer
+	if err := WriteJSON(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "alpha") || strings.Contains(buf.String(), "omega") {
+		t.Errorf("a raw subject reached the JSON:\n%s", buf.String())
+	}
+	if err := CheckWaivers([]waiver.Waiver{{Subject: "file:/etc/sudoers.d/token=alpha", Line: 7}}); err == nil || !strings.Contains(err.Error(), "line 7") {
+		t.Errorf("CheckWaivers = %v", err)
+	}
+	if err := CheckWaivers([]waiver.Waiver{{Subject: "user:bob"}}); err != nil {
+		t.Errorf("CheckWaivers(plain) = %v", err)
 	}
 }

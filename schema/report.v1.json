@@ -142,14 +142,15 @@
     "waiver": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["check", "subject", "reason", "expires", "status", "results"],
+      "required": ["check", "subject", "level", "reason", "expires", "status", "results"],
       "properties": {
         "check": { "type": "string", "pattern": "^[A-Z]{2,4}-[0-9]{3}$" },
-        "subject": { "description": "The exact subject of the result it accepts.", "type": "string" },
+        "subject": { "description": "The exact subject of the result it accepts (redacted).", "type": "string" },
+        "level": { "description": "Worst result level the waiver accepts.", "enum": ["warn", "fail"] },
         "reason": { "type": "string" },
         "expires": { "description": "Last day the waiver holds (UTC).", "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
-        "status": { "description": "applied (accepted at least one result), expired (past its date; the results are back at their level), stale (no fail or warn result of the check has this subject) or unknown-check (no check has this id).", "enum": ["applied", "expired", "stale", "unknown-check"] },
-        "results": { "description": "Fail and warn results the waiver matched.", "type": "integer", "minimum": 0 }
+        "status": { "description": "applied (accepted its result), long-lived (accepted its result, but expires more than a year after the audit), expired (past its date; the result is back at its level), level-exceeded (the result is worse than level, so it counts at its level), stale (no fail or warn result of the check has this subject), ambiguous (more than one result has this check and subject, so none is accepted) or unknown-check (no check has this id).", "enum": ["applied", "long-lived", "expired", "level-exceeded", "stale", "ambiguous", "unknown-check"] },
+        "results": { "description": "Results with this check and subject, at any level.", "type": "integer", "minimum": 0 }
       }
     },
     "sandbox": {
@@ -203,12 +204,13 @@
           }
         },
         "waiver": {
-          "description": "Present when a waiver matches this fail or warn result. level and evidence stay the real ones. accepted: counted in summary.accepted instead of its level until expires. expired: counted at its level again.",
+          "description": "Present when a waiver matches this fail or warn result. The result's level and evidence stay the real ones. accepted: counted in summary.accepted instead of its level until expires. expired: counted at its level again. level-exceeded: the result is worse than the waiver's level, so it counts at its level.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["status", "reason", "expires"],
+          "required": ["status", "level", "reason", "expires"],
           "properties": {
-            "status": { "enum": ["accepted", "expired"] },
+            "status": { "enum": ["accepted", "expired", "level-exceeded"] },
+            "level": { "description": "Worst result level the waiver accepts.", "enum": ["warn", "fail"] },
             "reason": { "type": "string" },
             "expires": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
           }

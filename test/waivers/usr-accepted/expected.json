@@ -19,7 +19,7 @@
     "checks": 112,
     "results": 109,
     "checked": 13,
-    "accepted": 2,
+    "accepted": 3,
     "unknown": 95,
     "skipped": 1,
     "root": true,
@@ -40,8 +40,8 @@
   },
   "summary": {
     "fail": 2,
-    "warn": 6,
-    "accepted": 2,
+    "warn": 5,
+    "accepted": 3,
     "unknown": 95,
     "info": 1,
     "pass": 2,
@@ -424,6 +424,12 @@
       },
       "fix": {
         "hint": "Lock the account with `passwd -l \u003cuser\u003e` or set a password."
+      },
+      "waiver": {
+        "status": "level-exceeded",
+        "level": "warn",
+        "reason": "written when this was only a warning",
+        "expires": "2026-12-31"
       }
     },
     {
@@ -485,6 +491,7 @@
       },
       "waiver": {
         "status": "accepted",
+        "level": "fail",
         "reason": "the deploy tool rewrites this file; fix tracked in OPS-12",
         "expires": "2026-03-01"
       }
@@ -505,6 +512,7 @@
       },
       "waiver": {
         "status": "accepted",
+        "level": "warn",
         "reason": "alice runs the deploy containers; reviewed with the team",
         "expires": "2026-06-30"
       }
@@ -538,6 +546,12 @@
       },
       "fix": {
         "hint": "Lock unused accounts with `passwd -l \u003cuser\u003e` or remove them."
+      },
+      "waiver": {
+        "status": "accepted",
+        "level": "warn",
+        "reason": "bob is on leave; account kept for his return",
+        "expires": "2027-06-30"
       }
     },
     {
@@ -557,6 +571,7 @@
       },
       "waiver": {
         "status": "expired",
+        "level": "warn",
         "reason": "carol starts in February",
         "expires": "2026-02-01"
       }
@@ -1848,6 +1863,7 @@
     {
       "check": "USR-005",
       "subject": "user:alice",
+      "level": "warn",
       "reason": "alice runs the deploy containers; reviewed with the team",
       "expires": "2026-06-30",
       "status": "applied",
@@ -1856,14 +1872,34 @@
     {
       "check": "USR-004",
       "subject": "file:/etc/sudoers.d/deploy",
+      "level": "fail",
       "reason": "the deploy tool rewrites this file; fix tracked in OPS-12",
       "expires": "2026-03-01",
       "status": "applied",
       "results": 1
     },
     {
+      "check": "USR-002",
+      "subject": "user:ubuntu",
+      "level": "warn",
+      "reason": "written when this was only a warning",
+      "expires": "2026-12-31",
+      "status": "level-exceeded",
+      "results": 1
+    },
+    {
+      "check": "USR-006",
+      "subject": "user:bob",
+      "level": "warn",
+      "reason": "bob is on leave; account kept for his return",
+      "expires": "2027-06-30",
+      "status": "long-lived",
+      "results": 1
+    },
+    {
       "check": "USR-006",
       "subject": "user:carol",
+      "level": "warn",
       "reason": "carol starts in February",
       "expires": "2026-02-01",
       "status": "expired",
@@ -1872,6 +1908,7 @@
     {
       "check": "USR-001",
       "subject": "user:nobody",
+      "level": "warn",
       "reason": "old waiver for a removed account",
       "expires": "2026-12-31",
       "status": "stale",
@@ -1880,6 +1917,7 @@
     {
       "check": "ZZZ-999",
       "subject": "host",
+      "level": "warn",
       "reason": "typo in the check id",
       "expires": "2026-12-31",
       "status": "unknown-check",

@@ -6,20 +6,20 @@
 - **Profile:** unknown (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 112 checks, 109 results: 13 checked (2 accepted by a waiver), 95 unknown, 1 skipped, root: yes
-- **Waivers:** 2 applied, 1 expired, 1 stale, 1 for an unknown check
+- **Coverage:** 112 checks, 109 results: 13 checked (3 accepted by a waiver), 95 unknown, 1 skipped, root: yes
+- **Waivers:** 2 applied, 1 long-lived, 1 expired, 1 level-exceeded, 1 stale, 1 for an unknown check
 
 ## Summary
 
 | Level | Count |
 |---|---|
 | fail | 2 |
-| warn | 6 |
+| warn | 5 |
 | unknown | 95 |
 | info | 1 |
 | pass | 2 |
 | skip | 1 |
-| accepted | 2 |
+| accepted | 3 |
 
 ## USR: Users and privilege
 
@@ -40,6 +40,7 @@
 
 - **Subject:** `user:ubuntu`
 - **Result:** login account ubuntu has an empty password
+- **Waiver:** not accepted, the waiver covers up to warn only: written when this was only a warning
 - **Fix:** Lock the account with `passwd -l <user>` or set a password.
 
 <details><summary>Evidence</summary>
@@ -91,19 +92,6 @@
 
 ### WARN low: [USR-006](https://github.com/Shironex/stackward/blob/main/docs/checks/USR-006.md) Login accounts are used
 
-- **Subject:** `user:bob`
-- **Result:** login account bob has not logged in for 151 days
-- **Fix:** Lock unused accounts with `passwd -l <user>` or remove them.
-
-<details><summary>Evidence</summary>
-
-- `days`: `151`
-- `last_login`: `2025-10-01T09:00:00Z`
-
-</details>
-
-### WARN low: [USR-006](https://github.com/Shironex/stackward/blob/main/docs/checks/USR-006.md) Login accounts are used
-
 - **Subject:** `user:carol`
 - **Result:** login account carol has never logged in
 - **Waiver:** expired after 2026-02-01, the finding is back: carol starts in February
@@ -137,12 +125,15 @@ Findings a waiver accepts until it expires. The level and evidence are the real 
 |---|---|---|---|---|---|
 | [USR-004](https://github.com/Shironex/stackward/blob/main/docs/checks/USR-004.md) | fail high | `file:/etc/sudoers.d/deploy` | /etc/sudoers.d/deploy is writable by someone other than root (mode 0666, owner uid 0): that is a root escalation | the deploy tool rewrites this file; fix tracked in OPS-12 | 2026-03-01 |
 | [USR-005](https://github.com/Shironex/stackward/blob/main/docs/checks/USR-005.md) | warn moderate | `user:alice` | alice is in the docker group, which is root equivalent (it can mount the host filesystem) | alice runs the deploy containers; reviewed with the team | 2026-06-30 |
+| [USR-006](https://github.com/Shironex/stackward/blob/main/docs/checks/USR-006.md) | warn low | `user:bob` | login account bob has not logged in for 151 days | bob is on leave; account kept for his return | 2027-06-30 |
 
 ## Waivers to review
 
 | Check | Subject | Problem | Reason |
 |---|---|---|---|
-| USR-006 | `user:carol` | expired after 2026-02-01; 1 finding is back at its real level | carol starts in February |
+| USR-002 | `user:ubuntu` | accepts up to warn, but the result is worse, so it counts at its real level; set level: fail only if that is accepted too | written when this was only a warning |
+| USR-006 | `user:bob` | still applies, but expires 2027-06-30, more than a year after this audit | bob is on leave; account kept for his return |
+| USR-006 | `user:carol` | expired after 2026-02-01; a finding it covered counts at its real level again | carol starts in February |
 | USR-001 | `user:nobody` | no fail or warn result has this subject; the finding is fixed or the subject is wrong | old waiver for a removed account |
 | ZZZ-999 | `host` | no check has this id | typo in the check id |
 
