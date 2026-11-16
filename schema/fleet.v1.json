@@ -57,6 +57,7 @@
           "arch": { "description": "linux architecture of the host, once known.", "enum": ["amd64", "arm64"] },
           "error": { "description": "Why the host has no report.", "type": "string" },
           "cleanup": { "description": "Set when the removal of the temporary directory on the host could not be confirmed after a failure.", "type": "string" },
+          "notes": { "description": "What was dropped or cut from the host's report (unknown check ids, size limits).", "type": "array", "items": { "type": "string" } },
           "report": { "description": "The host's stackward.report.v1 document, for an audited host.", "type": "object" }
         }
       }

@@ -48,8 +48,10 @@ type FleetHost struct {
 	Error string `json:"error,omitempty"`
 	// Cleanup is set when the removal of the temporary directory could not
 	// be confirmed after a failure.
-	Cleanup string  `json:"cleanup,omitempty"`
-	Report  *Report `json:"report,omitempty"`
+	Cleanup string `json:"cleanup,omitempty"`
+	// Notes say what was dropped or cut from the host's report.
+	Notes  []string `json:"notes,omitempty"`
+	Report *Report  `json:"report,omitempty"`
 }
 
 // NewFleet assembles a fleet report and its summary.
@@ -134,6 +136,9 @@ func WriteFleetText(w io.Writer, f *Fleet, o TextOptions) error {
 		if h.Cleanup != "" {
 			p("%s%scleanup: %s\n", indent, indent, h.Cleanup)
 		}
+		for _, n := range h.Notes {
+			p("%s%snote: %s\n", indent, indent, n)
+		}
 	}
 	if _, err := io.WriteString(w, b.String()); err != nil {
 		return err
@@ -153,9 +158,14 @@ func WriteFleetText(w io.Writer, f *Fleet, o TextOptions) error {
 }
 
 // WriteFleetMarkdown writes the fleet report as GitHub flavoured Markdown:
-// a table of hosts with their counts and coverage lines, the errors, then
-// each audited host's report one heading level down.
+// a table of hosts with their counts and coverage lines, the errors and
+// notes, then each audited host's report one heading level down. Each host
+// report is rendered Untrusted, and host names and errors (which carry the
+// host's error output) are code spans, so nothing a host sent can become a
+// link, an autolink, HTML, a heading or a table row.
 func WriteFleetMarkdown(w io.Writer, f *Fleet, o MarkdownOptions) error {
+	o.Untrusted = true
+	code := textRenderer(true)
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
 	p("# stackward %s fleet audit\n\n", mdEscape(f.Tool.Version))
@@ -165,26 +175,29 @@ func WriteFleetMarkdown(w io.Writer, f *Fleet, o MarkdownOptions) error {
 	p("\n| Host | Status | Fail | Warn | Unknown | Coverage |\n|---|---|---|---|---|---|\n")
 	for _, h := range f.Hosts {
 		if h.Report == nil {
-			p("| %s | %s | - | - | - | - |\n", mdEscape(h.Host), h.Status)
+			p("| %s | %s | - | - | - | - |\n", untrustedCell(h.Host), h.Status)
 			continue
 		}
 		s := h.Report.Summary
-		p("| %s | %s | %d | %d | %d | %s |\n", mdEscape(h.Host), h.Status, s.Fail, s.Warn, s.Unknown, mdEscape(hostCoverage(h.Report)))
+		p("| %s | %s | %d | %d | %d | %s |\n", untrustedCell(h.Host), h.Status, s.Fail, s.Warn, s.Unknown, mdEscape(hostCoverage(h.Report)))
 	}
 	var problems []FleetHost
 	for _, h := range f.Hosts {
-		if h.Error != "" || h.Cleanup != "" {
+		if h.Error != "" || h.Cleanup != "" || len(h.Notes) > 0 {
 			problems = append(problems, h)
 		}
 	}
 	if len(problems) > 0 {
-		p("\n## Hosts not audited\n\n")
+		p("\n## Host errors and notes\n\n")
 		for _, h := range problems {
 			if h.Error != "" {
-				p("- **%s:** %s\n", mdEscape(h.Host), mdEscape(h.Error))
+				p("- %s: %s\n", code(h.Host), code(h.Error))
 			}
 			if h.Cleanup != "" {
-				p("- **%s cleanup:** %s\n", mdEscape(h.Host), mdEscape(h.Cleanup))
+				p("- %s cleanup: %s\n", code(h.Host), code(h.Cleanup))
+			}
+			for _, n := range h.Notes {
+				p("- %s note: %s\n", code(h.Host), mdEscape(n))
 			}
 		}
 	}
@@ -196,7 +209,7 @@ func WriteFleetMarkdown(w io.Writer, f *Fleet, o MarkdownOptions) error {
 		if err := WriteMarkdown(&hb, h.Report, o); err != nil {
 			return err
 		}
-		p("\n## Host %s\n\n", mdEscape(h.Host))
+		p("\n## Host %s\n\n", code(h.Host))
 		for _, line := range strings.Split(strings.TrimRight(hb.String(), "\n"), "\n") {
 			if strings.HasPrefix(line, "#") {
 				line = "##" + line
@@ -206,4 +219,15 @@ func WriteFleetMarkdown(w io.Writer, f *Fleet, o MarkdownOptions) error {
 	}
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+// Recount sets the summary and the coverage counts from the results, for a
+// report whose results were filtered after it was built (a fleet host's
+// report, which is never trusted for its own counts).
+func (r *Report) Recount() {
+	r.Summary = Summary{}
+	r.Coverage.Results, r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped = len(r.Results), 0, 0, 0
+	for _, it := range r.Results {
+		r.count(it)
+	}
 }
