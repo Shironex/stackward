@@ -330,11 +330,11 @@
           }
         },
         "touches": {
-          "description": "Everything the step changes, as kind:name (file:, sysctl:, service:, docker-daemon:, account:, authorized-keys:, firewall:). Policies such as the never touched list veto steps by these.",
+          "description": "Everything the step changes, as kind:name (file:, file-mode:, sysctl:, service:, docker-daemon:, account:, authorized-keys:, firewall:; file-mode: changes only the permission bits of files under a path, never their content or owner). Policies such as the never touched list veto steps by these.",
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^(file|sysctl|service|docker-daemon|account|authorized-keys|firewall):.+$"
+            "pattern": "^(file|file-mode|sysctl|service|docker-daemon|account|authorized-keys|firewall):.+$"
           }
         },
         "edits": {
