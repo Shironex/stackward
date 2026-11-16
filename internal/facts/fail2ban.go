@@ -15,9 +15,14 @@ import (
 // Fail2ban is fail2ban's live jails and the jail configuration: which
 // jails are enabled, their ports and ignoreip (CS-010, CS-011).
 type Fail2ban struct {
-	// Installed is true when fail2ban-client, /etc/fail2ban or the unit
-	// exists. False with a non nil Fail2ban is a known "absent".
+	// Installed is true when fail2ban-client or the unit exists, or
+	// /etc/fail2ban exists and systemd could not be asked. False with a
+	// non nil Fail2ban is a known "absent".
 	Installed bool `json:"installed"`
+	// ConfigDir is true when /etc/fail2ban exists. Without the program
+	// or the unit it is what is left of an earlier install (an empty
+	// jail.d, a conffile), not fail2ban.
+	ConfigDir bool `json:"config_dir,omitempty"`
 	// Unit is fail2ban.service, nil when systemd could not be asked.
 	Unit *ServiceUnit `json:"unit,omitempty"`
 	// StatusRead is true when `fail2ban-client status` answered (root);
@@ -119,7 +124,10 @@ func (fail2banCollector) Collect(ctx context.Context, sys System, out *Facts) er
 	_, lookErr := sys.LookPath("fail2ban-client")
 	f.Unit = readServiceUnit(ctx, sys, "fail2ban.service")
 	_, dirErr := sys.ReadDir(fail2banDir)
-	f.Installed = lookErr == nil || dirErr == nil || f.Unit.Loaded()
+	f.ConfigDir = dirErr == nil
+	// A leftover /etc/fail2ban (an empty jail.d after a failed install)
+	// is not fail2ban when systemd says the unit is not there.
+	f.Installed = lookErr == nil || f.Unit.Loaded() || (f.ConfigDir && f.Unit == nil)
 	out.Fail2ban = f
 	if !f.Installed {
 		return nil

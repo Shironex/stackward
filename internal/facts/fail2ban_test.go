@@ -93,3 +93,36 @@ func TestFail2banNonRoot(t *testing.T) {
 		t.Error("absent fail2ban is a known not running")
 	}
 }
+
+// A failed install can leave /etc/fail2ban/jail.d behind, empty. Without
+// fail2ban-client and with systemd saying the unit is not there, that is
+// not fail2ban: a known "absent", so CS-010 can answer.
+func TestFail2banLeftoverConfigDirIsNotInstalled(t *testing.T) {
+	sys := newFakeSystem(map[string]string{"/etc/fail2ban/jail.d/.keep": ""})
+	sys.host.Root = true
+	sys.cmds[f2bUnitKey] = unitShow("not-found", "inactive", "")
+	out := &Facts{}
+	if err := (fail2banCollector{}).Collect(context.Background(), sys, out); err != nil {
+		t.Fatal(err)
+	}
+	f := out.Fail2ban
+	if f.Installed || !f.ConfigDir {
+		t.Fatalf("leftover dir: %+v", f)
+	}
+	if r, k := f.Running(); r || !k {
+		t.Errorf("running %v known %v, want a known no", r, k)
+	}
+	if a, k := f.JailActive("sshd"); a || !k {
+		t.Errorf("sshd jail %v known %v, want a known no", a, k)
+	}
+	// When systemd cannot be asked, the directory still counts: whether
+	// fail2ban runs is then unknown, not absent.
+	delete(sys.cmds, f2bUnitKey)
+	out = &Facts{}
+	if err := (fail2banCollector{}).Collect(context.Background(), sys, out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.Fail2ban.Installed {
+		t.Errorf("no systemd answer: %+v", out.Fail2ban)
+	}
+}
