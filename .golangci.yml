@@ -107,7 +107,7 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "the CLI orders the fetch before the sandbox"}
         leaf-packages:
           # No imports from this module at all.
-          files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "!$test"]
+          files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "**/internal/waiver/**", "!$test"]
           deny:
             - {pkg: github.com/Shironex/stackward/internal/, desc: "leaf packages import nothing else from this module"}
         os-exec-allowlist:
