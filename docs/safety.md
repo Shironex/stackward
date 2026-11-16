@@ -511,6 +511,8 @@ step for anything else the entry covers.
 
 No design removes all risk. Keep provider console access, keep a second
 session open while you work, and read the plan. Apply is tested on
-disposable GitHub runner VMs (the `apply` and `transaction` scenarios in
-[testing.md](testing.md)), never on a developer's own machine, and not on
-your production server first.
+disposable VMs only (the `apply` and `transaction` scenarios on GitHub
+runner VMs, and the [VM matrix](testing.md#vm-matrix) over real SSH on
+Ubuntu and Debian cloud images), never on a developer's own machine, and
+not on your production server first. It refuses to run in any other CI job
+([testing.md](testing.md#apply-refuses-in-ci)).
