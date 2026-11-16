@@ -53,6 +53,11 @@ type Facts struct {
 	PaaS        *PaaS        `json:"paas,omitempty"`
 	Secrets     *Secrets     `json:"secrets,omitempty"`
 
+	// ProviderFirewall is filled by the opt in provider client
+	// (internal/provider, --provider) before the sandbox, not by a
+	// collector; nil means it was not requested. See provider.go.
+	ProviderFirewall *ProviderFirewall `json:"provider_firewall,omitempty"`
+
 	// Collectors records how every collector ended, in name order.
 	Collectors []CollectorStatus `json:"collectors"`
 }
