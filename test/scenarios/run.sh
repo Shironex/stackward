@@ -18,7 +18,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=test/scenarios/lib.sh
 . "$here/lib.sh"
 
-SCENARIOS="bad-docker hardened-docker socket-proxy ufw ufw-docker ssh read-only non-root apply transaction updates firewall"
+SCENARIOS="bad-docker hardened-docker socket-proxy ufw ufw-docker ssh read-only non-root apply transaction updates firewall paas-env"
 
 if [ $# -ne 1 ] || [ "$1" = -h ] || [ "$1" = --help ]; then
 	sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
