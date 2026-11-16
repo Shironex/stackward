@@ -156,3 +156,53 @@ func TestAddLiteralMasksRegisteredValues(t *testing.T) {
 		t.Errorf("literal in JSON: %s %v", b, err)
 	}
 }
+
+// TestStringKeepsKeyFingerprints: an SSH key fingerprint is evidence, and
+// base64 can hold a token prefix by chance; the token rules leave it whole
+// but still mask a token next to it.
+func TestStringKeepsKeyFingerprints(t *testing.T) {
+	fp := "SHA256:" + "ey" + "JhbGciOiJIUzI1NiJ9abcdefghijklmnopqrstuvw"
+	if len(fp) != len("SHA256:")+43 {
+		t.Fatalf("test fingerprint has the wrong length: %d", len(fp))
+	}
+	if got := String(fp); got != fp {
+		t.Errorf("fingerprint masked: %q", got)
+	}
+	jwt := planted["jwt"]
+	got := String(fp + " " + jwt)
+	if !strings.HasPrefix(got, fp+" ") || strings.Contains(got, jwt) {
+		t.Errorf("want the fingerprint kept and the token masked: %q", got)
+	}
+}
+
+// TestFingerprintExemptionLeaksNothing: the exemption covers only a whole,
+// anchored fingerprint and only the token format rules. A token that starts
+// like a fingerprint, a token glued to one, and structures that contain one
+// (a private key block, a URL password) are all still masked.
+func TestFingerprintExemptionLeaksNothing(t *testing.T) {
+	b64 := func(n int) string { return rep("A", n) }
+	fp := "SHA256:" + b64(43)
+	jwtHead := "ey" + "JhbGciOiJIUzI1NiJ9"
+	cases := map[string]struct{ in, secret string }{
+		"jwt right after SHA256:": {"SHA256:" + planted["jwt"], planted["jwt"]},
+		"jwt longer than a fingerprint": {"SHA256:" + jwtHead + "x" + "ey" + "JzdWIiOiIxMjM0NTY3ODkwIn0.c2lnbmF0dXJlc2lnbmF0dXJl",
+			"ey" + "JzdWIiOiIxMjM0NTY3ODkwIn0"},
+		// 39 + "/" + "ghp" is 43 base64 characters: an unanchored match
+		// would swallow the token's prefix and leave the rest unmasked.
+		"github token glued to a fingerprint shape": {"SHA256:" + b64(39) + "/gh" + "p_" + rep("x", 40), rep("x", 40)},
+		"private key block holding a fingerprint":   {pem()[:40] + "\n" + fp + "\n" + pem()[40:], "bm90LWEta2V5"},
+		"url password shaped like a fingerprint":    {"https://u:" + fp + "@example.com/", fp},
+	}
+	for name, tc := range cases {
+		out := String(tc.in)
+		if strings.Contains(out, tc.secret) {
+			t.Errorf("%s: secret survived: %q", name, out)
+		}
+	}
+	// Whole fingerprints in ordinary places are kept, several in a row too.
+	for _, in := range []string{fp, "key " + fp + ", " + fp + ")", `["` + fp + `"]`} {
+		if got := String(in); got != in {
+			t.Errorf("fingerprint masked: %q -> %q", in, got)
+		}
+	}
+}
