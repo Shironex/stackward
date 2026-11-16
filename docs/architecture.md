@@ -246,7 +246,10 @@ a facts file reproduces a plan and plans have golden files.
    helpers `wantOneEdit`, `wantContent`, `wantValidate`, `wantCommands` and
    `wantRestarts` cover the usual cases.
 5. Write `Check(Reader, Step) (applied, why, error)`: read only, through
-   the `Reader` apply passes (so it works under a test root). Set
+   the `Reader` apply passes (so it works under a test root). A check
+   that judges file modes rather than content asserts `plan.TreeReader`
+   (folder listings and `PathInfo`, never content), which the apply host
+   implements. Set
    `CommandsOnChange` when the commands only load a changed file (a
    restart). An `AccessCritical` step that changes sshd also sets `SSHD`:
    the settings it means to leave in effect, as `sshd -T` prints them; the

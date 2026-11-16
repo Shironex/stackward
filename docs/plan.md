@@ -84,6 +84,7 @@ select them by id. The Docker step is opt in because of its restart.
 | `unattended-upgrades-reboot` | SYS-002, SYS-003, UPD-004 | networking, opt in | the reboot decision: creates `/etc/apt/apt.conf.d/91stackward-automatic-reboot` with `Automatic-Reboot "true"` and `Automatic-Reboot-Time "04:00"`; runs nothing |
 | `fail2ban-sshd` | CS-010, SSH-011 | access-critical, opt in | creates `/etc/fail2ban/jail.d/90-stackward-sshd.local` turning on the sshd jail on sshd's ports, checks it with `fail2ban-client -t`, reloads fail2ban; installs fail2ban first (a named command) when it is missing |
 | `ufw-policy` | NET-001 | access-critical | turns UFW on with a default deny incoming policy (or sets the default to deny on an active UFW): adds the allow rules SSH needs on sshd's ports, the tailnet (`allow in on tailscale0`) and the web ports the profile keeps public to `/etc/ufw/user.rules` and `user6.rules` (each test loaded with `iptables-restore --test`), sets `DEFAULT_INPUT_POLICY="DROP"` and `ENABLED=yes`, then `ufw --force enable` (or `ufw reload`); undo restores the files and runs `ufw disable` (or `ufw reload`) |
+| `paas-env-perms` | SEC-001, SEC-002 | networking, opt in | a workaround for platforms that rewrite their `.env` files loose on every deploy: creates `/etc/systemd/system/stackward-paas-env-perms.service` (a oneshot `find ... -exec chmod`), `stackward-paas-env-perms.timer` (every minute) and `/etc/systemd/system/timers.target.d/90-stackward-paas-env-perms.conf` (starts the timer at boot), runs `systemctl daemon-reload`, starts the service once and the timer; changes only permission bits, never content or owner; undo stops the timer and removes the three files |
 | `ufw-docker` | DKR-001, PAAS-002, PAAS-003 | access-critical, opt in | filters published container ports: appends the published ufw-docker block to `/etc/ufw/after.rules`, adds `ufw route allow` rules for the container ports the profile keeps public (and on `tailscale0`), test loads both, then `ufw reload`; undo restores the files, puts `DOCKER-USER` back to Docker's own rule and deletes the logging chain |
 
 The account and SSH steps, in the order apply should run them:
@@ -188,6 +189,47 @@ The firewall steps, in the order apply should run them:
    `DOCKER-USER` holds rules Docker did not write, or when ufw-docker is
    there already. The rules cover IPv4 only.
 
+The platform `.env` timer (`paas-env-perms`) is opt in and a workaround,
+not a fix. Coolify and Dokploy write their app `.env` files again on every
+deploy, often readable by group and others (SEC-001), so a one off `chmod`
+lasts until the next deploy. The step is planned only on a host where the
+audit detected the platform and its `.env` folders, and apply refuses it
+when the platform's data folder is gone. It is the one exception to the
+`paas-data` entry of the [never touched list](safety.md#never-touched),
+and only for permission bits:
+
+- The service runs `find` over the exact folders SEC-001 scans
+  (`/data/coolify/applications`, `/data/coolify/services`,
+  `/etc/dokploy/applications`, `/etc/dokploy/compose`; 4 levels deep, the
+  `.env` and `.env.<stage>` names SEC-001 judges, templates such as
+  `.env.example` skipped, symlinks never followed) and runs
+  `chmod go-rwx` on the open ones. It never opens a file, so it never
+  reads, copies or logs a value, and never changes an owner. A file that
+  is already closed is not touched, so every run is idempotent.
+- Only files owned by a user the platform writes as are changed: root and
+  uid 9999 under Coolify (its container runs as uid 9999 and its installer
+  gives `/data/coolify` to `9999:root`), root under Dokploy (its service
+  runs as root). The owner keeps reading and writing them, root reads any
+  mode, and both platforms deploy as root. Files of any other owner are
+  left alone and listed in the plan.
+- Coolify's main `.env` (`/data/coolify/source/.env`, SEC-002) is mounted
+  into the Coolify container, which reads it as uid 9999. It is changed
+  only while uid 9999 owns it, and only group write and the other bits go
+  (`chmod g-w,o-rwx`), so the panel can still read it.
+- The service runs without network, with the whole file system read only
+  except the covered paths (`ProtectSystem=strict`, `ReadWritePaths`), and
+  only the capabilities to walk the folders and change modes of files it
+  does not own (`CAP_DAC_READ_SEARCH`, `CAP_FOWNER`).
+- The timer runs it every minute and at boot, so after a deploy a file can
+  stay open for up to a minute. It is started by a `timers.target` drop-in
+  instead of `systemctl enable`, so all three units are plain files that
+  undo removes byte for byte. Undo leaves the modes the timer set as they
+  are.
+- An app container that bind mounts its `.env` and reads it as another
+  user than the file's owner loses access at its next start; apps that
+  get their variables through compose (`env_file`, what both platforms
+  generate) are not affected.
+
 ## The plan file (plan.v1)
 
 The JSON contract is [schema/plan.v1.json](../schema/plan.v1.json). Adding an
@@ -230,7 +272,7 @@ Each step:
 | `fixes` | the check ids it makes pass |
 | `risk`, `opt_in` | risk class; whether apply runs it only when selected |
 | `restarts` | services it restarts, in order |
-| `touches` | everything it changes, as `file:`, `sysctl:`, `service:`, `docker-daemon:`, `account:`, `authorized-keys:` or `firewall:` targets |
+| `touches` | everything it changes, as `file:`, `file-mode:` (permission bits only), `sysctl:`, `service:`, `docker-daemon:`, `account:`, `authorized-keys:` or `firewall:` targets |
 | `edits` | file changes, applied in order before `commands` |
 | `commands` | programs it runs, as argument vectors (no shell), each with a `why` |
 | `undo` | how to reverse it by hand, with commands |
