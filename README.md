@@ -332,8 +332,9 @@ was available and whether the sandbox was applied. Fix the highest severity
   coverage line counts them. Run with `sudo` for full coverage.
 - **The provider firewall is invisible from inside.** Security groups and
   cloud firewalls cannot be seen from the host; `NET-009` says so on every
-  run instead of guessing. `--provider hetzner` reads a Hetzner Cloud
-  Firewall over its API (opt in, read only token), and `stackward probe`
+  run instead of guessing. `--provider hetzner|ovh` reads a Hetzner Cloud
+  Firewall or an OVH Edge Network Firewall over its API (opt in, read only
+  credentials), and `stackward probe`
   from another machine shows what actually gets through.
 - **A snapshot of configuration.** It does not scan your applications or
   images for vulnerabilities, does not read your cloud or Cloudflare

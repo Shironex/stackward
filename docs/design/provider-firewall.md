@@ -1,7 +1,7 @@
 # Design: provider firewall audit
 
-Status: the facts shape, the PFW checks and the Hetzner client are built
-(issue #41); the OVH client follows. The answers chosen for the open
+Status: the facts shape, the PFW checks and the Hetzner and OVH clients are
+built (issue #41). The answers chosen for the open
 questions are listed at the end of this page. The user guide is
 [provider-firewall.md](../provider-firewall.md).
 
@@ -394,8 +394,12 @@ review says otherwise:
    /24 (IPv6: /64) while keeping their prefix length. The interface
    addresses in `listeners.addresses` are not masked yet; a dump wide
    decision is left to a later change.
-10. OVH (when its client lands): one request per rule, at most 20, and
-    only for an address that has a firewall object.
+10. OVH: one request per rule, at most 20, for every address that has a
+    firewall object, enabled or not (a disabled firewall with rules is the
+    attack-only mode PFW-001 reports). Port strings in rule answers are
+    parsed from the forms `53`, `eq 53`, `1000-2000`, `range 1000 2000`,
+    `gt N` and `lt N`; any other form makes the rule read partial
+    (`unknown`), never a guess.
 11. The facts shape stays provider neutral; no change.
 12. Not answered here; the release is the maintainer's call.
 
