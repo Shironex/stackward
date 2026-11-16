@@ -69,6 +69,12 @@ var DefaultAllowlist = []Entry{
 		Why:   "opt in provider firewall audit (--provider): GET requests only, to a fixed list of provider API hosts (Hetzner, OVH), no redirects, no proxy, capped answers, before the sandbox",
 	},
 	{
+		Pkg:   "internal/fleet",
+		Files: []string{"ssh.go"},
+		Allow: []Category{Exec},
+		Why:   "stackward audit --ssh starts the user's own ssh client (no shell, host names validated, after --), which copies the binary to a private temp dir on the named host and runs the read only audit there",
+	},
+	{
 		Pkg:   "internal/sandbox",
 		Allow: []Category{RawSyscall},
 		Why:   "applies the Landlock sandbox with raw system calls",

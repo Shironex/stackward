@@ -105,6 +105,19 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/probe, desc: "provider must not import probe"}
             - {pkg: github.com/Shironex/stackward/internal/audit, desc: "provider must not import audit"}
             - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "the CLI orders the fetch before the sandbox"}
+        fleet-only-runs-audits:
+          # audit --ssh starts ssh and reads reports back; it never collects,
+          # plans or writes locally.
+          files: ["**/internal/fleet/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "fleet must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "fleet must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "fleet must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "fleet never writes"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "fleet must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "the remote binary audits; fleet only reads its report"}
+            - {pkg: github.com/Shironex/stackward/internal/provider, desc: "no credential is sent to a host"}
+            - {pkg: net/http, desc: "fleet only talks through ssh"}
         leaf-packages:
           # No imports from this module at all.
           files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "**/internal/waiver/**", "!$test"]
@@ -112,8 +125,9 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/, desc: "leaf packages import nothing else from this module"}
         os-exec-allowlist:
           # Starting another program: collectors through facts.System.Run
-          # (internal/facts/system.go) and the apply Host. Nothing else.
-          files: ["$all", "!$test", "!**/internal/apply/**", "!**/internal/facts/system.go"]
+          # (internal/facts/system.go), the apply Host and the user's ssh
+          # client for audit --ssh (internal/fleet/ssh.go). Nothing else.
+          files: ["$all", "!$test", "!**/internal/apply/**", "!**/internal/facts/system.go", "!**/internal/fleet/ssh.go"]
           deny:
             - {pkg: os/exec, desc: "run commands through facts.System.Run (audit) or the apply Host (apply, undo)"}
     dupl:
@@ -150,7 +164,10 @@ linters:
         # G204: commands are run through facts.System.Run (audit) or the
         # apply Host (apply, undo) with a fixed PATH and no shell; arguments
         # come from collectors, or from plan steps their generator's
-        # Authorize accepted, not from users.
+        # Authorize accepted, not from users. audit --ssh starts the user's
+        # ssh with fixed options and fixed remote commands; the one user
+        # value, the host, is validated (internal/fleet/hosts.go) and comes
+        # after "--".
         - G204
         # G304: reading files named by a variable is the job of an auditor
         # (collector paths, --facts); facts.System has no write method, and
