@@ -77,7 +77,7 @@ var DefaultAllowlist = []Entry{
 		Pkg:   "internal/cli",
 		Files: []string{"outfile_unix.go", "outfile_other.go"},
 		Allow: []Category{FSWrite},
-		Why:   "opens the files the user asked for with --out (the report, created 0600) and --textfile (the Prometheus metric, 0644), symlinks refused",
+		Why:   "opens the files the user asked for with --out (the report, created 0600) and --textfile (the Prometheus metric, 0644, unlinked and created fresh); symlinks, hard links and FIFOs refused",
 	},
 	{
 		Pkg:   "internal/docgen",
