@@ -323,9 +323,10 @@
       ],
       "properties": {
         "kind": {
-          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). command: a step command after the edits. undo: run by stackward undo. check: a transaction check after the steps ran (sshd -t, sshd -T, ss).",
+          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). before: a step command before the edits (a package install, after apt-get update when the lists were stale). command: a step command after the edits. undo: run by stackward undo. check: a transaction check after the steps ran (sshd -t, sshd -T, ss).",
           "enum": [
             "validate",
+            "before",
             "command",
             "undo",
             "check"

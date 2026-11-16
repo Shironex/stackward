@@ -53,6 +53,9 @@ func Authorize(s Step) error {
 	if g.Authorize == nil {
 		return fmt.Errorf("step %s cannot be applied: it has no authorization rules", s.ID)
 	}
+	if len(s.Before) > 0 && !g.Before {
+		return fmt.Errorf("step %s runs commands before its edits, which the step never does", s.ID)
+	}
 	if err := g.Authorize(s); err != nil {
 		return fmt.Errorf("step %s: %w", s.ID, err)
 	}
@@ -65,7 +68,7 @@ func Check(r Reader, s Step) (applied bool, why string, err error) {
 	if !ok || g.Check == nil {
 		return false, "", fmt.Errorf("step %s has no check", s.ID)
 	}
-	if len(s.Edits) == 0 && len(s.Commands) == 0 {
+	if len(s.Edits) == 0 && len(s.Commands) == 0 && len(s.Before) == 0 {
 		return false, "", fmt.Errorf("step %s changes nothing; authorize it first", s.ID)
 	}
 	return g.Check(r, s)

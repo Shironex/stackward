@@ -59,7 +59,14 @@ type Step struct {
 	// docker-daemon:log-opts). A policy such as the never touched list
 	// vetoes steps by these targets.
 	Touches []string `json:"touches"`
-	// Edits are the file changes, applied in order before Commands.
+	// Before are commands that run before the edits, in order, without a
+	// shell: a package install (after an apt-get update when the package
+	// lists are empty or stale), so a failed install stops the step before
+	// any file is written. Only a step whose generator sets Before may
+	// have them. Absent for most steps.
+	Before []Command `json:"before,omitempty"`
+	// Edits are the file changes, applied in order after Before and
+	// before Commands.
 	Edits []FileEdit `json:"edits"`
 	// Commands run after the edits, in order, without a shell.
 	Commands []Command `json:"commands"`
@@ -215,6 +222,9 @@ type Generator struct {
 	// Check reads the host and reports whether the step's change is
 	// already in place, so a second apply does nothing. It must only read.
 	Check func(r Reader, s Step) (applied bool, why string, err error)
+	// Before lets the step run commands before its edits (Step.Before);
+	// its Authorize checks them. Any other step with Before is refused.
+	Before bool
 	// CommandsOnChange runs the commands only when an edit changed a file
 	// in this run (a restart that only loads a new file). Otherwise they
 	// run whenever the step is not already applied.

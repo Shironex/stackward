@@ -188,6 +188,7 @@ func redactStep(s Step) Step {
 	s.Title = redact.String(s.Title)
 	s.Touches = redactAll(s.Touches)
 	s.Notes = redactAll(s.Notes)
+	s.Before = redactCommands(s.Before)
 	s.Commands = redactCommands(s.Commands)
 	s.Undo.Description = redact.String(s.Undo.Description)
 	s.Undo.Commands = redactCommands(s.Undo.Commands)
@@ -267,7 +268,7 @@ func (p *Plan) Validate() error {
 		if len(s.Fixes) == 0 || !subset(s.Fixes, g.Fixes) {
 			return fmt.Errorf("step %s: fixes %v are not among %v", s.ID, s.Fixes, g.Fixes)
 		}
-		if len(s.Edits) == 0 && len(s.Commands) == 0 {
+		if len(s.Edits) == 0 && len(s.Commands) == 0 && len(s.Before) == 0 {
 			return fmt.Errorf("step %s changes nothing", s.ID)
 		}
 		for _, e := range s.Edits {

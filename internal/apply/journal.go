@@ -38,6 +38,7 @@ const (
 // Command kinds.
 const (
 	KindValidate = "validate" // checks a staged file before it is moved into place
+	KindBefore   = "before"   // a step command before the edits (a package install)
 	KindCommand  = "command"  // a step command, after the edits
 	KindUndo     = "undo"     // run by stackward undo
 	KindCheck    = "check"    // a transaction check after the steps ran

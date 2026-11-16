@@ -201,7 +201,7 @@ func Touched(s Step) []string {
 	for _, e := range s.Edits {
 		add(normTarget("file:" + e.Path))
 	}
-	for _, c := range s.Commands {
+	for _, c := range slices.Concat(s.Before, s.Commands) {
 		if len(c.Args) == 0 {
 			continue
 		}

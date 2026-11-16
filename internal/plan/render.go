@@ -40,6 +40,10 @@ func WriteText(w io.Writer, p *Plan) error {
 		if s.OptIn {
 			pf("   opt in: applied only when selected by id\n")
 		}
+		for _, c := range s.Before {
+			pf("   first    %s\n", shellJoin(c.Args))
+			pf("            # %s\n", c.Why)
+		}
 		for _, e := range s.Edits {
 			mode := ""
 			if e.Mode != "" {
@@ -144,6 +148,10 @@ func WriteScript(w io.Writer, p *Plan) error {
 			pf("#   %s\n", shellJoin(c.Args))
 		}
 		pf("%s() {\n", funcName(s.ID))
+		for _, c := range s.Before {
+			pf("\t# %s\n", c.Why)
+			pf("\t%s\n", shellJoin(c.Args))
+		}
 		for _, e := range s.Edits {
 			writeEditScript(&b, s.ID, e)
 		}

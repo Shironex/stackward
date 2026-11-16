@@ -12,7 +12,8 @@
 #
 # 1. plan holds unattended-upgrades, the opt in reboot decision
 #    unattended-upgrades-reboot and fail2ban-sshd (opt in, access-critical,
-#    with the fail2ban install as a named command); --all-safe selects
+#    with the fail2ban install as a named command run before the jail is
+#    written); --all-safe selects
 #    only unattended-upgrades.
 # 2. apply --step unattended-upgrades --step unattended-upgrades-reboot:
 #    both drop-ins hold the planned content, apt-config shows the values,
@@ -94,8 +95,12 @@ scenario_verify() {
 	for id in unattended-upgrades unattended-upgrades-reboot fail2ban-sshd; do
 		note "$(yn grep -Eq "(^|,)$id(,|$)" <<<"$steps")" "plan holds $id" yes "$steps"
 	done
-	note "$(yn [ "$(jq -r '.steps[] | select(.id == "fail2ban-sshd") | .commands[0].args | join(" ")' "$plan")" = "env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban" ])" \
-		"the fail2ban install is a named command" "apt-get install -y fail2ban" "$(jq -r '.steps[] | select(.id == "fail2ban-sshd") | .commands[0].args | join(" ")' "$plan")"
+	# The install is the last command that runs before the jail is written
+	# (after apt-get update when the lists were empty or stale).
+	local install
+	install="$(jq -r '.steps[] | select(.id == "fail2ban-sshd") | (.before // [])[-1].args // [] | join(" ")' "$plan")"
+	note "$(yn [ "$install" = "env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban" ])" \
+		"the fail2ban install is a named command, run before the jail is written" "apt-get install -y fail2ban" "$install"
 	local optin
 	optin="$(jq -r '[.steps[] | select(.id | test("^(unattended-upgrades|unattended-upgrades-reboot|fail2ban-sshd)$")) | "\(.id)=\(.opt_in)"] | join(",")' "$plan")"
 	note "$(yn [ "$optin" = "unattended-upgrades=false,unattended-upgrades-reboot=true,fail2ban-sshd=true" ])" \

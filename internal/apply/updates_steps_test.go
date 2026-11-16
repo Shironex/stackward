@@ -110,8 +110,13 @@ func TestInstallStepsRetryUntilThePackageIsInstalled(t *testing.T) {
 	if _, err := run(t, h, steps, "20260301T120000Z-e1e1e1"); err != nil {
 		t.Fatal(err)
 	}
-	install := applytest.Step(t, p, "unattended-upgrades-install").Commands[0].Args
-	if got := withoutValidate(r.Calls()); !slices.EqualFunc(got, [][]string{install}, slices.Equal) {
+	// The plan saw empty package lists: apt-get update, then the install,
+	// both before the drop-in.
+	before := applytest.Step(t, p, "unattended-upgrades-install").Before
+	if len(before) != 2 {
+		t.Fatalf("before %+v", before)
+	}
+	if got := withoutValidate(r.Calls()); !slices.EqualFunc(got, [][]string{before[0].Args, before[1].Args}, slices.Equal) {
 		t.Errorf("commands %v", got)
 	}
 	// The fake apt installed nothing: dpkg does not list the package, so
@@ -205,8 +210,8 @@ func TestUpdateStepsTamperedAreRefused(t *testing.T) {
 			s.Commands = append([]plan.Command{{Args: []string{"apt-get", "install", "-y", "unattended-upgrades"}}}, s.Commands...)
 		}, "not ones the step runs"},
 		"uu upgrade everything": {pi, "unattended-upgrades-install", func(s *plan.Step) {
-			s.Commands[0].Args = []string{"apt-get", "upgrade", "-y"}
-		}, "not ones the step runs"},
+			s.Before[1].Args = []string{"apt-get", "upgrade", "-y"}
+		}, "not the install the step runs"},
 		"reboot now": {p, "unattended-upgrades-reboot", func(s *plan.Step) {
 			s.Commands = []plan.Command{{Args: []string{"systemctl", "reboot"}}}
 		}, "commands"},

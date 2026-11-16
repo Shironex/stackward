@@ -197,6 +197,10 @@
     "timer_active": true,
     "automatic_reboot": false,
     "lists_updated": "2026-02-28T06:05:00Z",
+    "lists": {
+      "read": true,
+      "indexes": 0
+    },
     "pending_checked": true,
     "pending_total": 0,
     "pending_security": 0

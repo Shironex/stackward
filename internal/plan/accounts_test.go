@@ -209,6 +209,10 @@ func cloneStep(s Step) Step {
 	for i := range s.Edits {
 		s.Edits[i].Validate = slices.Clone(s.Edits[i].Validate)
 	}
+	s.Before = slices.Clone(s.Before)
+	for i := range s.Before {
+		s.Before[i].Args = slices.Clone(s.Before[i].Args)
+	}
 	s.Commands = slices.Clone(s.Commands)
 	for i := range s.Commands {
 		s.Commands[i].Args = slices.Clone(s.Commands[i].Args)

@@ -38,6 +38,9 @@ func WritePreview(w io.Writer, planFile string, p *plan.Plan, sel Selection, pre
 		s := pr.Step
 		pf("%d. %s  [%s]  fixes %s\n", i+1, s.ID, s.Risk, strings.Join(s.Fixes, ", "))
 		pf("   %s\n", s.Title)
+		for _, c := range s.Before {
+			pf("   first    %s\n", strings.Join(c.Args, " "))
+		}
 		for _, e := range s.Edits {
 			mode := ""
 			if e.Mode != "" {

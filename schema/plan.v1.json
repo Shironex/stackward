@@ -337,6 +337,13 @@
             "pattern": "^(file|file-mode|sysctl|service|docker-daemon|account|authorized-keys|firewall):.+$"
           }
         },
+        "before": {
+          "description": "Optional. Run before the edits, in order: a package install, after apt-get update when the package lists were empty or stale. A failure stops the step before any file is written. Only steps that install a package have it.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
         "edits": {
           "type": "array",
           "items": {

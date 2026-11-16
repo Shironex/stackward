@@ -8,6 +8,10 @@ restarts:  fail2ban
 1. unattended-upgrades-install  [safe]  fixes UPD-001
    Install unattended-upgrades and turn it on with an apt.conf.d drop-in
    opt in: applied only when selected by id
+   first    env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update
+            # refresh the empty or stale package lists, so the install finds unattended-upgrades
+   first    env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades
+            # install unattended-upgrades before any file is written (named here so nothing is installed silently)
    create   /etc/apt/apt.conf.d/90stackward-unattended-upgrades (0644)
             checked first with: apt-config dump -c <new file>
             --- /dev/null
@@ -18,13 +22,12 @@ restarts:  fail2ban
             +// Remove this file to undo.
             +APT::Periodic::Update-Package-Lists "1";
             +APT::Periodic::Unattended-Upgrade "1";
-   run      env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades
-            # install unattended-upgrades (named here so nothing is installed silently)
-   note     Installs the unattended-upgrades package (and what it depends on) from the configured apt sources with apt-get install. Nothing else is upgraded on purpose, but apt may upgrade a dependency the package needs. If the package lists are old, run apt update first, or the install fails and nothing else changes.
+   note     Installs the unattended-upgrades package (and what it depends on) from the configured apt sources with apt-get install, before the drop-in is written: a failed install writes nothing. Nothing else is upgraded on purpose, but apt may upgrade a dependency the package needs.
+   note     Runs apt-get update first: the apt package lists are empty (/var/lib/apt/lists holds no Packages index, as on a fresh cloud image), so apt-get install would not find unattended-upgrades or its current version. It only refreshes the package lists; nothing is upgraded.
    note     Reboot decision: automatic reboot stays off, so updates that need a reboot (a kernel, libc) wait for you and SYS-002 reports them. To let unattended-upgrades reboot at 04:00 (host time) instead, apply the opt in step unattended-upgrades-reboot.
    note     Only the origins allowed in 50unattended-upgrades are installed; UPD-003 checks that the security pocket is among them.
    note     A file that sorts after 90stackward-unattended-upgrades in /etc/apt/apt.conf.d can still turn it off; the next audit's UPD-001 says so.
-   undo     Remove the drop-in; unattended-upgrades then follows the distribution's own settings again. The package is purged; packages apt installed with it stay.
+   undo     Remove the drop-in; unattended-upgrades then follows the distribution's own settings again. The package is purged; packages apt installed with it stay. A purge finds nothing to do when the install never finished.
             rm -f /etc/apt/apt.conf.d/90stackward-unattended-upgrades
             env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 purge -y unattended-upgrades
 
@@ -50,6 +53,10 @@ restarts:  fail2ban
 3. fail2ban-sshd  [access-critical]  fixes CS-010
    Ban SSH brute force with a fail2ban sshd jail
    opt in: applied only when selected by id
+   first    env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update
+            # refresh the empty or stale package lists, so the install finds fail2ban
+   first    env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban
+            # install fail2ban before any file is written (named here so nothing is installed silently)
    create   /etc/fail2ban/jail.d/90-stackward-sshd.local (0644)
             --- /dev/null
             +++ b/etc/fail2ban/jail.d/90-stackward-sshd.local
@@ -63,18 +70,17 @@ restarts:  fail2ban
             +backend = systemd
             +port = 22
             +ignoreip = 127.0.0.1/8 ::1
-   run      env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban
-            # install fail2ban (named here so nothing is installed silently)
    run      fail2ban-client -t
             # check the whole fail2ban configuration with the new jail
    run      systemctl restart fail2ban
             # start fail2ban with the new jail
    restarts fail2ban
-   note     Installs the fail2ban package (and what it depends on) from the configured apt sources with apt-get install. Nothing else is upgraded on purpose, but apt may upgrade a dependency it needs. If the package lists are old, run apt update first, or the install fails and the transaction rolls back.
+   note     Installs the fail2ban package (and what it depends on) from the configured apt sources with apt-get install, before the jail is written: a failed install writes nothing and the transaction rolls back. Nothing else is upgraded on purpose, but apt may upgrade a dependency it needs.
+   note     Runs apt-get update first: the apt package lists are empty (/var/lib/apt/lists holds no Packages index, as on a fresh cloud image), so apt-get install would not find fail2ban or its current version. It only refreshes the package lists; nothing is upgraded.
    note     No SSH client address was known when this plan was made (a saved facts file, or not over SSH), so only loopback, the jail's own entries and the tailnet are ignored. apply refuses to run the step from an SSH session whose address the jail would not ignore: plan again from the session you will apply and confirm from.
    note     fail2ban-client -t checks the whole fail2ban configuration with the new file before fail2ban loads it; a failure stops the step and the transaction rolls back.
    note     The jail reads sshd's log from the systemd journal (backend = systemd), so it works on hosts without /var/log/auth.log; apt installs the python3-systemd module fail2ban recommends for it.
-   undo     Remove the jail drop-in and purge fail2ban, which the step installed: its jails stop and every ban is lifted. Packages apt installed with it stay.
+   undo     Remove the jail drop-in and purge fail2ban, which the step installed: its jails stop and every ban is lifted. Packages apt installed with it stay. A purge finds nothing to do when the install never finished.
             rm -f /etc/fail2ban/jail.d/90-stackward-sshd.local
             env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 purge -y fail2ban
 

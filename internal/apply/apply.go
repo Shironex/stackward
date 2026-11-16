@@ -315,12 +315,19 @@ type runner struct {
 
 func (r *runner) save() error { return writeJournal(r.h, r.j) }
 
-// step applies one step: its edits in order, then its commands.
+// step applies one step: its Before commands (a package install), its
+// edits in order, then its commands. A failing Before command stops the
+// step before any file is written.
 func (r *runner) step(ctx context.Context, i int, s plan.Step) error {
 	js := &r.j.Steps[i]
 	start := r.o.Now()
 	js.StartedAt = stamp(start)
 	defer func() { js.DurationMS = r.o.Now().Sub(start).Milliseconds() }()
+	for _, c := range s.Before {
+		if err := r.command(ctx, js, KindBefore, c.Args); err != nil {
+			return err
+		}
+	}
 	changed := false
 	pending := len(s.Commands) > 0
 	for _, e := range s.Edits {
