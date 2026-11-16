@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // Mask replaces every redacted value.
@@ -54,11 +55,49 @@ var keyed = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b([A-Za-z0-9_.-]*` + secretWord + `[A-Za-z0-9_.-]*)(["']?\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s,;&"']+)`),
 }
 
+// minLiteral is the shortest literal AddLiteral accepts: masking a two
+// letter value would mangle ordinary words.
+const minLiteral = 8
+
+var (
+	litMu    sync.RWMutex
+	literals []string
+)
+
+// AddLiteral registers a secret value this process holds (a provider API
+// token) so String masks it wherever it appears, as a safety net on top of
+// never putting it in anything that is printed. Values shorter than eight
+// characters are ignored.
+func AddLiteral(v string) {
+	v = strings.TrimSpace(v)
+	if len(v) < minLiteral {
+		return
+	}
+	litMu.Lock()
+	defer litMu.Unlock()
+	for _, l := range literals {
+		if l == v {
+			return
+		}
+	}
+	literals = append(literals, v)
+}
+
+func maskLiterals(s string) string {
+	litMu.RLock()
+	defer litMu.RUnlock()
+	for _, l := range literals {
+		s = strings.ReplaceAll(s, l, Mask)
+	}
+	return s
+}
+
 // String returns s with secret shaped values masked.
 func String(s string) string {
 	if s == "" {
 		return s
 	}
+	s = maskLiterals(s)
 	for _, r := range rules {
 		s = r.re.ReplaceAllString(s, r.repl)
 	}

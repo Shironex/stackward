@@ -137,3 +137,22 @@ func TestStringKeepsPasswordProseAndMasksRealValues(t *testing.T) {
 		}
 	}
 }
+
+func TestAddLiteralMasksRegisteredValues(t *testing.T) {
+	secret := strings.Repeat("q7", 16) + "literal"
+	short := "abc"
+	AddLiteral(secret)
+	AddLiteral(secret)
+	AddLiteral(short)
+	got := String("request with " + secret + " failed")
+	if strings.Contains(got, secret) || !strings.Contains(got, Mask) {
+		t.Errorf("literal not masked: %q", got)
+	}
+	if got := String("abc def"); got != "abc def" {
+		t.Errorf("short literal masked: %q", got)
+	}
+	b, err := JSON(map[string]string{"note": "x " + secret})
+	if err != nil || strings.Contains(string(b), secret) {
+		t.Errorf("literal in JSON: %s %v", b, err)
+	}
+}
