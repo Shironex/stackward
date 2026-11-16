@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Shironex/stackward/internal/sudoersdrop"
 )
 
 // Users is accounts, groups, sudoers and login state (USR group).
@@ -79,6 +81,10 @@ type Sudoers struct {
 	// Principals lists every principal of a user spec line (users and
 	// %groups), so checks can tell who else holds admin rights.
 	Principals []string `json:"principals,omitempty"`
+	// Content is the file text, kept only for stackward's own drop-ins
+	// (/etc/sudoers.d/90-stackward-*) up to ownDropinMax bytes, so a check
+	// can tell them from anyone else's. Never kept for other files.
+	Content string `json:"content,omitempty"`
 }
 
 // SudoRule is one user spec line with NOPASSWD.
@@ -359,11 +365,18 @@ func collectSudoers(sys System) []Sudoers {
 		if b, err := sys.ReadFile(p); err == nil {
 			s.Readable = true
 			s.NoPasswd, s.Principals = ParseSudoers(b)
+			if _, own := sudoersdrop.NameOf(p); own && len(b) <= ownDropinMax {
+				s.Content = string(b)
+			}
 		}
 		out = append(out, s)
 	}
 	return out
 }
+
+// ownDropinMax caps the content kept of a stackward drop-in; the step's
+// file is a few hundred bytes.
+const ownDropinMax = 2048
 
 var nopasswdTag = regexp.MustCompile(`\bNOPASSWD\s*:`)
 
