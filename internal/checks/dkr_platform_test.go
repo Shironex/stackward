@@ -183,3 +183,60 @@ func TestSocketMountMessageForParentFolder(t *testing.T) {
 		t.Errorf("got %s %q", rs[0].Level, msg)
 	}
 }
+
+// alloyMounts is a hardened monitoring agent: the host root read only,
+// with tmpfs masks over the socket folder and the secrets.
+func alloyMounts(masks ...string) func(*facts.DockerContainer) {
+	return func(c *facts.DockerContainer) {
+		c.Mounts = []facts.DockerMount{{Type: "bind", Source: "/", Target: "/rootfs", ReadOnly: true}}
+		for _, m := range masks {
+			c.Mounts = append(c.Mounts, facts.DockerMount{Type: "tmpfs", Target: m})
+		}
+	}
+}
+
+func TestSocketMountMaskedByTmpfs(t *testing.T) {
+	rs := checkSocketMounted(Input{Facts: dockerHost(app("alloy", alloyMounts("/rootfs/run", "/rootfs/root")))})
+	msg := rs[0].Message
+	if only(t, rs) != Pass || msg != "alloy does not reach the Docker socket: /:/rootfs:ro masked by tmpfs on /rootfs/run" {
+		t.Errorf("got %s %q", rs[0].Level, msg)
+	}
+	if m, _ := rs[0].Evidence["masked_socket_mounts"].([]string); len(m) != 1 {
+		t.Errorf("evidence: %+v", rs[0].Evidence)
+	}
+
+	rs = checkSocketMounted(Input{Facts: dockerHost(app("alloy", alloyMounts("/rootfs/root", "/rootfs/var/run")))})
+	if only(t, rs) != Fail || !strings.Contains(rs[0].Message, "mounts / (read only), which includes the Docker socket") {
+		t.Errorf("unmasked: got %s %q", rs[0].Level, rs[0].Message)
+	}
+
+	direct := app("alloy", alloyMounts("/rootfs/run"), func(c *facts.DockerContainer) {
+		c.Mounts = append(c.Mounts, facts.DockerMount{Type: "bind", Source: "/var/run/docker.sock", Target: "/var/run/docker.sock", ReadOnly: true},
+			facts.DockerMount{Type: "tmpfs", Target: "/var/run"})
+	})
+	rs = checkSocketMounted(Input{Facts: dockerHost(direct)})
+	if only(t, rs) != Fail || !strings.Contains(rs[0].Message, "mounts the Docker socket (/var/run/docker.sock") || strings.Contains(rs[0].Message, "/ (read only)") {
+		t.Errorf("direct: got %s %q", rs[0].Level, rs[0].Message)
+	}
+}
+
+func TestHostBindMasksAnnotateOnly(t *testing.T) {
+	rs := checkHostBinds(Input{Facts: dockerHost(app("alloy", alloyMounts("/rootfs/run", "/rootfs/root", "/rootfs/home", "/rootfs/etc/ssh")))})
+	want := "alloy mounts host /:/rootfs:ro read only; masked inside it: /run by tmpfs on /rootfs/run, /root by tmpfs on /rootfs/root, " +
+		"/home by tmpfs on /rootfs/home, /etc/ssh by tmpfs on /rootfs/etc/ssh"
+	if only(t, rs) != Warn || rs[0].Message != want {
+		t.Errorf("got %s %q", rs[0].Level, rs[0].Message)
+	}
+	rs = checkHostBinds(Input{Facts: dockerHost(app("alloy", alloyMounts()))})
+	if only(t, rs) != Warn || strings.Contains(rs[0].Message, "masked") {
+		t.Errorf("unmasked: got %s %q", rs[0].Level, rs[0].Message)
+	}
+	// A bind of a sensitive folder over a mask does not hide it.
+	rebind := app("alloy", alloyMounts("/rootfs/root"), func(c *facts.DockerContainer) {
+		c.Mounts = append(c.Mounts, facts.DockerMount{Type: "bind", Source: "/home", Target: "/rootfs/home"})
+	})
+	rs = checkHostBinds(Input{Facts: dockerHost(rebind)})
+	if only(t, rs) != Fail || strings.Contains(rs[0].Message, "/home by") || !strings.Contains(rs[0].Message, "/root by tmpfs") {
+		t.Errorf("rebind: got %s %q", rs[0].Level, rs[0].Message)
+	}
+}

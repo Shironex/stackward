@@ -159,3 +159,12 @@ func socketMountText(m facts.DockerMount) string {
 	}
 	return fmt.Sprintf("%s%s, which includes the Docker socket", src, ro)
 }
+
+// maskText names a mount that hides part of a bind: "tmpfs on /rootfs/run",
+// "volume data on /x" or "bind /srv/x on /x".
+func maskText(m facts.DockerMount) string {
+	if m.Source == "" {
+		return m.Type + " on " + m.Target
+	}
+	return m.Type + " " + m.Source + " on " + m.Target
+}

@@ -1,0 +1,119 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-11-15T12:00:00Z",
+  "host": {
+    "hostname": "box.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "29.9.3",
+      "api_version": "1.52",
+      "os": "linux",
+      "arch": "arm64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": true,
+      "hosts": [
+        {
+          "addr": "fd://",
+          "source": "/lib/systemd/system/docker.service"
+        }
+      ],
+      "log_driver": "json-file",
+      "log_max_size": "10m",
+      "log_max_file": "3",
+      "no_new_privileges": true,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp_read": true,
+    "containers": [
+      {
+        "id": "222222222222",
+        "name": "alloy",
+        "project": "monitoring",
+        "service": "alloy",
+        "image": "grafana/alloy:v1.5.1",
+        "running": true,
+        "user": "",
+        "network_mode": "monitoring_default",
+        "networks": [
+          "monitoring_default"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/",
+            "target": "/rootfs",
+            "read_only": true
+          },
+          {
+            "type": "tmpfs",
+            "target": "/rootfs/run"
+          },
+          {
+            "type": "tmpfs",
+            "target": "/rootfs/data/coolify"
+          },
+          {
+            "type": "tmpfs",
+            "target": "/rootfs/root"
+          },
+          {
+            "type": "tmpfs",
+            "target": "/rootfs/home"
+          },
+          {
+            "type": "tmpfs",
+            "target": "/rootfs/etc/ssh"
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "monitoring",
+          "com.docker.compose.service": "alloy"
+        }
+      }
+    ],
+    "networks": [
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      },
+      {
+        "name": "monitoring_default",
+        "driver": "bridge",
+        "scope": "local"
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "docker",
+      "status": "ok"
+    }
+  ]
+}

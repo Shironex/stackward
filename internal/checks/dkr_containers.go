@@ -31,14 +31,19 @@ func checkSocketMode(in Input) []Result {
 // DKR-010: no container gets the Docker socket or a folder holding it.
 func checkSocketMounted(in Input) []Result {
 	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
-		var socket, what []string
+		var socket, what, masked []string
 		readOnly := false
 		for _, m := range c.Mounts {
-			if m.Type == "bind" && facts.IsDockerSocketPath(m.Source) {
-				socket = append(socket, mountText(m))
-				what = append(what, socketMountText(m))
-				readOnly = readOnly || m.ReadOnly
+			if m.Type != "bind" || !facts.IsDockerSocketPath(m.Source) {
+				continue
 			}
+			if cover, ok := facts.SocketMask(c.Mounts, m); ok {
+				masked = append(masked, mountText(m)+" masked by "+maskText(cover))
+				continue
+			}
+			socket = append(socket, mountText(m))
+			what = append(what, socketMountText(m))
+			readOnly = readOnly || m.ReadOnly
 		}
 		roNote := ""
 		if readOnly {
@@ -46,7 +51,13 @@ func checkSocketMounted(in Input) []Result {
 		}
 		role := roleOf(c)
 		ev := map[string]any{"container": c.Name, "image": c.Image, "role": role, "socket_mounts": socket, "running": c.Running}
+		if len(masked) > 0 {
+			ev["masked_socket_mounts"] = masked
+		}
 		if len(socket) == 0 {
+			if len(masked) > 0 {
+				return Result{Level: Pass, Message: fmt.Sprintf("%s does not reach the Docker socket: %s", c.Name, strings.Join(masked, ", ")), Evidence: ev}
+			}
 			return Result{Level: Pass, Message: c.Name + " does not mount the Docker socket", Evidence: ev}
 		}
 		switch role {
@@ -97,12 +108,41 @@ func checkSocketProxyFlags(in Input) []Result {
 // host's identity, credentials or kernel interfaces.
 var sensitiveHostPaths = map[string]bool{"/": true, "/etc": true, "/root": true, "/home": true, "/proc": true, "/sys": true}
 
+func isSensitiveBind(m facts.DockerMount) bool {
+	return m.Type == "bind" && isSensitiveHostPath(m.Source)
+}
+
+func isSensitiveHostPath(p string) bool { return p != "" && sensitiveHostPaths[path.Clean(p)] }
+
+// hiddenHostPaths lists the host paths under sensitive bind b that another
+// mount hides inside the container, each with the mount that hides it (a
+// tmpfs on /rootfs/root over a bind of / at /rootfs hides /root). The bind
+// still shows everything else under its source, so masks only annotate
+// the finding; they never clear it.
+func hiddenHostPaths(ms []facts.DockerMount, b facts.DockerMount) []string {
+	if !path.IsAbs(b.Target) {
+		return nil
+	}
+	root := path.Clean(b.Target)
+	var out []string
+	for _, m := range ms {
+		rel, ok := strings.CutPrefix(path.Clean(m.Target), root+"/")
+		if !ok || rel == "" {
+			continue
+		}
+		if cover, masked := facts.MaskOf(ms, b, rel, isSensitiveHostPath); masked && cover == m {
+			out = append(out, path.Join(path.Clean(b.Source), rel)+" by "+maskText(m))
+		}
+	}
+	return out
+}
+
 // DKR-012: no bind mount of /, /etc, /root, /home, /proc or /sys.
 func checkHostBinds(in Input) []Result {
 	return eachContainer(in, posture(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
-		var rw, ro []string
+		var rw, ro, hidden []string
 		for _, m := range c.Mounts {
-			if m.Type != "bind" || m.Source == "" || !sensitiveHostPaths[path.Clean(m.Source)] {
+			if !isSensitiveBind(m) {
 				continue
 			}
 			if m.ReadOnly {
@@ -110,13 +150,19 @@ func checkHostBinds(in Input) []Result {
 			} else {
 				rw = append(rw, mountText(m))
 			}
+			hidden = append(hidden, hiddenHostPaths(c.Mounts, m)...)
 		}
 		ev := map[string]any{"container": c.Name, "writable": nonNil(rw), "read_only": nonNil(ro)}
+		note := ""
+		if len(hidden) > 0 {
+			ev["masked"] = hidden
+			note = "; masked inside it: " + strings.Join(hidden, ", ")
+		}
 		switch {
 		case len(rw) > 0:
-			return Result{Level: Fail, Message: fmt.Sprintf("%s mounts host %s writable%s", c.Name, strings.Join(rw, ", "), stateWord(c)), Evidence: ev}
+			return Result{Level: Fail, Message: fmt.Sprintf("%s mounts host %s writable%s%s", c.Name, strings.Join(rw, ", "), note, stateWord(c)), Evidence: ev}
 		case len(ro) > 0:
-			return Result{Level: Warn, Message: fmt.Sprintf("%s mounts host %s read only%s", c.Name, strings.Join(ro, ", "), stateWord(c)), Evidence: ev}
+			return Result{Level: Warn, Message: fmt.Sprintf("%s mounts host %s read only%s%s", c.Name, strings.Join(ro, ", "), note, stateWord(c)), Evidence: ev}
 		}
 		return Result{Level: Pass, Message: c.Name + " mounts no sensitive host path", Evidence: ev}
 	}))
