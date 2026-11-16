@@ -25,7 +25,7 @@ OUT="${OUT:-$PWD/vm-scenario-out}"
 . "$here/lib.sh"
 
 # Each scenario and the cloud-init seed it boots with.
-SCENARIOS="rollback:users confirm:users guard:users accounts:accounts"
+SCENARIOS="rollback:users confirm:users guard:users accounts:accounts rootonly:root"
 
 if [ $# -ne 1 ] || [ "$1" = -h ] || [ "$1" = --help ]; then
 	sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'

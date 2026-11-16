@@ -9,10 +9,11 @@
 #   test/vm/vm.sh stop               power the VM off
 #
 # DISTRO: ubuntu-22.04, ubuntu-24.04, debian-12 or debian-13. SEED: users (a
-# test account, swtest, with a key and sudo) or accounts (the image's own
-# default account, ubuntu or debian, with the key). The VM writes only to a
-# qcow2 overlay in $VM_DIR; the cached image is never changed, and SSH and
-# the test web port are forwarded on 127.0.0.1 only.
+# test account, swtest, with a key and sudo), accounts (the image's own
+# default account, ubuntu or debian, with the key) or root (no account but
+# root, which holds the key, as some providers set a server up). The VM
+# writes only to a qcow2 overlay in $VM_DIR; the cached image is never
+# changed, and SSH and the test web port are forwarded on 127.0.0.1 only.
 #
 # Environment: VM_DIR (./vm-out), VM_CACHE (~/.cache/stackward-vm),
 # VM_SSH_PORT (2222), VM_HTTP_PORT (8090), VM_ACCEL (kvm when /dev/kvm is
@@ -135,6 +136,12 @@ seed() {
 			# The image's own default account, as a provider creates it.
 			echo "users: [default]"
 			echo "ssh_authorized_keys: [\"$key\"]"
+		elif [ "$mode" = root ]; then
+			# No account but root, which logs in with the key, as on a
+			# provider that hands out root only servers.
+			echo "users: []"
+			echo "disable_root: false"
+			echo "ssh_authorized_keys: [\"$key\"]"
 		else
 			echo "users:"
 			echo "  - name: swtest"
@@ -189,7 +196,7 @@ vm_ssh() {
 cmd_boot() {
 	[ $# -eq 2 ] || die "usage: vm.sh boot DISTRO SEED"
 	local name="$1" mode="$2" img acc timeout key user qemu
-	case "$mode" in users | accounts) ;; *) die "SEED is users or accounts" ;; esac
+	case "$mode" in users | accounts | root) ;; *) die "SEED is users, accounts or root" ;; esac
 	if [ -z "${STACKWARD:-}" ] || [ ! -f "$STACKWARD" ]; then
 		die "STACKWARD=${STACKWARD:-} is not the stackward binary to install"
 	fi
@@ -200,6 +207,7 @@ cmd_boot() {
 	key="$(cat "$VM_DIR/id_ed25519.pub")"
 	user=swtest
 	[ "$mode" = accounts ] && user="$DEFAULT_USER"
+	[ "$mode" = root ] && user=root
 	seed "$VM_DIR/seed" "$mode" "$key"
 	seed_iso "$VM_DIR/seed" "$VM_DIR/seed.iso"
 	rm -f "$VM_DIR/disk.qcow2"
@@ -274,7 +282,7 @@ cmd_stop() {
 }
 
 [ $# -ge 1 ] || {
-	sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
 	exit 2
 }
 cmd="$1"

@@ -169,6 +169,7 @@ Every command is a new SSH session, as a second terminal would be.
 | `confirm` | `users` | a confirm from the session that applied is refused; one from a new session keeps `sshd-hardening` (`confirmed`, `new-ssh-session`), stops the timer and removes the boot unit; past the deadline the drop-in and its `sshd -T` settings stay and a password login stays refused. `ufw-policy` confirmed the same way stays active with 8090 closed. After a reboot both are still in effect and no rollback unit exists |
 | `guard` | `users` | apply refuses in CI without the flag, even under `sudo` (exit 2, nothing changed), and goes past the gate with it. Then the only account that can sudo logs in with a password: plan lists `sshd-hardening` as refused by the lockout guard, and apply of a plan made before that refuses from the live host, exit 2: no drop-in, no transaction, no timer, password login still works |
 | `accounts` | `accounts` | as the image's default account (`ubuntu`, `debian`): `admin-user` with `--admin-keys-from`, a login as the new account with the copied key, which confirms; from that account `sshd-hardening` and `lock-default-user`, each confirmed from a new session; the default account can no longer log in; then undo, newest first, and `passwd`, `group`, `shadow`, `gshadow`, `subuid`, `subgid` and the default account's `authorized_keys` are byte for byte as before |
+| `rootonly` | `root` | with no account but root, as some providers hand a server out: `admin-user` with `--admin-keys-from root`, the plan naming `/root/.ssh/authorized_keys` and pointing at `sshd-hardening`, a login as the new account with root's key, which confirms; undo, and the account files and root's `authorized_keys` are byte for byte as before. Then the package lists emptied as on a fresh image: plan holds `fail2ban-sshd` with `apt-get update` named before the install; with the apt sources moved aside the install fails and the transaction ends `rolled-back` (not `rollback-failed`), with no `/etc/fail2ban` and no pending restart; with the sources back a new plan still offers it, and it installs, runs, confirms and undoes cleanly |
 
 Assertions check the outcome, not just exit codes: `sshd -T` in the VM,
 `ufw status verbose`, an HTTP request to the VM's port 8090 through the
@@ -236,7 +237,8 @@ yourself to the `kvm` group), and TCG otherwise, which works but takes
 several minutes per boot. The image is cached in `~/.cache/stackward-vm`
 (`VM_CACHE`), checked against the distribution's published checksum; the
 VM writes only to an overlay in `./vm-out` (`VM_DIR`). The `accounts`
-scenario needs the `accounts` seed (`vm.sh boot ubuntu-24.04 accounts`);
+scenario needs the `accounts` seed (`vm.sh boot ubuntu-24.04 accounts`),
+and `rootonly` the `root` seed (`vm.sh boot ubuntu-24.04 root`);
 `run.sh list` names each scenario's seed. Boot a fresh VM for every
 scenario: they change the VM and do not undo everything. `vm.sh ssh` opens
 a shell in it. Results land in `./vm-scenario-out` (`OUT`). SSH and the
