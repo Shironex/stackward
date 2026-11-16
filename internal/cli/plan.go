@@ -32,6 +32,7 @@ type planFlags struct {
 	showHostname bool
 	noSandbox    bool
 	accounts     plan.AccountChoices
+	prov         providerFlags
 }
 
 // newPlanFlagSet declares the plan flags into pf.
@@ -50,9 +51,11 @@ func newPlanFlagSet(pf *planFlags, stderr io.Writer) *flag.FlagSet {
 	fs.StringVar(&pf.accounts.Admin, "admin-user", "", "plan admin-user: create this admin account (sudo, no password)")
 	fs.StringVar(&pf.accounts.AdminKeysFrom, "admin-keys-from", "", "the existing account whose authorized_keys the admin account gets (copied on the host; root reads /root/.ssh/authorized_keys)")
 	fs.StringVar(&pf.accounts.PaaS, "paas-user", "", "plan paas-user: create this account for the platform to log in as")
+	addProviderFlags(fs, &pf.prov)
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward plan [flags]\n\nWrite down the changes that would fix the findings: file edits as diffs,\ncommands, a risk class and an undo for every step. Nothing on the host\nchanges. Part of 0.2.\n\nFlags:\n")
 		fs.PrintDefaults()
+		fmt.Fprint(stderr, providerHelp)
 		fmt.Fprintf(stderr, "\nExit codes: 0 plan written, 2 error.\n")
 	}
 	return fs
@@ -87,6 +90,9 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail("%v", err)
 	}
+	if err := pf.prov.check(pf.reportFile != "" || pf.factsFile != ""); err != nil {
+		return fail("%v", err)
+	}
 	if pf.reportFile != "" && profSet {
 		return fail("--profile applies when checks run; a saved report already has one")
 	}
@@ -115,8 +121,12 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 
 	var sys facts.System
 	var sess apply.Session
+	var pfw *facts.ProviderFirewall
 	if loadedRep == nil && loaded == nil {
 		sys = hostSystem(pf.noSandbox)
+		// The provider API is asked before the sandbox, which denies
+		// TCP connect for good once applied.
+		pfw = fetchProvider(context.Background(), pf.prov, sys)
 		// The lockout guard needs the planning session's source. Reading
 		// it walks /proc up to sshd, which the sandbox forbids.
 		sess = planSession()
@@ -129,6 +139,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "stackward: auditing this host (read only)...")
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		f = facts.Run(ctx, sys, facts.Collectors(), facts.RunOptions{Timeout: pf.timeout})
+		f.ProviderFirewall = pfw
 		stop()
 	}
 	auditOpts := audit.Options{Version: version.String(), Sandbox: sb, Profile: prof, ProfileSet: profSet, ShowHostname: pf.showHostname}

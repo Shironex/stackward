@@ -1,0 +1,12 @@
+{
+  "server": {
+    "id": 44,
+    "name": "bare-example",
+    "public_net": {
+      "ipv4": {"id": 4714, "ip": "198.51.100.21"},
+      "ipv6": null,
+      "floating_ips": [502],
+      "firewalls": []
+    }
+  }
+}
