@@ -33,6 +33,7 @@ the host, and only what the plan's selected steps say.
 
 Usage:
   stackward audit [flags]     audit this host (sudo gives full coverage)
+  stackward audit --ssh HOST  audit other hosts over your ssh, one or several
   stackward explain [id]      explain a check, or list every check
   stackward version           print the version
   stackward probe <host>      check a host from outside (run from another machine)
@@ -113,6 +114,8 @@ type auditFlags struct {
 	plain        bool
 	waivers      string
 	prov         providerFlags
+	ssh          sshFlags
+	args         []string // hosts, with --ssh
 }
 
 // parseAuditArgs parses and checks the audit flags. done is true when the
@@ -138,10 +141,12 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.BoolVar(&af.plain, "plain", false, "text output: no colors, Unicode or box lines, as when piped (NO_COLOR drops only colors)")
 	fs.StringVar(&af.waivers, "waivers", "", waiversHelp)
 	addProviderFlags(fs, &af.prov)
+	addSSHFlags(fs, &af.ssh)
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n\nFlags:\n")
+		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n       stackward audit --ssh [flags] [--] HOST...\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprint(stderr, providerHelp)
+		fmt.Fprint(stderr, sshHelp)
 		fmt.Fprintf(stderr, "\nExit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.\n")
 	}
 	if err := fs.Parse(args); err != nil {
@@ -150,7 +155,8 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 		}
 		return af, "", report.ExitError, true
 	}
-	if fs.NArg() > 0 {
+	af.args = fs.Args()
+	if len(af.args) > 0 && !af.ssh.enabled() {
 		fmt.Fprintf(stderr, "stackward audit: unexpected argument %q\n", fs.Arg(0))
 		return af, "", report.ExitError, true
 	}
@@ -176,6 +182,10 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return af, "", report.ExitError, true
 	}
+	if err := af.ssh.check(af, af.args); err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
+		return af, "", report.ExitError, true
+	}
 	failOn = report.FailOn(af.failOn)
 	if failOn != report.FailOnFail && failOn != report.FailOnWarn && failOn != report.FailOnNever {
 		fmt.Fprintf(stderr, "stackward audit: --fail-on must be fail, warn or never, not %q\n", af.failOn)
@@ -193,6 +203,9 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return report.ExitError
+	}
+	if af.ssh.enabled() {
+		return runFleetAudit(af, failOn, stdout, stderr)
 	}
 
 	// Everything that needs a file descriptor is opened before the
