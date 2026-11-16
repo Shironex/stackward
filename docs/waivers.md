@@ -118,11 +118,12 @@ job sees, so stackward treats it as untrusted input:
 - It is opened without following a symlink and without blocking (so a FIFO
   cannot hang the run); a symlink is refused. The opened file must be a
   regular file and not writable by group or others.
-- The default `.stackward.yml` must also be owned by the user running
-  stackward or by root. Otherwise anyone who can drop a `.stackward.yml`
-  where root runs an audit (`/tmp`, a shared checkout) could accept findings
-  for it. A file named with `--waivers` is your explicit choice, so its
-  owner is not checked.
+- It must be owned by the user running stackward, by root, or, when
+  stackward runs as root under `sudo`, by the user who ran sudo (the uid in
+  `SUDO_UID`, used only when it is a positive number). The same rule holds
+  for the default `.stackward.yml` and for a file named with `--waivers`.
+  Otherwise anyone who can write a file where root runs an audit (a shared
+  checkout, a predictable `/tmp` path) could accept findings for it.
 - It is read by a strict parser for exactly this shape, not by a general YAML
   library: block mappings and one list, plain or quoted single line values
   and comments. Anchors, aliases, tags, flow collections (`{}`, `[]` other
@@ -146,16 +147,24 @@ job sees, so stackward treats it as untrusted input:
 ### Running with sudo from your own checkout
 
 If you keep `.stackward.yml` in a directory you own and run
-`sudo stackward audit` there, the default file belongs to you, not to root,
-and stackward refuses it (the error says so). Either name it explicitly,
-which skips the owner check:
+`sudo stackward audit` there, the file belongs to you, the user who ran
+sudo, and stackward reads it: sudo sets `SUDO_UID` to your uid, and a file
+owned by that uid is accepted in a run as root.
 
-```sh
-sudo stackward audit --waivers .stackward.yml
-```
+A file owned by anyone else (another user, or a service account) is refused
+whether it is the default file or named with `--waivers`. Make root or
+yourself its owner with `chown`, if it really is meant for this run. If you
+switch to another user with `sudo -u`, stackward does not run as root and
+only accepts files owned by that user or by root. In every case the file
+must not be writable by group or others.
 
-or make root its owner with `sudo chown root: .stackward.yml`. The file must
-still not be writable by group or others.
+`SUDO_UID` is trusted only because the effective user is root, which means
+sudo set it. Never install stackward setuid or with file capabilities: then
+any user could set `SUDO_UID` and have their own file accepted.
+
+doas, run0 and pkexec do not set `SUDO_UID`, so under them a file owned by
+the user who ran them is refused; chown it to root or name a root owned
+copy with `--waivers`.
 
 ## In the JSON report
 
