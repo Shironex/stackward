@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Shironex/stackward/internal/facts"
+	"github.com/Shironex/stackward/internal/sudoersdrop"
 )
 
 // admin-user and paas-user: create an account with NOPASSWD sudo through
@@ -38,8 +39,8 @@ type AccountChoices struct {
 
 // Step ids of the account steps.
 const (
-	AdminUserID       = "admin-user"
-	PaaSUserID        = "paas-user"
+	AdminUserID       = sudoersdrop.AdminUserID
+	PaaSUserID        = sudoersdrop.PaaSUserID
 	LockDefaultUserID = "lock-default-user"
 	SSHDHardeningID   = "sshd-hardening"
 )
@@ -90,7 +91,7 @@ const (
 // sudoersDropin is the sudoers drop-in of account name. sudo skips files
 // in /etc/sudoers.d whose name holds a dot, so the staged copy apply
 // validates (".NAME.stackward-*") is never read as a rule.
-func sudoersDropin(name string) string { return "/etc/sudoers.d/90-stackward-" + name }
+func sudoersDropin(name string) string { return sudoersdrop.Path(name) }
 
 func homeOf(name string) string { return homeRoot + "/" + name }
 
@@ -107,16 +108,7 @@ type accountSpec struct {
 	keysFrom string
 }
 
-func (a accountSpec) sudoers() string {
-	what := "the admin account"
-	if a.id == PaaSUserID {
-		what = "the account the platform (Coolify, Dokploy) logs in as"
-	}
-	return fmt.Sprintf("# Written by stackward: plan step %s, %s.\n", a.id, what) +
-		"# NOPASSWD because the account has no password; stackward never sets one.\n" +
-		"# Remove this file to take the rights away.\n" +
-		a.name + " ALL=(ALL:ALL) NOPASSWD: ALL\n"
-}
+func (a accountSpec) sudoers() string { return sudoersdrop.Render(a.id, a.name) }
 
 func (a accountSpec) commands() [][]string {
 	out := [][]string{
@@ -147,7 +139,7 @@ func (a accountSpec) step(notes []string) *Step {
 	s := &Step{
 		Restarts: []string{},
 		Touches:  []string{"account:" + a.name, "file:" + sudoersDropin(a.name), "file:" + homeOf(a.name)},
-		Edits:    []FileEdit{newEdit(sudoersDropin(a.name), Create, "0440", "", a.sudoers())},
+		Edits:    []FileEdit{newEdit(sudoersDropin(a.name), Create, sudoersdrop.Mode, "", a.sudoers())},
 		Undo: Undo{
 			Description: fmt.Sprintf("Remove the sudoers drop-in and delete the account %s with its home and group (userdel --remove). Anything saved in that home is deleted with it.", a.name),
 		},
