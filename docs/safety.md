@@ -232,6 +232,12 @@ selected (or of the run you undo):
 | `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban` | fail2ban-sshd (access-critical) when fail2ban is missing | before the configuration test; undo: the same with `purge -y` |
 | `fail2ban-client -t` | fail2ban-sshd | after the jail is written, before fail2ban loads it |
 | `systemctl reload fail2ban` (`restart` right after an install) | fail2ban-sshd | after the configuration test; undo |
+| `iptables-restore --test --noflush <staged file>`, `ip6tables-restore --test --noflush <staged file>` | ufw-policy, ufw-docker | before a UFW rules file is moved into place; loads nothing |
+| `ufw --force enable` | ufw-policy | after every UFW file is in place, when UFW was off |
+| `ufw disable` | ufw-policy | undo only, when the step turned UFW on |
+| `ufw reload` | ufw-policy (UFW already on), ufw-docker | after the files changed; undo |
+| `iptables -F DOCKER-USER`, `iptables -A DOCKER-USER -j RETURN` | ufw-docker | undo only: Docker's own chain as the audit saw it |
+| `iptables -F ufw-docker-logging-deny`, `iptables -X ufw-docker-logging-deny` | ufw-docker | undo only, after UFW reloaded the old rules |
 
 No step reboots the host. `unattended-upgrades-reboot` only writes the
 setting that lets unattended-upgrades reboot at its window (04:00 host
@@ -399,6 +405,7 @@ The proofs:
 | keeps public SSH open (password auth off, root login off, AllowUsers, a new port, ...) | a non-root account with sudo and a usable authorized key logs in with that key under the sshd configuration the step leaves behind: AllowUsers and AllowGroups, DenyUsers and DenyGroups, `PubkeyAuthentication`, `AuthenticationMethods` (some list a key alone satisfies), `AuthorizedKeysFile` and every Match block, evaluated for that account and the session's source address. A new port must be let in by UFW from anywhere |
 | closes public SSH | the same account logs in over the tailnet: Tailscale is `Running`, the node's key expiry is off, sshd listens on a wildcard or tailnet address, and a firewall rule lets the tailnet reach sshd (on `tailscale0` or from `100.64.0.0/10`), or the step adds one. Or: the step still lets a network reach sshd, the session that plans or applies comes from it, and the account logs in from there |
 | disables an account or removes its keys | another account passes the first row; the account that applies is never disabled |
+| changes the firewall (`ufw-policy`, `ufw-docker`) | SSH stays reachable for the session that applies: for every port sshd listens on (from sshd's facts; with none known the proof fails, it never assumes 22), UFW's live rules plus the ones the step adds, walked in order, let the session's source in (from anywhere, from a network holding it, or on `tailscale0` for a tailnet source) before any deny that could match it. UFW's state must be what the step expects (off for a step that turns it on), and an IPv6 session needs `IPV6=yes`. When the rules only let some networks in, the confirm must come from one of them. A session with no known source passes only a rule from anywhere |
 | starts banning SSH clients (the fail2ban sshd jail) | nothing to prove about a second way in, but the session that plans or applies must come from an address the jail ignores (loopback, the jail's own `ignoreip`, the tailnet when Tailscale is installed, the planning session's address), so a failed test login cannot ban the owner. A session with no known source (the provider console) passes |
 
 From this follow the three rules: public SSH never closes without the
@@ -454,6 +461,8 @@ The limits, honestly:
   (deny).
 - Firewalls other than UFW are not analysed rule by rule: when one drops
   incoming traffic, a new port or a tailnet rule cannot be proven.
+- UFW rules on an interface other than `tailscale0` count as possibly
+  matching: an allow on one does not prove SSH, a deny on one refuses.
 - Tailscale SSH (`tailscale set --ssh`) does not count as a way in: its
   access is decided by tailnet ACLs, which stackward cannot read.
 

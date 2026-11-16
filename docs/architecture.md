@@ -314,7 +314,10 @@ so its tests never reach the machine. Only `hostApplyEnv` touches the real host.
   access with `SSHD` (the effective sshd settings it leaves) and `Access`
   (closes public SSH, the networks it still allows, accounts it disables,
   keys it removes; for a step that bans clients, `Bans` and the sources it
-  never bans, which the session that plans or applies must come from). `plan.ProveAccess(step, GuardInput{Facts, Source,
+  never bans, which the session that plans or applies must come from; for
+  a firewall step, `Firewall`: whether it turns UFW on and the rules it
+  adds, which `guard_firewall.go` walks with the live rules for every sshd
+  port and the session's source). `plan.ProveAccess(step, GuardInput{Facts, Source,
   Applier})` proves a second way in or names the missing piece; the CLI
   passes `plan.LockoutVeto` to `Build`, and before a transaction
   `apply.GuardAccess` proves it again from facts the `ssh`, `users`,
