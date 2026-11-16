@@ -64,6 +64,9 @@ func TestDumpFactsMasksProviderAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := f.ProviderFirewall.Targets[0].Rules[0].Sources[0]; got != "198.51.100.0/32" {
+		t.Errorf("rule source in dump = %q", got)
+	}
 	if got := f.ProviderFirewall.Targets[0].Address; got != "203.0.113.x" {
 		t.Errorf("provider address in dump = %q", got)
 	}
