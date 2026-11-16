@@ -85,6 +85,10 @@ type Inspect struct {
 		UsernsMode     string   `json:"UsernsMode"`
 		SecurityOpt    []string `json:"SecurityOpt"`
 		ReadonlyRootfs bool     `json:"ReadonlyRootfs"`
+		// Tmpfs maps a container path to its tmpfs options (compose
+		// tmpfs:, docker run --tmpfs); these mounts are not listed in
+		// Mounts.
+		Tmpfs map[string]string `json:"Tmpfs"`
 	} `json:"HostConfig"`
 	Mounts []struct {
 		Type        string `json:"Type"`

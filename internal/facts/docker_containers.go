@@ -128,7 +128,25 @@ func mountsOf(in dockerapi.Inspect) []DockerMount {
 	for _, b := range in.HostConfig.Binds {
 		add(ParseVolumeSpec(b))
 	}
+	targets := make([]string, 0, len(in.HostConfig.Tmpfs))
+	for t := range in.HostConfig.Tmpfs {
+		targets = append(targets, t)
+	}
+	sort.Strings(targets)
+	for _, t := range targets {
+		add(DockerMount{Type: "tmpfs", Target: t, ReadOnly: hasOption(in.HostConfig.Tmpfs[t], "ro")})
+	}
 	return out
+}
+
+// hasOption reports whether a comma separated mount option list holds opt.
+func hasOption(opts, opt string) bool {
+	for _, o := range strings.Split(opts, ",") {
+		if strings.TrimSpace(o) == opt {
+			return true
+		}
+	}
+	return false
 }
 
 // ParseVolumeSpec reads the short mount form SRC:DST[:mode] (compose
@@ -153,11 +171,7 @@ func ParseVolumeSpec(spec string) DockerMount {
 	default:
 		m.Type = "volume"
 	}
-	for _, o := range strings.Split(mode, ",") {
-		if o == "ro" {
-			m.ReadOnly = true
-		}
-	}
+	m.ReadOnly = hasOption(mode, "ro")
 	return m
 }
 
@@ -183,10 +197,15 @@ func IsDockerSocketPath(p string) bool {
 
 // MountsDockerSocket reports whether any bind mount exposes the Docker
 // socket. Read only mounts count too: the socket accepts writes through a
-// read only bind.
+// read only bind. A bind of a folder that holds the socket does not count
+// when another mount provably hides the socket inside the container (see
+// SocketMask).
 func MountsDockerSocket(ms []DockerMount) bool {
 	for _, m := range ms {
-		if m.Type == "bind" && IsDockerSocketPath(m.Source) {
+		if m.Type != "bind" || !IsDockerSocketPath(m.Source) {
+			continue
+		}
+		if _, masked := SocketMask(ms, m); !masked {
 			return true
 		}
 	}
