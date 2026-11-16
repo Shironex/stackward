@@ -118,108 +118,144 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 	if j.Status == RunUndone {
 		return false, fmt.Errorf("run %s was %w at %s", j.RunID, errAlreadyUndone, j.UndoneAt)
 	}
-	h := o.Host
 	// Check everything first, so a refusal changes nothing.
-	for _, js := range j.Steps {
-		if !touched(js) {
-			continue
-		}
-		if js.Step.ID != js.ID {
-			return false, fmt.Errorf("journal step %s holds step %s", js.ID, js.Step.ID)
-		}
-		if err := plan.Authorize(js.Step); err != nil {
-			return false, fmt.Errorf("refusing to undo: %w", err)
-		}
-		for _, f := range js.Files {
-			for _, d := range f.CreatedDirs {
-				if !path.IsAbs(d) || path.Clean(d) != d || !strings.HasPrefix(f.Path, d+"/") {
-					return false, fmt.Errorf("refusing to undo: step %s lists %s as a directory it created for %s, which is not a parent of it", js.ID, d, f.Path)
-				}
-			}
-			if !f.Changed || f.Undone {
-				continue
-			}
-			if !slices.ContainsFunc(js.Step.Edits, func(e plan.FileEdit) bool { return e.Path == f.Path && e.Action == f.Action }) {
-				return false, fmt.Errorf("refusing to undo: step %s does not edit %s", js.ID, f.Path)
-			}
-			ok, err := plan.FileHolds(h, f.Path, f.NewSHA256)
-			if err != nil {
-				return false, err
-			}
-			if !ok {
-				return false, fmt.Errorf("refusing to undo: %s changed after run %s; restore it by hand from %s", f.Path, j.RunID, BackupPath(j.RunID, f.Path))
-			}
-			if f.Action == plan.Replace {
-				ok, err := plan.FileHolds(h, BackupPath(j.RunID, f.Path), f.OldSHA256)
-				if err != nil {
-					return false, err
-				}
-				if !ok {
-					return false, fmt.Errorf("refusing to undo: the backup %s does not hold the old content", BackupPath(j.RunID, f.Path))
-				}
-			}
-		}
+	if err := checkUndoable(o.Host, j); err != nil {
+		return false, err
 	}
 
-	r := &runner{h: h, o: Options{Now: o.Now, CommandTimeout: o.CommandTimeout}, j: j}
+	r := &runner{h: o.Host, o: Options{Now: o.Now, CommandTimeout: o.CommandTimeout}, j: j}
 	for i := len(j.Steps) - 1; i >= 0; i-- {
 		js := &j.Steps[i]
 		if !touched(*js) {
 			continue
 		}
 		o.Progress("%s: undoing", js.ID)
-		for k := len(js.Files) - 1; k >= 0; k-- {
-			f := &js.Files[k]
-			if !f.Changed || f.Undone {
-				continue
-			}
-			if err := restore(h, j.RunID, *f); err != nil {
-				_ = r.save()
-				return changed, fmt.Errorf("step %s: restoring %s: %w", js.ID, f.Path, err)
-			}
-			changed = true
-			f.Undone = true
-			if err := r.save(); err != nil {
-				return changed, err
-			}
-		}
-		// The files a pending restart would load are restored: there is
-		// nothing left to restart, whatever the undo commands do next.
-		js.RestartPending = false
-		for k := len(js.Files) - 1; k >= 0; k-- {
-			removed, err := removeCreatedDirs(h, js.Files[k].CreatedDirs)
-			changed = changed || removed
-			if err != nil {
-				_ = r.save()
-				return changed, fmt.Errorf("step %s: %w", js.ID, err)
-			}
-		}
-		if err := r.save(); err != nil {
+		stepChanged, err := undoStep(ctx, r, o, js)
+		changed = changed || stepChanged
+		if err != nil {
 			return changed, err
-		}
-		done := ran(*js)
-		for _, args := range undoCommands(js.Step) {
-			skip, err := plan.UndoSkip(h, args, done)
-			if err != nil {
-				return changed, fmt.Errorf("step %s: %w", js.ID, err)
-			}
-			if skip != "" {
-				o.Progress("%s: skipping %s: %s", js.ID, strings.Join(args, " "), skip)
-				js.Commands = append(js.Commands, JournalCommand{Kind: KindUndo, Args: redactAll(args), Skipped: skip})
-				if err := r.save(); err != nil {
-					return changed, err
-				}
-				continue
-			}
-			changed = true
-			if err := r.command(ctx, js, KindUndo, args); err != nil {
-				return changed, fmt.Errorf("step %s: %w", js.ID, err)
-			}
 		}
 		o.Progress("%s: undone", js.ID)
 	}
 	j.Status, j.UndoneAt = RunUndone, stamp(o.Now())
 	return true, r.save()
+}
+
+// checkUndoable authorizes every touched step again and checks that every
+// file it changed still holds what the run wrote. It changes nothing.
+func checkUndoable(h Host, j *Journal) error {
+	for _, js := range j.Steps {
+		if !touched(js) {
+			continue
+		}
+		if js.Step.ID != js.ID {
+			return fmt.Errorf("journal step %s holds step %s", js.ID, js.Step.ID)
+		}
+		if err := plan.Authorize(js.Step); err != nil {
+			return fmt.Errorf("refusing to undo: %w", err)
+		}
+		for _, f := range js.Files {
+			if err := checkFileUndoable(h, j.RunID, js, f); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// checkFileUndoable is checkUndoable for one file of a step.
+func checkFileUndoable(h Host, runID string, js JournalStep, f JournalFile) error {
+	for _, d := range f.CreatedDirs {
+		if !path.IsAbs(d) || path.Clean(d) != d || !strings.HasPrefix(f.Path, d+"/") {
+			return fmt.Errorf("refusing to undo: step %s lists %s as a directory it created for %s, which is not a parent of it", js.ID, d, f.Path)
+		}
+	}
+	if !f.Changed || f.Undone {
+		return nil
+	}
+	if !slices.ContainsFunc(js.Step.Edits, func(e plan.FileEdit) bool { return e.Path == f.Path && e.Action == f.Action }) {
+		return fmt.Errorf("refusing to undo: step %s does not edit %s", js.ID, f.Path)
+	}
+	ok, err := plan.FileHolds(h, f.Path, f.NewSHA256)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("refusing to undo: %s changed after run %s; restore it by hand from %s", f.Path, runID, BackupPath(runID, f.Path))
+	}
+	if f.Action == plan.Replace {
+		ok, err := plan.FileHolds(h, BackupPath(runID, f.Path), f.OldSHA256)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("refusing to undo: the backup %s does not hold the old content", BackupPath(runID, f.Path))
+		}
+	}
+	return nil
+}
+
+// undoStep restores the files of one step (newest first), removes the
+// directories it created and runs its undo commands. changed says whether
+// anything on the host changed before an error.
+func undoStep(ctx context.Context, r *runner, o UndoOptions, js *JournalStep) (changed bool, err error) {
+	h, j := o.Host, r.j
+	for k := len(js.Files) - 1; k >= 0; k-- {
+		f := &js.Files[k]
+		if !f.Changed || f.Undone {
+			continue
+		}
+		if err := restore(h, j.RunID, *f); err != nil {
+			_ = r.save()
+			return changed, fmt.Errorf("step %s: restoring %s: %w", js.ID, f.Path, err)
+		}
+		changed = true
+		f.Undone = true
+		if err := r.save(); err != nil {
+			return changed, err
+		}
+	}
+	// The files a pending restart would load are restored: there is
+	// nothing left to restart, whatever the undo commands do next.
+	js.RestartPending = false
+	for k := len(js.Files) - 1; k >= 0; k-- {
+		removed, err := removeCreatedDirs(h, js.Files[k].CreatedDirs)
+		changed = changed || removed
+		if err != nil {
+			_ = r.save()
+			return changed, fmt.Errorf("step %s: %w", js.ID, err)
+		}
+	}
+	if err := r.save(); err != nil {
+		return changed, err
+	}
+	cmdChanged, err := runUndoCommands(ctx, r, o, js)
+	return changed || cmdChanged, err
+}
+
+// runUndoCommands runs the undo commands of a step, skipping those
+// plan.UndoSkip finds nothing left to undo for.
+func runUndoCommands(ctx context.Context, r *runner, o UndoOptions, js *JournalStep) (changed bool, err error) {
+	done := ran(*js)
+	for _, args := range undoCommands(js.Step) {
+		skip, err := plan.UndoSkip(o.Host, args, done)
+		if err != nil {
+			return changed, fmt.Errorf("step %s: %w", js.ID, err)
+		}
+		if skip != "" {
+			o.Progress("%s: skipping %s: %s", js.ID, strings.Join(args, " "), skip)
+			js.Commands = append(js.Commands, JournalCommand{Kind: KindUndo, Args: redactAll(args), Skipped: skip})
+			if err := r.save(); err != nil {
+				return changed, err
+			}
+			continue
+		}
+		changed = true
+		if err := r.command(ctx, js, KindUndo, args); err != nil {
+			return changed, fmt.Errorf("step %s: %w", js.ID, err)
+		}
+	}
+	return changed, nil
 }
 
 // removeCreatedDirs removes the directories apply created for a new file,
