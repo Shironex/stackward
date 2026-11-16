@@ -27,8 +27,8 @@ const ephemeralPort = 40000
 const wideRange = 1000
 
 // anySrcPort is the source port of a packet whose sender did not pick one to
-// match a source port rule.
-const anySrcPort = 0
+// match a source port rule. It lies outside every port range, 0 included.
+const anySrcPort = -1
 
 // packet is one kind of inbound packet from a sender anywhere on the
 // internet, as the PFW checks ask about it.
@@ -40,21 +40,59 @@ type packet struct {
 	established bool
 }
 
-// worldSource reports whether sources reach anywhere: no source means any.
-// A source that does not parse as a prefix counts as anywhere, so a broken
-// or hand edited facts file fails closed (the clients refuse such rules and
-// mark the read partial).
-func worldSource(sources []string) bool {
+// The two source predicates err in opposite directions on purpose, so a
+// doubtful source always leans toward a finding: a permit is assumed to
+// reach anywhere, a deny is assumed to block nothing.
+
+// permitFromWorld reports whether a permit's sources let a sender anywhere
+// in: no source, a source of /8 or wider, or a source that does not parse.
+func permitFromWorld(sources []string) bool {
 	if len(sources) == 0 {
 		return true
 	}
 	for _, s := range sources {
-		p, err := netip.ParsePrefix(s)
+		p, err := parseSource(s)
 		if err != nil || p.Bits() <= worldPrefixBits {
 			return true
 		}
 	}
 	return false
+}
+
+// denyFromWorld reports whether a deny's sources cover every sender: no
+// source, or a true /0 (0.0.0.0/0, ::/0, ::ffff:0.0.0.0/96). A narrower or
+// unparsable source never makes a deny match a sender anywhere.
+func denyFromWorld(sources []string) bool {
+	if len(sources) == 0 {
+		return true
+	}
+	for _, s := range sources {
+		if p, err := parseSource(s); err == nil && p.Bits() == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// parseSource parses a CIDR source and unmaps an IPv4-mapped IPv6 prefix
+// (::ffff:0.0.0.0/96 is all of IPv4).
+func parseSource(s string) (netip.Prefix, error) {
+	p, err := netip.ParsePrefix(s)
+	if err != nil {
+		return p, err
+	}
+	if a := p.Addr(); a.Is4In6() && p.Bits() >= 96 {
+		return netip.PrefixFrom(a.Unmap(), p.Bits()-96), nil
+	}
+	return p, nil
+}
+
+// fromWorld picks the predicate for r's action.
+func fromWorld(r facts.ProviderRule) bool {
+	if r.Action == "permit" {
+		return permitFromWorld(r.Sources)
+	}
+	return denyFromWorld(r.Sources)
 }
 
 func portsMatch(ranges []facts.PortRange, port int) bool {
@@ -82,7 +120,7 @@ func inForce(r facts.ProviderRule) bool {
 
 // matches reports whether r matches p from a sender anywhere.
 func matches(r facts.ProviderRule, p packet) bool {
-	if !inForce(r) || r.Fragments || !worldSource(r.Sources) {
+	if !inForce(r) || r.Fragments || !fromWorld(r) {
 		return false
 	}
 	if r.Protocol != "ipv4" && r.Protocol != p.proto {
@@ -142,21 +180,30 @@ func verdict(t facts.ProviderTarget, p packet) (bool, *facts.ProviderRule) {
 }
 
 // chosenSrcPorts are the source ports a sender anywhere may pick to match a
-// source port rule: anySrcPort plus the first port of every counted permit
-// that names source ports. A stateless filter cannot tell a reply from a
-// packet a sender crafted with that source port.
+// source port rule. A stateless filter cannot tell a reply from a packet a
+// sender crafted with that source port. Which rule a packet meets only
+// changes at the edges of the source port ranges, so trying anySrcPort and,
+// for every counted rule's range, its first and last port and the ports
+// just outside it covers every case (a permit for 1000-2000 behind a deny
+// for 1000 is reached from 1001).
 func chosenSrcPorts(t facts.ProviderTarget, proto string) []int {
 	out := []int{anySrcPort}
 	seen := map[int]bool{anySrcPort: true}
+	add := func(p int) {
+		if p >= 0 && p <= 65535 && !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
 	for _, r := range sortedRules(t) {
-		if !inForce(r) || r.Action != "permit" || len(r.SrcPorts) == 0 || (r.Protocol != proto && r.Protocol != "ipv4") {
+		if !inForce(r) || len(r.SrcPorts) == 0 || (r.Protocol != proto && r.Protocol != "ipv4") {
 			continue
 		}
 		for _, pr := range r.SrcPorts {
-			if !seen[pr.From] {
-				seen[pr.From] = true
-				out = append(out, pr.From)
-			}
+			add(pr.From)
+			add(pr.To)
+			add(pr.From - 1)
+			add(pr.To + 1)
 		}
 	}
 	return out

@@ -54,7 +54,7 @@ func checkPFWAttached(in Input) []Result {
 func catchAllDeny(t facts.ProviderTarget) *facts.ProviderRule {
 	rs := sortedRules(t)
 	for i, r := range rs {
-		if inForce(r) && r.Action == "deny" && r.Protocol == "ipv4" && worldSource(r.Sources) &&
+		if inForce(r) && r.Action == "deny" && r.Protocol == "ipv4" && denyFromWorld(r.Sources) &&
 			len(r.DstPorts) == 0 && len(r.SrcPorts) == 0 && r.TCPOption == "" && !r.Fragments {
 			return &rs[i]
 		}
@@ -96,11 +96,11 @@ func checkPFWOpenUDP(in Input) []Result {
 		}
 		var wide, srcOnly []string
 		for _, r := range sortedRules(t) {
-			if !inForce(r) || r.Action != "permit" || (r.Protocol != "udp") || !worldSource(r.Sources) {
+			if !inForce(r) || r.Action != "permit" || (r.Protocol != "udp") || !permitFromWorld(r.Sources) {
 				continue
 			}
 			if len(r.DstPorts) == 0 && len(r.SrcPorts) > 0 {
-				if ok, by := verdict(t, packet{proto: "udp", dst: unusedPort(t), src: r.SrcPorts[0].From}); ok && by != nil && by.Order == r.Order {
+				if liveForSomeSrcPort(t, r) {
 					srcOnly = append(srcOnly, fmt.Sprintf("%s (source port %s)", ruleLabel(t, &r), portList(r.SrcPorts)))
 				}
 				continue
@@ -122,6 +122,20 @@ func checkPFWOpenUDP(in Input) []Result {
 		}
 		return pfwResult(pf, t, Pass, "no inbound rule allows all UDP from anywhere", ev)
 	})
+}
+
+// liveForSomeSrcPort reports whether a UDP packet to an unused port, from
+// some source port a sender may pick inside r's ranges, is let in by r.
+func liveForSomeSrcPort(t facts.ProviderTarget, r facts.ProviderRule) bool {
+	for _, src := range chosenSrcPorts(t, "udp") {
+		if !portsMatch(r.SrcPorts, src) {
+			continue
+		}
+		if ok, by := verdict(t, packet{proto: "udp", dst: unusedPort(t), src: src}); ok && by != nil && by.Order == r.Order {
+			return true
+		}
+	}
+	return false
 }
 
 func rangeSize(rs []facts.PortRange) int {
