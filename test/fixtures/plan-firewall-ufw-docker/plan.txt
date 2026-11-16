@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:207e1223ba6275be  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     2 planned (0 safe, 1 networking, 1 access-critical), 2 opt in, 11 not planned
+steps:     2 planned (0 safe, 1 networking, 1 access-critical), 2 opt in, 12 not planned
 
 1. unattended-upgrades-reboot  [networking]  fixes SYS-003
    Let unattended-upgrades reboot at 04:00 (host time) when an update needs it
@@ -106,6 +106,7 @@ Not planned:
   unattended-upgrades  passing  UPD-001 already passes or does not apply
   unattended-upgrades-install passing  UPD-001 already passes or does not apply
   docker-log-rotation  passing  DKR-031 already passes or does not apply
+  paas-env-perms       passing  SEC-001 and SEC-002 already pass or do not apply
   admin-user           passing  an admin account besides root and the cloud default exists (alice)
   paas-user            manual   the platform logs in as root unless it has its own account; name one with stackward plan --paas-user NAME
   sshd-hardening       passing  SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply

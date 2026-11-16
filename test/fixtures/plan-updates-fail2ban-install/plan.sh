@@ -152,6 +152,8 @@ STACKWARD_EOF
 # installed; the opt in step unattended-upgrades-install installs it
 # docker-log-rotation (unknown): DKR-031 is unknown; nothing to plan until
 # the audit can inspect it
+# paas-env-perms (unknown): SEC-001 is unknown and SEC-002 is unknown;
+# nothing to plan until the audit can inspect it
 # admin-user (unknown): the accounts were not audited
 # paas-user (unknown): the accounts were not audited
 # sshd-hardening (unknown): SSH-001 is unknown, SSH-002 is unknown, SSH-003

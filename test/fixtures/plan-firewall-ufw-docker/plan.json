@@ -44,7 +44,7 @@
     "access_critical": 1,
     "opt_in": 2,
     "restarts": [],
-    "skipped": 11
+    "skipped": 12
   },
   "steps": [
     {
@@ -253,6 +253,16 @@
       ],
       "kind": "passing",
       "reason": "DKR-031 already passes or does not apply"
+    },
+    {
+      "id": "paas-env-perms",
+      "title": "Keep platform .env files closed to group and others with a systemd timer (workaround)",
+      "fixes": [
+        "SEC-001",
+        "SEC-002"
+      ],
+      "kind": "passing",
+      "reason": "SEC-001 and SEC-002 already pass or do not apply"
     },
     {
       "id": "admin-user",

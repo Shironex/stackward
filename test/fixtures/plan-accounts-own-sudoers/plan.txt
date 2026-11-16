@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:82c1a34869ebe223  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 11 not planned
+steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 12 not planned
 restarts:  ssh
 
 1. sshd-hardening  [access-critical]  fixes SSH-001, SSH-003, SSH-005
@@ -47,6 +47,7 @@ Not planned:
   unattended-upgrades  unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-install unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
   docker-log-rotation  unknown  DKR-031 is unknown; nothing to plan until the audit can inspect it
+  paas-env-perms       unknown  SEC-001 is unknown and SEC-002 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-reboot unknown  SYS-002 is unknown, SYS-003 is unknown and UPD-004 is unknown; nothing to plan until the audit can inspect it
   admin-user           passing  an admin account besides root and the cloud default exists (ops)
   paas-user            passing  no platform (Coolify, Dokploy) was found; a PaaS account is only for one
