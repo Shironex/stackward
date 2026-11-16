@@ -35,6 +35,12 @@ Everything is read through one small interface that has no write method.
   parsing, because they can hold passwords and tokens. Without access to the
   socket, every Docker check reports `unknown`.
 
+- **The waivers file, as untrusted input.** `.stackward.yml` (or
+  `--waivers FILE`) is read before the sandbox by a strict parser for its one
+  shape, size capped, and only if it is a regular file owned by the user
+  running stackward or by root and not writable by others. A malformed file
+  is an error, never ignored ([waivers.md](waivers.md#safety)).
+
 Without root, checks that need root report `unknown` and the report says so.
 Run with `sudo` for full coverage; the promises below hold either way.
 
