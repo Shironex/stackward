@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -14,10 +15,10 @@ import (
 	"github.com/Shironex/stackward/internal/plan"
 )
 
-// touched reports whether a journal step changed anything: a file, or a
-// command that ran, before or after the edits.
+// touched reports whether a journal step changed anything: a file, a
+// directory created for one, or a command that ran.
 func touched(js JournalStep) bool {
-	return slices.ContainsFunc(js.Files, func(f JournalFile) bool { return f.Changed }) ||
+	return slices.ContainsFunc(js.Files, func(f JournalFile) bool { return f.Changed || len(f.CreatedDirs) > 0 }) ||
 		slices.ContainsFunc(js.Commands, func(c JournalCommand) bool { return c.Kind == KindCommand || c.Kind == KindBefore })
 }
 
@@ -56,6 +57,12 @@ func UndoScript(j *Journal) []string {
 				out = append(out, "cp -p "+shellQuote(BackupPath(j.RunID, f.Path))+" "+shellQuote(f.Path))
 			} else {
 				out = append(out, "rm -f "+shellQuote(f.Path))
+			}
+		}
+		for k := len(js.Files) - 1; k >= 0; k-- {
+			dirs := js.Files[k].CreatedDirs
+			for d := len(dirs) - 1; d >= 0; d-- {
+				out = append(out, "rmdir --ignore-fail-on-non-empty "+shellQuote(dirs[d]))
 			}
 		}
 		for _, args := range undoCommands(js.Step) {
@@ -112,6 +119,11 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 			return false, fmt.Errorf("refusing to undo: %w", err)
 		}
 		for _, f := range js.Files {
+			for _, d := range f.CreatedDirs {
+				if !path.IsAbs(d) || path.Clean(d) != d || !strings.HasPrefix(f.Path, d+"/") {
+					return false, fmt.Errorf("refusing to undo: step %s lists %s as a directory it created for %s, which is not a parent of it", js.ID, d, f.Path)
+				}
+			}
 			if !f.Changed || f.Undone {
 				continue
 			}
@@ -159,6 +171,17 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 				return changed, err
 			}
 		}
+		for k := len(js.Files) - 1; k >= 0; k-- {
+			removed, err := removeCreatedDirs(h, js.Files[k].CreatedDirs)
+			changed = changed || removed
+			if err != nil {
+				_ = r.save()
+				return changed, fmt.Errorf("step %s: %w", js.ID, err)
+			}
+		}
+		if err := r.save(); err != nil {
+			return changed, err
+		}
 		for _, args := range undoCommands(js.Step) {
 			changed = true
 			if err := r.command(ctx, js, KindUndo, args); err != nil {
@@ -170,6 +193,34 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 	}
 	j.Status, j.UndoneAt = RunUndone, stamp(o.Now())
 	return true, r.save()
+}
+
+// removeCreatedDirs removes the directories apply created for a new file,
+// innermost first, while they are empty: a directory something else wrote
+// into since is kept. It reports whether it removed one.
+func removeCreatedDirs(h Host, dirs []string) (bool, error) {
+	removed := false
+	for d := len(dirs) - 1; d >= 0; d-- {
+		st, err := h.Stat(dirs[d])
+		if err != nil {
+			return removed, err
+		}
+		if !st.Exists {
+			continue
+		}
+		if st.Symlink || st.Regular {
+			return removed, nil
+		}
+		names, err := h.ReadDir(dirs[d])
+		if err != nil || len(names) > 0 {
+			return removed, err
+		}
+		if err := h.Remove(dirs[d]); err != nil {
+			return removed, fmt.Errorf("removing the directory %s it created: %w", dirs[d], err)
+		}
+		removed = true
+	}
+	return removed, nil
 }
 
 // restore puts one file back as it was before the run.

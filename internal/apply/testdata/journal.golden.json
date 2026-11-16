@@ -100,7 +100,11 @@
           "mode": "0644",
           "uid": -1,
           "gid": -1,
-          "orig_created": false
+          "orig_created": false,
+          "created_dirs": [
+            "/etc/systemd",
+            "/etc/systemd/journald.conf.d"
+          ]
         }
       ],
       "commands": [

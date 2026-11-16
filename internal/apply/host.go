@@ -36,7 +36,7 @@ type Host interface {
 	CopyNew(src, dst string) error
 	// MkdirAll creates p and its missing parents with mode.
 	MkdirAll(p string, mode fs.FileMode) error
-	// Remove deletes the file p.
+	// Remove deletes the file p, or the empty directory p.
 	Remove(p string) error
 	// ReadDir lists the names in directory p, sorted; a missing directory
 	// is an empty list.
