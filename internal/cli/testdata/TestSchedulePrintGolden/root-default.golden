@@ -9,15 +9,17 @@ After=docker.service
 [Service]
 Type=oneshot
 User=root
-# Full coverage needs root. The bounding set keeps only what the
-# collectors use to read: root only files, the Docker socket, the
-# firewall ruleset and which process owns which socket.
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE
+# Full coverage needs root. The bounding set keeps what the collectors
+# use: files root does not own, the firewall ruleset (CAP_NET_ADMIN can
+# also change it) and which process owns which socket. See the docs for
+# what each one allows; the output directories must be owned by root.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE
 ExecStart=/usr/local/bin/stackward audit --format json --fail-on never --out /var/lib/stackward/report.json.tmp --textfile /var/lib/prometheus/node-exporter/stackward.prom.tmp
 # Each file is written under a temporary name and renamed into place
 # (rename is atomic), and only when the audit succeeded.
-ExecStartPost=/bin/mv -f /var/lib/stackward/report.json.tmp /var/lib/stackward/report.json
-ExecStartPost=/bin/mv -f /var/lib/prometheus/node-exporter/stackward.prom.tmp /var/lib/prometheus/node-exporter/stackward.prom
+ExecStartPost=/bin/mv -fT /var/lib/stackward/report.json.tmp /var/lib/stackward/report.json
+ExecStartPost=/bin/mv -fT /var/lib/prometheus/node-exporter/stackward.prom.tmp /var/lib/prometheus/node-exporter/stackward.prom
+TimeoutStartSec=30min
 UMask=0077
 Nice=10
 IOSchedulingClass=idle
@@ -40,6 +42,10 @@ RestrictNamespaces=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+# No collector mounts, loads modules, reboots, sets the clock or traces a
+# process: those system calls fail with EPERM.
+SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation @obsolete @raw-io @debug
+SystemCallErrorNumber=EPERM
 ReadWritePaths=/var/lib/stackward /var/lib/prometheus/node-exporter
 # The audit makes no network calls.
 IPAddressDeny=any
