@@ -108,8 +108,9 @@ type auditFlags struct {
 	plain        bool
 }
 
-func runAudit(args []string, stdout, stderr io.Writer) int {
-	var af auditFlags
+// parseAuditArgs parses and checks the audit flags. done is true when the
+// run ends here (help, a bad flag or a bad value) and code is its exit code.
+func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn report.FailOn, code int, done bool) {
 	fs := flag.NewFlagSet("audit", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&af.format, "format", "text", "output format: text, json or md")
@@ -134,13 +135,13 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	}
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return report.ExitOK
+			return af, "", report.ExitOK, true
 		}
-		return report.ExitError
+		return af, "", report.ExitError, true
 	}
 	if fs.NArg() > 0 {
 		fmt.Fprintf(stderr, "stackward audit: unexpected argument %q\n", fs.Arg(0))
-		return report.ExitError
+		return af, "", report.ExitError, true
 	}
 	if af.jsonOut {
 		af.format = "json"
@@ -150,12 +151,20 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	}
 	if af.format != "text" && af.format != "json" && af.format != "md" {
 		fmt.Fprintf(stderr, "stackward audit: --format must be text, json or md, not %q\n", af.format)
-		return report.ExitError
+		return af, "", report.ExitError, true
 	}
-	failOn := report.FailOn(af.failOn)
+	failOn = report.FailOn(af.failOn)
 	if failOn != report.FailOnFail && failOn != report.FailOnWarn && failOn != report.FailOnNever {
 		fmt.Fprintf(stderr, "stackward audit: --fail-on must be fail, warn or never, not %q\n", af.failOn)
-		return report.ExitError
+		return af, "", report.ExitError, true
+	}
+	return af, failOn, 0, false
+}
+
+func runAudit(args []string, stdout, stderr io.Writer) int {
+	af, failOn, code, done := parseAuditArgs(args, stderr)
+	if done {
+		return code
 	}
 	prof, profSet, err := profile.Parse(af.profile)
 	if err != nil {

@@ -47,8 +47,8 @@ type probeFlags struct {
 	plain     bool
 }
 
-func runProbe(args []string, stdout, stderr io.Writer) int {
-	var pf probeFlags
+// newProbeFlagSet declares the probe flags into pf.
+func newProbeFlagSet(pf *probeFlags, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet("probe", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&pf.hostname, "hostname", "", "also check this app hostname over HTTPS (redirect loops, TLS)")
@@ -69,6 +69,12 @@ func runProbe(args []string, stdout, stderr io.Writer) int {
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.\n")
 	}
+	return fs
+}
+
+func runProbe(args []string, stdout, stderr io.Writer) int {
+	var pf probeFlags
+	fs := newProbeFlagSet(&pf, stderr)
 	// Flags may come before or after the host.
 	var positional []string
 	rest := args

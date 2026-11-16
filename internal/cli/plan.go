@@ -34,11 +34,8 @@ type planFlags struct {
 	accounts     plan.AccountChoices
 }
 
-// runPlan audits the host (or loads a saved report or facts file) with the
-// same pipeline and sandbox as audit, then writes the plan. It changes
-// nothing: the only file it writes is --out, opened before the sandbox.
-func runPlan(args []string, stdout, stderr io.Writer) int {
-	var pf planFlags
+// newPlanFlagSet declares the plan flags into pf.
+func newPlanFlagSet(pf *planFlags, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&pf.reportFile, "report", "", "plan from a saved report.v1 JSON file (add --facts with the same audit's facts for file edits)")
@@ -58,6 +55,15 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes: 0 plan written, 2 error.\n")
 	}
+	return fs
+}
+
+// runPlan audits the host (or loads a saved report or facts file) with the
+// same pipeline and sandbox as audit, then writes the plan. It changes
+// nothing: the only file it writes is --out, opened before the sandbox.
+func runPlan(args []string, stdout, stderr io.Writer) int {
+	var pf planFlags
+	fs := newPlanFlagSet(&pf, stderr)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return report.ExitOK
@@ -144,11 +150,21 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		Vetoes: []plan.Veto{plan.LockoutVeto(apply.GuardInput(f, sess))},
 	})
 
+	if err := writePlan(stdout, outFile, pf, p); err != nil {
+		return fail("%v", err)
+	}
+	return report.ExitOK
+}
+
+// writePlan writes the plan to the --out file (when one was opened) and to
+// stdout in the format the flags ask for.
+func writePlan(stdout io.Writer, outFile *os.File, pf planFlags, p *plan.Plan) error {
 	if outFile != nil {
 		if err := plan.WriteJSON(outFile, p); err != nil {
-			return fail("writing %s: %v", pf.out, err)
+			return fmt.Errorf("writing %s: %w", pf.out, err)
 		}
 	}
+	var err error
 	switch {
 	case pf.jsonOut:
 		err = plan.WriteJSON(stdout, p)
@@ -158,9 +174,9 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 		err = plan.WriteText(stdout, p)
 	}
 	if err != nil {
-		return fail("writing the plan: %v", err)
+		return fmt.Errorf("writing the plan: %w", err)
 	}
-	return report.ExitOK
+	return nil
 }
 
 // checkAccountFlags refuses account names stackward would not use, and a
