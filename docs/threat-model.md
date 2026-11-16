@@ -206,7 +206,9 @@ and the only time stackward writes to an audited host.
   Anything else is refused before ssh starts. Every remote command is a fixed
   string of this program; the only flags passed on are `--profile` (checked
   against the known names), `--timeout` and `--show-hostname`. `--provider`
-  is refused with `--ssh`, so no credential ever goes to a host.
+  is refused with `--ssh`, so no credential ever goes to a host, and so are
+  `--waivers` and `--textfile`, since a local waivers file applied to other
+  hosts' reports, and a metric for a whole fleet, each need their own design.
 - **The one write.** Per host, a first connection runs `uname -m`. When the
   binary to copy (this one, or one given with `--ssh-binary`, checked from its
   ELF header) does not match, nothing is copied and the error names the
@@ -249,7 +251,10 @@ and the only time stackward writes to an audited host.
   backslash the host puts before it would undo the escape and end the cell.
   So a compromised host cannot send escape sequences to your terminal, add
   links, images or rows to the Markdown report, or forge another host's
-  section. Error output is also redacted.
+  section. Error output is also redacted. Waivers are never taken from a
+  host: a waiver or waiver list in its report (from its own `.stackward.yml`
+  or forged) is dropped with a note, so every finding shows at its real
+  level.
 - **No local trace.** Host names appear only in the report you asked for
   (stdout or `--out`); nothing else is written on your machine by stackward
   (ssh keeps its own files, such as known hosts, as usual).

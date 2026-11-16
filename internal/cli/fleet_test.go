@@ -210,6 +210,8 @@ func TestAuditSSHFlagChecks(t *testing.T) {
 		{"--ssh", "--facts", fixture("ubuntu-2404-clean"), "web1"},
 		{"--ssh", "--dump-facts", "web1"},
 		{"--ssh", "--no-sandbox", "web1"},
+		{"--ssh", "--waivers", "waivers.yml", "web1"},
+		{"--ssh", "--textfile", "fleet.prom.tmp", "web1"},
 		{"--ssh", "--provider", "hetzner", "web1"},
 		{"--ssh", "--ssh-parallel", "0", "web1"},
 		{"--ssh", "--ssh-parallel", "99", "web1"},
@@ -223,6 +225,24 @@ func TestAuditSSHFlagChecks(t *testing.T) {
 		if code != report.ExitError {
 			t.Errorf("%q: exit %d, want %d (stderr %s)", args, code, report.ExitError, errs)
 		}
+	}
+	if n := countEntries(t, calls); n != 0 {
+		t.Errorf("ssh was started %d times", n)
+	}
+}
+
+func TestAuditSSHRefusesWaiversAndTextfile(t *testing.T) {
+	calls, _ := fakeFleet(t)
+	work := t.TempDir()
+	t.Chdir(work)
+	for flag, value := range map[string]string{"--waivers": "waivers.yml", "--textfile": "fleet.prom.tmp"} {
+		code, _, errs := run("audit", "--ssh", flag, value, "web1")
+		if code != report.ExitError || !strings.Contains(errs, "--ssh cannot be combined with "+flag) {
+			t.Errorf("%s: exit %d, stderr %q", flag, code, errs)
+		}
+	}
+	if n := countEntries(t, work); n != 0 {
+		t.Errorf("a refused run wrote %d files", n)
 	}
 	if n := countEntries(t, calls); n != 0 {
 		t.Errorf("ssh was started %d times", n)
