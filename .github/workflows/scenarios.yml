@@ -75,6 +75,12 @@ jobs:
         os: [ubuntu-24.04, ubuntu-22.04]
         scenario: [bad-docker, hardened-docker, socket-proxy, ufw, ufw-docker, ssh, read-only, non-root, apply, transaction, updates, firewall, paas-env]
     name: ${{ matrix.scenario }} (${{ matrix.os }})
+    # apply refuses to run in CI unless the job says it owns a throwaway
+    # VM (internal/apply/cienv.go). A GitHub hosted runner is one: a fresh
+    # VM for this job alone, deleted after it. Only this job and the VM
+    # matrix (vm-matrix.yml) set it; the build job and ci.yml never do.
+    env:
+      STACKWARD_CI_APPLY: throwaway-vm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
