@@ -117,3 +117,25 @@ func TestBuildRefusesNeverTouchedSteps(t *testing.T) {
 		t.Errorf("skipped %+v", sk)
 	}
 }
+
+// The exception for paas-env-perms covers only its own exact file-mode
+// targets: another step, another path under the data root, a file edit or
+// a pattern are all still refused.
+func TestNeverTouchedExceptionIsNarrow(t *testing.T) {
+	ok := Step{ID: "paas-env-perms", Touches: []string{"file-mode:/data/coolify/applications", "file-mode:/etc/dokploy/compose"}}
+	if err := checkNeverTouched(ok); err != nil {
+		t.Errorf("its exact targets refused: %v", err)
+	}
+	for name, s := range map[string]Step{
+		"another step":       {ID: "sysctl-hardening", Touches: []string{"file-mode:/data/coolify/applications"}},
+		"another path":       {ID: "paas-env-perms", Touches: []string{"file-mode:/data/coolify/ssh/keys"}},
+		"a child path":       {ID: "paas-env-perms", Touches: []string{"file-mode:/data/coolify/applications/x"}},
+		"a file edit":        {ID: "paas-env-perms", Edits: []FileEdit{{Path: "/data/coolify/applications/x/.env"}}},
+		"a file target":      {ID: "paas-env-perms", Touches: []string{"file:/data/coolify/applications"}},
+		"a command argument": {ID: "paas-env-perms", Commands: []Command{{Args: []string{"chmod", "600", "/etc/dokploy/compose/a/.env"}}}},
+	} {
+		if err := checkNeverTouched(s); err == nil {
+			t.Errorf("%s: not refused", name)
+		}
+	}
+}

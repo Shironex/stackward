@@ -3,7 +3,10 @@ package plan
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strings"
+
+	"github.com/Shironex/stackward/internal/facts"
 )
 
 // The never touched list: things no step may change, whatever it fixes.
@@ -16,8 +19,10 @@ import (
 // refuses it again at apply time and undo time, so a hand edited plan
 // cannot slip past by dropping a target from touches.
 //
-// docs/safety.md lists the same entries for readers; a test keeps the two
-// in step.
+// A step that needs one narrow thing an entry covers gets an exception of
+// its own (NeverTouchedExceptions): one step id, exact targets, never a
+// pattern. docs/safety.md lists the same entries and exceptions for
+// readers; a test keeps the two in step.
 
 // NeverTouchedItem is one entry of the never touched list.
 type NeverTouchedItem struct {
@@ -60,8 +65,11 @@ var NeverTouched = []NeverTouchedItem{
 	},
 	{
 		ID: "paas-data", What: "the data directories of Coolify and Dokploy, their SSH keys included",
-		Why:     "the platform owns these files and rewrites them on every deploy; its SSH keys are how it reaches this and every other managed server, so a change breaks deploys or locks the platform out",
-		Targets: []string{"file:/data/coolify", "file:/data/coolify/*", "file:/etc/dokploy", "file:/etc/dokploy/*", "paas:*"},
+		Why: "the platform owns these files and rewrites them on every deploy; its SSH keys are how it reaches this and every other managed server, so a change breaks deploys or locks the platform out",
+		Targets: []string{
+			"file:/data/coolify", "file:/data/coolify/*", "file:/etc/dokploy", "file:/etc/dokploy/*", "paas:*",
+			"file-mode:/data/coolify", "file-mode:/data/coolify/*", "file-mode:/etc/dokploy", "file-mode:/etc/dokploy/*",
+		},
 	},
 	{
 		ID: "docker-data", What: "Docker's data root (/var/lib/docker, /var/lib/containerd)",
@@ -127,6 +135,44 @@ var NeverTouched = []NeverTouchedItem{
 			"cmd:gpasswd:-d", "cmd:gpasswd:--delete",
 		},
 	},
+}
+
+// NeverTouchedException lets exactly one step reach exactly the targets
+// it names of one entry. An exception is never a pattern: each target is
+// matched whole, so it cannot grow into a wider hole in the list.
+type NeverTouchedException struct {
+	// Step is the one step id the exception is for.
+	Step string
+	// Entry is the never touched entry it carves out of.
+	Entry string
+	// What says what the step may do there, in words.
+	What string
+	// Targets are the exact targets the step may reach.
+	Targets []string
+}
+
+// NeverTouchedExceptions are the exceptions, in the order docs/safety.md
+// shows them.
+var NeverTouchedExceptions = []NeverTouchedException{
+	{
+		Step: "paas-env-perms", Entry: "paas-data",
+		What: "remove the group and other permission bits of the platform's .env files (chmod only), from a timer, because the platform rewrites them loose on every deploy; never their content, never their owner",
+		Targets: []string{
+			"file-mode:" + facts.CoolifyApplications, "file-mode:" + facts.CoolifyServices, "file-mode:" + facts.CoolifyMainEnv,
+			"file-mode:" + facts.DokployApplications, "file-mode:" + facts.DokployCompose,
+		},
+	},
+}
+
+// excepted reports whether an exception lets step id reach target t of
+// entry.
+func excepted(id, entry, t string) bool {
+	for _, x := range NeverTouchedExceptions {
+		if x.Step == id && x.Entry == entry && slices.Contains(x.Targets, t) {
+			return true
+		}
+	}
+	return false
 }
 
 // Touched returns every target step s reaches, in the kind:name form the
@@ -199,7 +245,7 @@ func checkNeverTouched(s Step) error {
 	for _, t := range Touched(s) {
 		for _, it := range NeverTouched {
 			for _, p := range it.Targets {
-				if targetMatch(p, t) {
+				if targetMatch(p, t) && !excepted(s.ID, it.ID, t) {
 					return fmt.Errorf("never touched: %s reaches %s (%s), which no step may change: %s", s.ID, t, it.What, it.Why)
 				}
 			}

@@ -26,4 +26,23 @@ func TestNeverTouchedIsDocumented(t *testing.T) {
 			t.Errorf("docs/safety.md does not list %s in the never touched table", it.ID)
 		}
 	}
+	for _, x := range NeverTouchedExceptions {
+		if !seen[x.Entry] {
+			t.Errorf("exception for %s names unknown entry %s", x.Step, x.Entry)
+		}
+		if x.What == "" || len(x.Targets) == 0 {
+			t.Errorf("exception for %s needs what and targets", x.Step)
+		}
+		if !strings.Contains(string(b), "| `"+x.Step+"` | `"+x.Entry+"` |") {
+			t.Errorf("docs/safety.md does not list the exception of %s in %s", x.Step, x.Entry)
+		}
+		for _, tg := range x.Targets {
+			if strings.ContainsAny(tg, "*?") {
+				t.Errorf("exception target %s of %s is a pattern; exceptions name exact targets", tg, x.Step)
+			}
+			if !strings.Contains(string(b), "`"+strings.TrimPrefix(tg, "file-mode:")+"`") {
+				t.Errorf("docs/safety.md does not name %s in the exception of %s", tg, x.Step)
+			}
+		}
+	}
 }
