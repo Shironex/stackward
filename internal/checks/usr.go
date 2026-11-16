@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Shironex/stackward/internal/facts"
+	"github.com/Shironex/stackward/internal/sudoersdrop"
 )
 
 // USR checks read what the users collector gathers (facts/users.go).
@@ -210,6 +211,11 @@ func checkSudoers(in Input) []Result {
 		case s.NonRootWritable:
 			out = append(out, Result{Subject: "file:" + s.Path, Level: Fail, Evidence: ev,
 				Message: fmt.Sprintf("%s is writable by someone other than root (mode %04o, owner uid %d): that is a root escalation", s.Path, s.Perm, s.UID)})
+		case ownDropinWriter(s) != "":
+			name, _ := sudoersdrop.NameOf(s.Path)
+			ev["written_by"] = ownDropinWriter(s)
+			out = append(out, Result{Subject: "file:" + s.Path, Level: Info, Evidence: ev,
+				Message: fmt.Sprintf("written by stackward %s for %s; passwordless sudo because the account has no password", ownDropinWriter(s), name)})
 		default:
 			out = append(out, Result{Subject: "file:" + s.Path, Level: Warn, Evidence: ev,
 				Message: fmt.Sprintf("NOPASSWD sudo for %s: expected for a PaaS account, make sure it is deliberate", strings.Join(rules, ", "))})
@@ -223,6 +229,19 @@ func checkSudoers(in Input) []Result {
 		return One(Unknown, "sudoers contents need root to read; file permissions are fine, NOPASSWD entries could not be checked", ev)
 	}
 	return One(Pass, "sudoers files are root owned and not writable by others; no NOPASSWD entries", ev)
+}
+
+// ownDropinWriter is the plan step that wrote s, or "" when s is anything
+// else. Only the exact drop-in a step renders counts: its path, root:root,
+// the mode the step sets, and its content byte for byte, so an extra line,
+// another account name or a loosened mode keeps the warning.
+func ownDropinWriter(s facts.Sudoers) string {
+	name, ok := sudoersdrop.NameOf(s.Path)
+	if !ok || s.UID != 0 || s.GID != 0 || s.Perm != sudoersdrop.Perm || s.Content == "" {
+		return ""
+	}
+	id, _ := sudoersdrop.Writer(name, s.Content)
+	return id
 }
 
 func checkDockerGroup(in Input) []Result {

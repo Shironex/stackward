@@ -1,0 +1,55 @@
+stackward plan: nothing on this host was changed
+host:      sha256:82c1a34869ebe223  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 9 not planned
+restarts:  ssh
+
+1. sshd-hardening  [access-critical]  fixes SSH-001, SSH-003, SSH-005
+   Allow key logins only, refuse root and limit auth tries with an early sshd drop-in
+   create   /etc/ssh/sshd_config.d/00-stackward-hardening.conf (0644)
+            checked first with: sshd -t -f <new file>
+            --- /dev/null
+            +++ b/etc/ssh/sshd_config.d/00-stackward-hardening.conf
+            @@ -0,0 +1,6 @@
+            +# Written by stackward: plan step sshd-hardening, fixes SSH-001, SSH-003, SSH-005.
+            +# Named to sort first: sshd keeps the first value it reads. Remove this
+            +# file and reload ssh.service to undo.
+            +PasswordAuthentication no
+            +PermitRootLogin no
+            +MaxAuthTries 3
+   run      systemctl try-reload-or-restart ssh.service
+            # load the new settings; running sessions stay open
+   restarts ssh
+   note     sshd runs under socket activation (ssh.socket); the drop-in sets no port or listen address, so reloading ssh.service is enough and ssh.socket is left alone.
+   note     Existing SSH sessions stay open. Before you confirm, log in again in a new session with your key: that is the proof the change works.
+   note     Ubuntu 22.04 and later and Debian 12 and later; older OpenSSH reads KbdInteractiveAuthentication differently.
+   undo     Remove the drop-in and reload ssh.service; the earlier values return for new logins.
+            rm -f /etc/ssh/sshd_config.d/00-stackward-hardening.conf
+            systemctl try-reload-or-restart ssh.service
+
+2. lock-default-user  [access-critical]  fixes USR-003
+   Lock the cloud image's default account once another admin account is proven
+   run      usermod --shell /usr/sbin/nologin ubuntu
+            # refuse a login shell
+   run      mv -T /home/ubuntu/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys.stackward-locked
+            # move the authorized keys aside, so no key logs in
+   note     Apply it from an SSH session of the admin account that stays (logged in with its key): the lockout guard refuses it from any other session, and from the account it locks.
+   note     Running sessions of ubuntu stay open; new logins are refused.
+   note     ubuntu keeps its NOPASSWD sudo line: taking sudo away is on the never touched list. Nobody can log in as ubuntu to use it, but USR-003 keeps naming it until you remove the line by hand.
+   undo     Move the authorized keys files back, unlock the password if the step locked it, and put the old shell back.
+            mv -T /home/ubuntu/.ssh/authorized_keys.stackward-locked /home/ubuntu/.ssh/authorized_keys
+            usermod --shell /bin/bash ubuntu
+
+Not planned:
+  journald-cap         unknown  LOG-001 is unknown; nothing to plan until the audit can inspect it
+  sysctl-hardening     unknown  KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it
+  unattended-upgrades  unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
+  unattended-upgrades-install unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
+  docker-log-rotation  unknown  DKR-031 is unknown; nothing to plan until the audit can inspect it
+  unattended-upgrades-reboot unknown  SYS-002 is unknown, SYS-003 is unknown and UPD-004 is unknown; nothing to plan until the audit can inspect it
+  admin-user           passing  an admin account besides root and the cloud default exists (ops)
+  paas-user            passing  no platform (Coolify, Dokploy) was found; a PaaS account is only for one
+  fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.
