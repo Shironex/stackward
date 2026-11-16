@@ -61,6 +61,16 @@ were named; a snapshot cut short by a limit leaves it false, so a socket
 without a name still proves nothing. A socket opened between the snapshot
 and the collector has no name.
 
+### The provider firewall fetch
+
+With `--provider` (opt in), the same window before the sandbox also reads
+the provider firewall over the provider's API: the public IPv4 addresses
+from `ip -j addr show` (or `--provider-ip`), the credential file when one is
+named, then GET requests to the provider's API host only. Landlock denies TCP
+connect once applied, so this cannot happen later. What is sent, kept and
+never kept is in [provider-firewall.md](provider-firewall.md); the trade is
+explained in [threat-model.md](threat-model.md#the-provider-firewall-fetch).
+
 ## Commands stackward runs
 
 Every program the audit starts is listed here, with what it touches. None

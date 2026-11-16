@@ -284,6 +284,29 @@ you are done.
 3. Use only `127.0.0.1` and documentation addresses; the scripts never
    reach anything but the VM they booted.
 
+## Provider firewall, by hand
+
+CI never holds a provider token and never calls a provider API: the client
+tests replay recorded, edited answers from `internal/provider/testdata/`
+through an `httptest` server, and the PFW golden fixtures
+(`test/fixtures/pfw-*`) carry the facts. Before a release that changes the
+client, a maintainer runs this checklist against a throwaway project:
+
+1. Create a Hetzner Cloud project with one small server and a firewall
+   that allows SSH from one address and 443 from anywhere.
+2. Create an API token with permission **Read** and put it in a root owned
+   file with mode 600.
+3. On the server: `sudo STACKWARD_HETZNER_TOKEN_FILE=<file> stackward audit --provider hetzner --all`.
+   PFW-001, PFW-002, PFW-005 pass, PFW-008 lists the rules, NET-009 says
+   how many rules were read.
+4. Add a rule for UDP 1-65535 from anywhere and run again: PFW-003 fails.
+5. Detach the firewall and run again: PFW-001 fails, the others skip.
+6. Run with an invalid token: every PFW check is `unknown` with "refused
+   the credentials".
+7. `--dump-facts | grep -c <token>` prints 0, and the dump shows the
+   address as `a.b.c.x`.
+8. Delete the token and the project.
+
 ## Install script
 
 `scripts/install.sh` is tested by `test/install/run.sh` (workflow

@@ -1,8 +1,9 @@
 # Design: provider firewall audit
 
-Status: proposal, no code yet. Tracks issue #41. Nothing here is a promise of
-a date or of the final check wording; the open questions at the end are the
-decisions that need an owner.
+Status: the facts shape, the PFW checks and the Hetzner client are built
+(issue #41); the OVH client follows. The answers chosen for the open
+questions are listed at the end of this page. The user guide is
+[provider-firewall.md](../provider-firewall.md).
 
 ## Problem
 
@@ -368,6 +369,41 @@ Like the rest of the audit, nothing needs a network or an account.
 12. **Release.** Issue #41 is planned for v0.4 with the other API modules, and
     the roadmap lists it there. This design is v0.3 groundwork only: the doc,
     the facts shape and the fixtures can land before the module does.
+
+## Answers chosen for the first build
+
+The conservative choice for each open question, until a real host or a
+review says otherwise:
+
+1. A new `PFW` group, between NET and DKR in report order.
+2. Documented, and the Read requirement printed in `audit -h` and
+   `plan -h`; the audit cannot tell the scopes apart.
+3. The fetch runs inside `audit` and `plan`, before the sandbox, behind
+   `--provider`. The threat model states that it is unsandboxed.
+4. PFW-007 treats missing UDP source port 53 and 123 replies as `warn`, never
+   `fail`, and does not ask for DHCP (source port 67).
+5. A running Cloudflare Tunnel without a UDP source port 7844 rule is a
+   `warn` in PFW-007; QUIC at the OVH edge is still unconfirmed.
+6. A UDP rule that matches only a source port is flagged under PFW-003 as
+   `warn`, not `fail`, because it is the vendor's own advice.
+7. OVH disabled with rules (attack-only mode) is `warn` in PFW-001, so the
+   choice stays visible in every report.
+8. Interface addresses plus `--provider-ip` for NAT.
+9. `--dump-facts` masks the last octet of the matched address. The
+   interface addresses in `listeners.addresses` are not masked yet; a
+   dump wide decision is left to a later change.
+10. OVH (when its client lands): one request per rule, at most 20, and
+    only for an address that has a firewall object.
+11. The facts shape stays provider neutral; no change.
+12. Not answered here; the release is the maintainer's call.
+
+Two details differ from the table above: a firewall that is not in force
+makes PFW-002 to PFW-005 and PFW-007 `skip` with a pointer to PFW-001
+instead of repeating its failure, and every PFW result names the address it
+is about (`address:<ip>`; PFW-008 rows `rule:<ip>/<order>`). The Hetzner
+floating IP list has no address filter (only the primary IP list has `ip=`),
+so the client pages through it, at most 20 pages of 50, and matches the
+address exactly.
 
 ## Sources
 

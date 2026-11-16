@@ -56,7 +56,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 
 ## What it checks
 
-104 audit checks in 14 groups and 6 outside view checks today, each with its own page in the
+112 audit checks in 15 groups and 6 outside view checks today, each with its own page in the
 [checks catalog](docs/checks/index.md):
 
 | Group | Checks | What it looks at |
@@ -65,6 +65,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 | `SSH` SSH | 16 | The effective config from `sshd -T`: password and root login, drop-in order, where sshd listens, host and authorized keys, weak algorithms |
 | `USR` Users and privilege | 7 | Extra uid 0 accounts, empty passwords, the cloud default account, sudoers, docker group members, unused logins |
 | `NET` Firewall and exposure | 9 | UFW defaults and IPv6, every listening socket and who can reach it, `DOCKER-USER`, ufw-docker |
+| `PFW` Provider firewall | 8 | Opt in with `--provider` and a read only token: the cloud provider's firewall is attached, default deny, no open UDP or SSH to anywhere, no stale rules, IPv6 covered, return traffic on a stateless firewall ([guide](docs/provider-firewall.md)) |
 | `DKR` Docker | 16 | API on TCP, socket mounts and socket proxies, sensitive mounts, root and privileged containers, capabilities, shared networks, log rotation, pinned images, engine support |
 | `UPD` Updates | 6 | Automatic security updates, the security pocket, pending security updates, release support, reboot policy |
 | `KRN` Kernel settings | 5 | Forwarding and reverse path filter where Docker runs, network and kernel hardening sysctls, IPv6 router advertisements |
@@ -94,7 +95,10 @@ The PRB checks run in `stackward probe`, not in `audit`.
 - never reads the contents of secret files, only their permissions;
 - redacts secret shaped values from everything it prints or dumps, and
   hashes the hostname unless you pass `--show-hostname`;
-- sends nothing anywhere. No telemetry, ever.
+- sends nothing anywhere. No telemetry, ever. The one opt in exception is
+  `--provider`, which reads your cloud provider's firewall with GET requests
+  to its API host only, using a read only token from the environment or a
+  file ([docs/provider-firewall.md](docs/provider-firewall.md)).
 
 What it reads, what it never does and what it does not cover:
 [docs/threat-model.md](docs/threat-model.md).
@@ -322,14 +326,15 @@ was available and whether the sandbox was applied. Fix the highest severity
 
 ## Coverage and limits
 
-- **Root matters.** 53 of the 104 checks need root to read what they judge
+- **Root matters.** 53 of the 112 checks need root to read what they judge
   (sshd's effective config, firewall rules, Docker, secret file
   permissions). Without root they report `unknown` with the reason, and the
   coverage line counts them. Run with `sudo` for full coverage.
 - **The provider firewall is invisible from inside.** Security groups and
   cloud firewalls cannot be seen from the host; `NET-009` says so on every
-  run instead of guessing. `stackward probe` from another machine shows
-  what actually gets through.
+  run instead of guessing. `--provider hetzner` reads a Hetzner Cloud
+  Firewall over its API (opt in, read only token), and `stackward probe`
+  from another machine shows what actually gets through.
 - **A snapshot of configuration.** It does not scan your applications or
   images for vulnerabilities, does not read your cloud or Cloudflare
   account, and is not an intrusion detector.

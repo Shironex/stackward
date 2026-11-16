@@ -46,7 +46,8 @@ In version 0.1 stackward:
   report you ask for with `--out`;
 - **makes no network calls during `audit`.** No telemetry, no update check,
   no lookups, no uploads. Only `probe`, which you run from another machine,
-  touches the network (see below);
+  touches the network (see below), and the provider firewall fetch when you
+  opt in with `--provider` (see [below](#the-provider-firewall-fetch));
 - **never sends a non-GET request to Docker.** It cannot start, stop, create
   or remove anything;
 - **never runs a command that changes state;**
@@ -102,6 +103,43 @@ them to one host:
 On Linux the same Landlock sandbox applies, with TCP left allowed: probe
 still cannot write anything but `--out`.
 
+## The provider firewall fetch
+
+`stackward audit --provider hetzner` (and `plan` with the same flag) reads
+the cloud provider's firewall over its API ([provider-firewall.md](provider-firewall.md)).
+It is the one exception to "no network during `audit`", and only when asked
+for:
+
+- without `--provider` no request is sent, and the PFW checks say the module
+  was not requested;
+- the client can only build GET requests, to a fixed list of provider API
+  hosts (`api.hetzner.cloud`), over HTTPS; any other host is refused before
+  a connection is made, redirects are never followed and proxy variables are
+  ignored, so only the provider sees the credential;
+- every answer is capped at 1 MiB and the whole fetch has one 10 second
+  timeout; a failure becomes `unknown`, never a pass and never a failed
+  audit;
+- the credential comes from an environment variable or a file per run,
+  never from argv (no `--token` flag); a file must be a regular file owned by
+  the user running the audit with mode 600 or stricter. It is not kept in
+  facts, reports, dumps or logs, and the redaction pass masks it as a
+  literal value as a safety net;
+- `stackward-guard` allows the network in one file of one package
+  (`internal/provider/http.go`) for this.
+
+**The fetch is not sandboxed.** Landlock denies TCP connect and cannot be
+loosened once applied, so the fetch runs before the sandbox, in the same
+window where `--out` is opened and the socket ownership snapshot is taken.
+A bug in the client therefore runs without Landlock's protection. What
+carries that risk instead is the client's small surface: GET only, fixed
+hosts, no redirects, capped reads, no writes. The host collectors still run
+after the sandbox is applied, so the rest of the audit keeps the full
+protection, including the TCP connect denial. The alternative (leaving TCP
+open for the whole audit, as `probe` does) would weaken every collector and
+was rejected. If this trade is not acceptable to you, do not pass
+`--provider`; a separate command that only fetches and writes facts for
+`audit --facts` remains an option if a review asks for it.
+
 ## What is out of scope
 
 stackward looks at the configuration of one host. It does not and cannot
@@ -113,9 +151,10 @@ tell you about:
 - **Kernel exploits and unpatched software in general.** It checks that
   updates are applied and reboots are not overdue, not that every package is
   free of known flaws.
-- **Your cloud account.** Provider consoles, API tokens, billing and the
-  provider's network firewall are invisible from inside the server. A check
-  says so explicitly rather than guessing.
+- **Your cloud account.** Provider consoles, API tokens and billing are
+  invisible from inside the server. The provider's network firewall is too,
+  unless you opt in with `--provider` and a read only token; without it a
+  check says so explicitly rather than guessing.
 - **Your Cloudflare account.** DNS records, access policies and zone
   settings are not read in version 0.1.
 - **Things on other machines**, and anything that happened before you ran
