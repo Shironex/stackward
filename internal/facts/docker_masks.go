@@ -30,9 +30,29 @@ func SocketMask(ms []DockerMount, b DockerMount) (DockerMount, bool) {
 	}
 	switch path.Clean(b.Source) {
 	case "/", "/var":
-		return MaskOf(ms, b, "run", IsDockerSocketPath)
+	default:
+		return DockerMount{}, false
 	}
-	return DockerMount{}, false
+	cover, ok := MaskOf(ms, b, "run", inRun)
+	if !ok {
+		return DockerMount{}, false
+	}
+	// A bind of part of /run under the cover shows it again.
+	runDir := normTarget(cover.Target)
+	for _, m := range ms {
+		if m.Type == "bind" && inRun(m.Source) && within(normTarget(m.Target), runDir) {
+			return DockerMount{}, false
+		}
+	}
+	return cover, true
+}
+
+// inRun reports whether a host path is /run, /var/run or under them (where
+// docker.sock, containerd.sock and rootless sockets live), or another
+// folder that holds the socket.
+func inRun(p string) bool {
+	c := path.Clean(p)
+	return within(c, "/run") || within(c, "/var/run") || IsDockerSocketPath(c)
 }
 
 // MaskOf returns the mount that hides rel (a clean path relative to bind
@@ -43,22 +63,23 @@ func SocketMask(ms []DockerMount, b DockerMount) (DockerMount, bool) {
 // host folder that exposed does not flag; when several mounts share that
 // destination, every one must qualify. Any destination among the mounts
 // that is relative or not already clean (a "." or ".." element, a doubled
-// or trailing slash) leaves the layout unproven, and nothing is masked.
+// slash) leaves the layout unproven, and nothing is masked; a single
+// trailing slash, as inspect reports some tmpfs destinations, is dropped.
 func MaskOf(ms []DockerMount, b DockerMount, rel string, exposed func(source string) bool) (DockerMount, bool) {
 	for _, m := range ms {
-		if !isCleanAbs(m.Target) {
+		if !isCleanAbs(normTarget(m.Target)) {
 			return DockerMount{}, false
 		}
 	}
-	if !isCleanAbs(b.Target) {
+	root := normTarget(b.Target)
+	if !isCleanAbs(root) {
 		return DockerMount{}, false
 	}
-	root := b.Target
 	want := path.Join(root, rel)
 	var covers []DockerMount
 	depth := -1
 	for _, m := range ms {
-		t := m.Target
+		t := normTarget(m.Target)
 		if !strictlyInside(t, root) || !within(want, t) {
 			continue
 		}
@@ -78,6 +99,14 @@ func MaskOf(ms []DockerMount, b DockerMount, rel string, exposed func(source str
 		}
 	}
 	return covers[0], true
+}
+
+// normTarget drops one trailing slash from a mount destination.
+func normTarget(p string) string {
+	if len(p) > 1 && strings.HasSuffix(p, "/") {
+		return p[:len(p)-1]
+	}
+	return p
 }
 
 // isCleanAbs reports whether p is an absolute path already in clean form.
