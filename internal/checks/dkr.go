@@ -273,17 +273,7 @@ func checkSharedNetworks(in Input) []Result {
 	if early != nil {
 		return early
 	}
-	members := map[string][]facts.DockerContainer{}
-	for _, c := range d.Containers {
-		if roleOf(c) == roleProxy {
-			continue // the proxy joins every project network by design
-		}
-		for _, n := range c.Networks {
-			if !notSharedNetworks[n] {
-				members[n] = append(members[n], c)
-			}
-		}
-	}
+	members := networkMembers(d)
 	return eachContainer(in, func(_ *facts.Docker, c facts.DockerContainer) Result {
 		ev := map[string]any{"project": c.Project, "networks": []string{}, "peers": []string{}, "database_peers": []string{}}
 		switch {
@@ -294,36 +284,8 @@ func checkSharedNetworks(in Input) []Result {
 		case strings.HasPrefix(c.NetworkMode, "container:"):
 			return Result{Level: Skip, Message: c.Name + " shares the network of another container", Evidence: ev}
 		}
-		self := projectKey(c)
 		selfDB := roleOf(c) == roleDatabase
-		var shared, peers, dbPeers []string
-		seen := map[string]bool{}
-		for _, n := range c.Networks {
-			if notSharedNetworks[n] {
-				continue
-			}
-			found := false
-			for _, o := range members[n] {
-				if projectKey(o) == self {
-					continue
-				}
-				found = true
-				p := peerName(o)
-				if seen[p] {
-					continue
-				}
-				seen[p] = true
-				peers = append(peers, p)
-				if roleOf(o) == roleDatabase {
-					dbPeers = append(dbPeers, p)
-				}
-			}
-			if found {
-				shared = append(shared, n)
-			}
-		}
-		sort.Strings(peers)
-		sort.Strings(dbPeers)
+		shared, peers, dbPeers := foreignPeers(c, members)
 		ev["networks"] = nonNil(shared)
 		ev["peers"] = capList(peers)
 		ev["database_peers"] = capList(dbPeers)
@@ -337,6 +299,58 @@ func checkSharedNetworks(in Input) []Result {
 		}
 		return Result{Level: Warn, Message: fmt.Sprintf("%s shares %s with %s of another project", c.Name, strings.Join(shared, ", "), strings.Join(capList(peers), ", ")), Evidence: ev}
 	})
+}
+
+// networkMembers lists the containers on each shared network, leaving out
+// the reverse proxy, which joins every project network by design.
+func networkMembers(d *facts.Docker) map[string][]facts.DockerContainer {
+	members := map[string][]facts.DockerContainer{}
+	for _, c := range d.Containers {
+		if roleOf(c) == roleProxy {
+			continue
+		}
+		for _, n := range c.Networks {
+			if !notSharedNetworks[n] {
+				members[n] = append(members[n], c)
+			}
+		}
+	}
+	return members
+}
+
+// foreignPeers returns the networks c shares with another project, the
+// names of those peers, and which of them are databases; both name lists
+// are sorted.
+func foreignPeers(c facts.DockerContainer, members map[string][]facts.DockerContainer) (shared, peers, dbPeers []string) {
+	self := projectKey(c)
+	seen := map[string]bool{}
+	for _, n := range c.Networks {
+		if notSharedNetworks[n] {
+			continue
+		}
+		found := false
+		for _, o := range members[n] {
+			if projectKey(o) == self {
+				continue
+			}
+			found = true
+			p := peerName(o)
+			if seen[p] {
+				continue
+			}
+			seen[p] = true
+			peers = append(peers, p)
+			if roleOf(o) == roleDatabase {
+				dbPeers = append(dbPeers, p)
+			}
+		}
+		if found {
+			shared = append(shared, n)
+		}
+	}
+	sort.Strings(peers)
+	sort.Strings(dbPeers)
+	return shared, peers, dbPeers
 }
 
 func capList(s []string) []string {

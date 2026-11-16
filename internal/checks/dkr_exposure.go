@@ -370,6 +370,41 @@ type iptRule struct {
 	unsure  []string // options that are not understood
 }
 
+// iptTokens walks the words of one rule. A quoted value that holds spaces
+// (a comment) is returned as its first word, the rest skipped.
+type iptTokens struct {
+	toks []string
+	i    int
+}
+
+// next moves to the following word and returns it, or "" at the end.
+func (t *iptTokens) next() string {
+	t.i++
+	if t.i >= len(t.toks) {
+		return ""
+	}
+	v := t.toks[t.i]
+	if strings.HasPrefix(v, `"`) && (len(v) == 1 || !strings.HasSuffix(v, `"`)) {
+		for t.i+1 < len(t.toks) {
+			t.i++
+			if strings.HasSuffix(t.toks[t.i], `"`) {
+				break
+			}
+		}
+	}
+	return v
+}
+
+// skipValue steps over the value of an option that is not understood.
+func (t *iptTokens) skipValue() {
+	if t.i+1 < len(t.toks) && !strings.HasPrefix(t.toks[t.i+1], "-") && t.toks[t.i+1] != "!" {
+		t.i++
+	}
+}
+
+// iptKnownMatches are the -m modules whose options parseIptRule reads.
+var iptKnownMatches = map[string]bool{"conntrack": true, "state": true, "tcp": true, "udp": true, "multiport": true, "comment": true}
+
 // parseIptRule reads one "-A DOCKER-USER ..." line.
 func parseIptRule(line string) iptRule {
 	r := iptRule{text: line}
@@ -377,76 +412,64 @@ func parseIptRule(line string) iptRule {
 	if len(toks) >= 2 && toks[0] == "-A" {
 		toks = toks[2:]
 	}
+	tk := &iptTokens{toks: toks}
 	neg := false
-	next := func(i *int) string {
-		*i++
-		if *i >= len(toks) {
-			return ""
-		}
-		v := toks[*i]
-		if strings.HasPrefix(v, `"`) && (len(v) == 1 || !strings.HasSuffix(v, `"`)) {
-			for *i+1 < len(toks) {
-				*i++
-				if strings.HasSuffix(toks[*i], `"`) {
-					break
-				}
-			}
-		}
-		return v
-	}
-	for i := 0; i < len(toks); i++ {
-		t := toks[i]
-		if t == "!" {
+	for ; tk.i < len(toks); tk.i++ {
+		if t := toks[tk.i]; t == "!" {
 			neg = true
 			continue
 		}
-		switch t {
-		case "-i", "--in-interface":
-			r.iface, r.ifNeg = next(&i), neg
-		case "-s", "--source":
-			v := next(&i)
-			if !neg && v != "0.0.0.0/0" && v != "::/0" {
-				r.srcSet = true
-			}
-		case "-p", "--protocol":
-			v := next(&i)
-			if neg {
-				r.unsure = append(r.unsure, "! -p")
-			} else if v != "all" {
-				r.proto = v
-			}
-		case "--dport", "--destination-port", "--dports":
-			r.dport = next(&i)
-			if neg {
-				r.unsure = append(r.unsure, "! "+t)
-			}
-		case "--ctorigdstport":
-			r.origDst = next(&i)
-			if neg {
-				r.unsure = append(r.unsure, "! "+t)
-			}
-		case "--ctstate", "--state":
-			r.states = next(&i)
-			if neg {
-				r.unsure = append(r.unsure, "! "+t)
-			}
-		case "-m", "--match":
-			if m := next(&i); m != "conntrack" && m != "state" && m != "tcp" && m != "udp" && m != "multiport" && m != "comment" {
-				r.unsure = append(r.unsure, "-m "+m)
-			}
-		case "--comment", "--reject-with", "--log-prefix", "--log-level":
-			next(&i)
-		case "-j", "--jump", "-g", "--goto":
-			r.target = next(&i)
-		default:
-			r.unsure = append(r.unsure, t)
-			if i+1 < len(toks) && !strings.HasPrefix(toks[i+1], "-") && toks[i+1] != "!" {
-				i++
-			}
-		}
+		r.option(tk, neg)
 		neg = false
 	}
 	return r
+}
+
+// option reads the option at the current word, and its value.
+func (r *iptRule) option(tk *iptTokens, neg bool) {
+	t := tk.toks[tk.i]
+	// negated records an option whose negation is not understood.
+	negated := func() {
+		if neg {
+			r.unsure = append(r.unsure, "! "+t)
+		}
+	}
+	switch t {
+	case "-i", "--in-interface":
+		r.iface, r.ifNeg = tk.next(), neg
+	case "-s", "--source":
+		v := tk.next()
+		if !neg && v != "0.0.0.0/0" && v != "::/0" {
+			r.srcSet = true
+		}
+	case "-p", "--protocol":
+		v := tk.next()
+		if neg {
+			r.unsure = append(r.unsure, "! -p")
+		} else if v != "all" {
+			r.proto = v
+		}
+	case "--dport", "--destination-port", "--dports":
+		r.dport = tk.next()
+		negated()
+	case "--ctorigdstport":
+		r.origDst = tk.next()
+		negated()
+	case "--ctstate", "--state":
+		r.states = tk.next()
+		negated()
+	case "-m", "--match":
+		if m := tk.next(); !iptKnownMatches[m] {
+			r.unsure = append(r.unsure, "-m "+m)
+		}
+	case "--comment", "--reject-with", "--log-prefix", "--log-level":
+		tk.next()
+	case "-j", "--jump", "-g", "--goto":
+		r.target = tk.next()
+	default:
+		r.unsure = append(r.unsure, t)
+		tk.skipValue()
+	}
 }
 
 // portIn reports whether port is in an iptables port spec: "22", "80,443",
