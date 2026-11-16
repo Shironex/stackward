@@ -43,6 +43,9 @@ type Updates struct {
 	LastRun time.Time `json:"last_run,omitzero"`
 	// ListsUpdated is the apt update-success stamp; zero when none.
 	ListsUpdated time.Time `json:"lists_updated,omitzero"`
+	// Lists is what /var/lib/apt/lists holds; nil when it was not looked
+	// at (facts from an older stackward).
+	Lists *AptLists `json:"lists,omitempty"`
 	// PendingChecked is true when `apt-get -s upgrade` ran. It reflects the
 	// package lists as of ListsUpdated, not a fresh apt update.
 	PendingChecked      bool     `json:"pending_checked"`
@@ -54,8 +57,47 @@ type Updates struct {
 	PendingError string `json:"pending_error,omitempty"`
 }
 
+// AptLists is the state of apt's package lists: a fresh cloud image ships
+// them empty (only auxfiles), and apt-get install then finds no package.
+type AptLists struct {
+	// Read is true when /var/lib/apt/lists was listed.
+	Read bool `json:"read"`
+	// Indexes counts the Packages index files.
+	Indexes int `json:"indexes"`
+	// Newest is the newest modification time among the index and Release
+	// files; zero when there is none.
+	Newest time.Time `json:"newest,omitzero"`
+	// Error says why the directory could not be listed.
+	Error string `json:"error,omitempty"`
+}
+
+// ListsRefresh says whether apt's package lists must be refreshed (apt-get
+// update) before a package is installed, and why: they are empty, or the
+// newest sign of an update (the index files, the update-success stamp) is
+// older than maxAge at now. Unknown lists ask for nothing.
+func (u *Updates) ListsRefresh(now time.Time, maxAge time.Duration) (bool, string) {
+	if u == nil || !u.Apt || u.Lists == nil || !u.Lists.Read {
+		return false, ""
+	}
+	if u.Lists.Indexes == 0 {
+		return true, "the apt package lists are empty (" + aptListsDir + " holds no Packages index, as on a fresh cloud image)"
+	}
+	newest := u.Lists.Newest
+	if u.ListsUpdated.After(newest) {
+		newest = u.ListsUpdated
+	}
+	if now.IsZero() || newest.IsZero() {
+		return false, ""
+	}
+	if age := now.Sub(newest); age > maxAge {
+		return true, fmt.Sprintf("the apt package lists were last updated %d days ago", int(age.Hours()/24))
+	}
+	return false, ""
+}
+
 // Paths the updates collector reads.
 const (
+	aptListsDir       = "/var/lib/apt/lists"
 	aptConfDir        = "/etc/apt/apt.conf.d"
 	uuStampPath       = "/var/lib/apt/periodic/unattended-upgrades-stamp"
 	updateStampPath   = "/var/lib/apt/periodic/update-success-stamp"
@@ -103,6 +145,7 @@ func (updatesCollector) Collect(ctx context.Context, sys System, out *Facts) err
 	u.TimerEnabled = systemctlBool(ctx, sys, "is-enabled", aptTimer, "enabled")
 	u.TimerActive = systemctlBool(ctx, sys, "is-active", aptTimer, "active")
 
+	u.Lists = readAptLists(sys)
 	u.LastRun = latestRun(sys)
 	if m, err := sys.Meta(updateStampPath); err == nil {
 		u.ListsUpdated = time.Unix(m.ModTime, 0).UTC()
@@ -166,6 +209,37 @@ func systemctlBool(ctx context.Context, sys System, verb, unit, want string) *bo
 	}
 	v := state == want
 	return &v
+}
+
+// readAptLists lists /var/lib/apt/lists (read only): how many Packages
+// indexes it holds, and the newest time among them and the Release files.
+func readAptLists(sys System) *AptLists {
+	l := &AptLists{}
+	entries, err := sys.ReadDir(aptListsDir)
+	if err != nil {
+		l.Error = err.Error()
+		return l
+	}
+	l.Read = true
+	var newest int64
+	for _, e := range entries {
+		n := e.Name()
+		index := strings.Contains(n, "_Packages")
+		release := strings.HasSuffix(n, "_InRelease") || strings.HasSuffix(n, "_Release")
+		if e.IsDir() || (!index && !release) {
+			continue
+		}
+		if index {
+			l.Indexes++
+		}
+		if m, err := sys.Meta(path.Join(aptListsDir, n)); err == nil && m.ModTime > newest {
+			newest = m.ModTime
+		}
+	}
+	if newest > 0 {
+		l.Newest = time.Unix(newest, 0).UTC()
+	}
+	return l
 }
 
 // latestRun finds the newest sign of an unattended-upgrades run.
