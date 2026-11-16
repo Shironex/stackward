@@ -30,11 +30,12 @@ comment that names the file it belongs in.
 | `--user` | `root` | the account the audit runs as (see [the account](#the-account)) |
 | `--report-dir` | `/var/lib/stackward` | where `report.json` goes |
 | `--textfile-dir` | `/var/lib/prometheus/node-exporter` | the node_exporter textfile directory, where `stackward.prom` goes; empty for no metric |
+| `--binary` | this binary | absolute path of the stackward the unit runs |
 
 The unit makes both output directories writable, so neither may be a top
-level directory (`/var`, `/srv`) or lie in `/etc`, `/usr`, `/boot`, `/root`,
-`/bin`, `/sbin`, any `/lib*`, `/proc`, `/sys` or `/dev`.
-| `--binary` | this binary | absolute path of the stackward the unit runs |
+level directory (`/var`, `/srv`) or `/var/lib` itself, nor lie in `/etc`,
+`/usr`, `/boot`, `/root`, `/home`, `/bin`, `/sbin`, any `/lib*`, `/proc`,
+`/sys`, `/dev`, `/run` or `/var/spool`.
 
 Audit flags after `--` are added to the scheduled audit:
 
@@ -106,9 +107,12 @@ whole file system is read only except the two output directories
 SUID files, kernel tunables, modules, logs, control groups and the clock are
 protected, and `IPAddressDeny=any` blocks all IP traffic (the audit makes
 none). `SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation
-@obsolete @raw-io @debug` makes those system calls fail with `EPERM`: no
-collector mounts, loads a module, reboots, sets the clock, does raw I/O or
-traces a process (`@debug` holds `ptrace` and `process_vm_writev`). Nothing
+@obsolete @raw-io @debug process_vm_readv process_vm_writev` makes those
+system calls fail with `EPERM`: no collector mounts, loads a module, reboots,
+sets the clock, does raw I/O, traces a process (`@debug` holds `ptrace`,
+`perf_event_open` and `pidfd_getfd`) or reads or writes another process's
+memory with `process_vm_*`. It does not stop writing `/proc/<pid>/mem`,
+which is an ordinary `open` and `write`; see below. Nothing
 in it hides what the audit inspects: there is no `PrivateNetwork` (the audit
 reads the host's listeners), no `PrivateDevices` and no `ProtectProc`.
 
@@ -132,7 +136,7 @@ and dropping each capability changed them as the table says.
 |---|---|---|---|
 | `CAP_NET_ADMIN` | the kernel asks for it before it lists the nftables ruleset at all, read or write (`nft list ruleset`, `iptables-nft -S`) | the firewall collector ends partial, NET-001 and the checks that build on it say `unknown` | changing the firewall, routes and links over netlink |
 | `CAP_NET_RAW` | `iptables-legacy -S` opens a raw socket to read the tables | the same, on hosts that use iptables-legacy | sending raw packets (but `IPAddressDeny=any` drops IP traffic) |
-| `CAP_SYS_PTRACE` | read other processes' `/proc/<pid>/fd` for the socket owner snapshot ([safety.md](safety.md#read-before-the-sandbox)) | listeners lose their process names (NET-004 and the checks that infer SSH, cloudflared or tailscaled from them fall back to weaker guesses) | reaching other processes' files through `/proc/<pid>/root`, which sits outside the read only mounts. The `ptrace` system call itself is filtered (`@debug`) |
+| `CAP_SYS_PTRACE` | read other processes' `/proc/<pid>/fd` for the socket owner snapshot ([safety.md](safety.md#read-before-the-sandbox)) | listeners lose their process names (NET-004 and the checks that infer SSH, cloudflared or tailscaled from them fall back to weaker guesses) | without Landlock, writing other processes' memory (`/proc/<pid>/mem`) and their files (`/proc/<pid>/root`, outside the read only mounts). The `ptrace` system call itself is filtered (`@debug`) |
 | `CAP_DAC_READ_SEARCH` | look into directories root does not own, such as an account's `~/.ssh` for `authorized_keys` | those accounts' key files cannot be seen | reading any file |
 
 `CAP_DAC_OVERRIDE` is left out on purpose: the audit only reads, and
@@ -143,21 +147,44 @@ the Debian and Ubuntu package's `/var/lib/prometheus/node-exporter`
 the unit fails with `--textfile: ... permission denied`; give it to root
 (`chown root: DIR`, node_exporter only needs to read it).
 
-What a root run can still do, should stackward or a command it starts be
-compromised, is what the kept capabilities and uid 0 allow:
+#### What a compromised root run can do
 
-- change the firewall, routes and links (`CAP_NET_ADMIN`; there is no way to
-  grant only the read half);
-- send signals to other root processes (uid 0 needs no capability for that);
-- read any file (`CAP_DAC_READ_SEARCH`);
-- write files root owns, outside the read only mounts, through another
-  process's `/proc/<pid>/root` (`CAP_SYS_PTRACE`).
+The hardening keeps mistakes small and makes the obvious abuses harder. It
+is not a boundary that contains a compromised root audit, and you should
+treat one as full root on the host. Should stackward, or a command it
+starts, be taken over while it runs as root:
 
-On a kernel with Landlock (5.13 and later; the report and the
-`stackward_sandbox_confined` metric say so) the audit process and every
-command it starts hold no file write right anywhere, so the last point
-falls away; the first two remain either way. If you would rather trade the
-process names for a smaller root, drop `CAP_SYS_PTRACE` with a drop in:
+- **Root daemons' UNIX sockets are open to it.** The audit connects to the
+  Docker socket (`/run/docker.sock`), systemd and D-Bus (`systemctl`,
+  `timedatectl`), tailscaled, fail2ban and others to read their state. Those
+  daemons trust uid 0, so the same connection can start a privileged
+  container, start or edit a unit, or change Tailscale settings, which is
+  full root. Neither `ProtectSystem`, the capability set, the system call
+  filter nor Landlock stops `connect()` to a socket file (`IPAddressDeny`
+  covers IP only; Landlock's socket scoping covers abstract sockets only).
+- **It can change the firewall, routes and links** (`CAP_NET_ADMIN`: the
+  kernel has no read only half of it).
+- **It can signal other root processes** (uid 0 needs no capability).
+- **It can read any file** (`CAP_DAC_READ_SEARCH`).
+- **Without Landlock** (kernels before 5.13, or a sandbox that failed; the
+  report and `stackward_sandbox_confined` say which), `CAP_SYS_PTRACE` also
+  lets it write another root process's memory through `/proc/<pid>/mem` and
+  root owned files through that process's `/proc/<pid>/root`, past the read
+  only mounts. Both are plain file opens: the system call filter does not
+  stop them, Landlock does (it leaves no file write right anywhere). Both
+  were confirmed in the test container with the unit's settings and
+  Landlock off.
+
+Could the unit cut the socket route? Only by hiding the sockets, and the
+audit needs them: the Docker checks read the Docker API, the SSH, update and
+service checks ask systemd, the Tailscale, fail2ban and CrowdSec checks ask
+their daemons. `RestrictAddressFamilies` cannot tell one UNIX socket from
+another, and `InaccessiblePaths=/run/docker.sock` or the systemd bus would
+turn those checks into `unknown`. So the printed unit adds no such
+restriction. If a compromised root audit is the risk you care about, run it
+as an account (`--user`, below) and accept the `unknown` results, or drop
+`CAP_SYS_PTRACE` to close the `/proc` route on kernels without Landlock, at
+the cost of process names:
 
 ```sh
 systemctl edit stackward-audit.service
@@ -256,8 +283,22 @@ stackward_run_as_root 1
 stackward_sandbox_confined 1
 ```
 
-`stackward audit --textfile FILE` writes the same metric from any audit, not
-only a scheduled one. Prefer a temporary name and a rename, as the unit does.
+`stackward audit --textfile DIR/NAME.prom.tmp` writes the same metric from
+any audit, not only a scheduled one. The name must end in `.prom.tmp`:
+node_exporter reads only `*.prom`, so it never sees the file while it is
+written, and you rename it into place after a successful run, so a failed
+run keeps the previous metric:
+
+```sh
+sudo stackward audit --json --fail-on never --out report.json \
+  --textfile /var/lib/prometheus/node-exporter/stackward.prom.tmp \
+  && sudo mv -fT /var/lib/prometheus/node-exporter/stackward.prom.tmp \
+                 /var/lib/prometheus/node-exporter/stackward.prom
+```
+
+stackward does not rename it itself: the Landlock sandbox takes the right to
+create, rename and remove files away before the audit runs, and granting it
+back in a directory other programs share was not worth it.
 
 ## Alerting
 
