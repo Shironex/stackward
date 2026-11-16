@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -32,13 +33,16 @@ const (
 	scheduleRootAccount = "root"
 )
 
-// rootCapabilities is the capability bounding set of a root run: what the
-// collectors need and nothing more. DAC_READ_SEARCH reads root only files
-// (sshd host keys, /etc/shadow for passwd -S), DAC_OVERRIDE connects to the
-// root owned Docker and tailscaled sockets, NET_ADMIN and NET_RAW let nft and
-// iptables list the ruleset, SYS_PTRACE reads other processes' /proc/<pid>/fd
-// for the socket owner snapshot.
-const rootCapabilities = "CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE"
+// rootCapabilities is the capability bounding set of a root run, each one
+// measured in a systemd container by dropping it and comparing the report
+// with an unconfined root audit (docs/schedule.md has the table).
+// DAC_READ_SEARCH reads and searches files root does not own (an account's
+// .ssh); NET_ADMIN is what the kernel asks for to list the nftables ruleset
+// at all (nft, iptables-nft); NET_RAW lets iptables-legacy open its socket;
+// SYS_PTRACE reads other processes' /proc/<pid>/fd for the socket owner
+// snapshot. DAC_OVERRIDE is left out: the audit only reads, and without it a
+// root run cannot write a file it does not own.
+const rootCapabilities = "CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE"
 
 // scheduleOwnedFlags are audit flags the printed unit sets itself, or that
 // a scheduled run must not have. Extra audit flags may not name them.
@@ -68,6 +72,9 @@ type scheduleFlags struct {
 	textfileDir string
 	binary      string
 	auditArgs   []string
+	// provider is true when the audit flags turn on --provider, which needs
+	// IP traffic.
+	provider bool
 }
 
 const scheduleUsage = `Usage: stackward schedule --print [flags] [-- audit flags]
@@ -143,8 +150,8 @@ func (sf *scheduleFlags) check(stderr io.Writer) error {
 	if strings.TrimSpace(sf.onCalendar) == "" {
 		return errors.New("--on-calendar is empty")
 	}
-	if sf.randomDelay < 0 {
-		return errors.New("--randomized-delay must not be negative")
+	if sf.randomDelay < 0 || (sf.randomDelay > 0 && sf.randomDelay < time.Second) || sf.randomDelay%time.Second != 0 {
+		return fmt.Errorf("--randomized-delay must be 0 or a whole number of seconds, at least 1s, not %s", sf.randomDelay)
 	}
 	if !accountName.MatchString(sf.user) {
 		return fmt.Errorf("--user must be an account name (lower case letters, digits, _ and -), not %q", sf.user)
@@ -159,15 +166,17 @@ func (sf *scheduleFlags) check(stderr io.Writer) error {
 	if err := checkUnitPath("--binary", sf.binary); err != nil {
 		return err
 	}
-	if err := checkUnitPath("--report-dir", sf.reportDir); err != nil {
+	if err := checkOutputDir("--report-dir", sf.reportDir); err != nil {
 		return err
 	}
 	if sf.textfileDir != "" {
-		if err := checkUnitPath("--textfile-dir", sf.textfileDir); err != nil {
+		if err := checkOutputDir("--textfile-dir", sf.textfileDir); err != nil {
 			return err
 		}
 	}
-	return checkScheduleAuditArgs(sf.auditArgs, stderr)
+	provider, err := checkScheduleAuditArgs(sf.auditArgs, stderr)
+	sf.provider = provider
+	return err
 }
 
 func thisBinary() (string, error) {
@@ -180,7 +189,8 @@ func thisBinary() (string, error) {
 
 // checkUnitValue refuses what could break out of a unit setting: control
 // characters (a newline starts a new directive), a percent sign (a
-// systemd specifier) and invalid UTF-8.
+// systemd specifier), a backslash (an escape, or a line continuation at the
+// end of a line) and invalid UTF-8.
 func checkUnitValue(name, v string) error {
 	if !utf8.ValidString(v) {
 		return fmt.Errorf("%s is not valid UTF-8", name)
@@ -192,6 +202,31 @@ func checkUnitValue(name, v string) error {
 	}
 	if strings.Contains(v, "%") {
 		return fmt.Errorf("%s must not contain %%, which systemd reads as a specifier", name)
+	}
+	if strings.Contains(v, `\`) {
+		return fmt.Errorf("%s must not contain a backslash, which systemd reads as an escape", name)
+	}
+	return nil
+}
+
+// systemTrees may never be an output directory: the unit makes its output
+// directories writable, and these hold the system, its configuration, root's
+// home or kernel interfaces. Any /lib* directory counts too.
+var systemTrees = []string{"/etc", "/usr", "/boot", "/root", "/bin", "/sbin", "/proc", "/sys", "/dev"}
+
+// checkOutputDir checks a directory the unit will make writable: a unit
+// path, not a whole top level directory such as /var, and not in a system
+// tree.
+func checkOutputDir(name, p string) error {
+	if err := checkUnitPath(name, p); err != nil {
+		return err
+	}
+	first, _, nested := strings.Cut(strings.TrimPrefix(p, "/"), "/")
+	if strings.HasPrefix(first, "lib") || slices.Contains(systemTrees, "/"+first) {
+		return fmt.Errorf("%s must not be in /%s: the unit makes it writable", name, first)
+	}
+	if !nested {
+		return fmt.Errorf("%s must be a directory below %s, not the top level directory itself: the unit makes it writable", name, p)
 	}
 	return nil
 }
@@ -210,36 +245,32 @@ func checkUnitPath(name, p string) error {
 }
 
 // checkScheduleAuditArgs checks the extra audit flags: none may be one the
-// unit owns, none may hold a control character, and together they must
-// parse as audit flags with valid values.
-func checkScheduleAuditArgs(args []string, stderr io.Writer) error {
+// unit owns, none may hold what checkUnitValue refuses, and together they
+// must parse as audit flags with valid values. provider is true when they
+// turn on the provider firewall fetch.
+func checkScheduleAuditArgs(args []string, stderr io.Writer) (provider bool, err error) {
 	for _, a := range args {
-		if !utf8.ValidString(a) {
-			return errors.New("audit flags must be valid UTF-8")
-		}
-		for _, r := range a {
-			if r < 0x20 || r == 0x7f {
-				return fmt.Errorf("audit flag %q must not contain control characters such as a newline", a)
-			}
+		if err := checkUnitValue(fmt.Sprintf("audit flag %q", a), a); err != nil {
+			return false, err
 		}
 		if a == "--" {
-			return errors.New(`give "--" once, before the audit flags`)
+			return false, errors.New(`give "--" once, before the audit flags`)
 		}
 		if name, ok := flagName(a); ok && scheduleOwnedFlags[name] {
-			return fmt.Errorf("audit flag %s is set by the unit or not allowed in a scheduled run", a)
+			return false, fmt.Errorf("audit flag %s is set by the unit or not allowed in a scheduled run", a)
 		}
 	}
 	if len(args) == 0 {
-		return nil
+		return false, nil
 	}
 	af, _, _, done := parseAuditArgs(args, stderr)
 	if done {
-		return errors.New("the audit flags after -- are not valid (see stackward audit -h)")
+		return false, errors.New("the audit flags after -- are not valid (see stackward audit -h)")
 	}
 	if _, _, err := profile.Parse(af.profile); err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return af.prov.name != "", nil
 }
 
 // flagName returns the flag name of a token such as -x, --name or
@@ -275,6 +306,10 @@ RestrictNamespaces=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+# No collector mounts, loads modules, reboots, sets the clock or traces a
+# process: those system calls fail with EPERM.
+SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation @obsolete @raw-io @debug
+SystemCallErrorNumber=EPERM
 `
 
 // renderScheduleUnits returns the service and the timer unit.
@@ -318,12 +353,12 @@ Type=oneshot
 	b.WriteString("# Each file is written under a temporary name and renamed into place\n")
 	b.WriteString("# (rename is atomic), and only when the audit succeeded.\n")
 	for _, m := range moves {
-		b.WriteString("ExecStartPost=/bin/mv -f " + m + scheduleTempSuffix + " " + m + "\n")
+		b.WriteString("ExecStartPost=/bin/mv -fT " + m + scheduleTempSuffix + " " + m + "\n")
 	}
-	b.WriteString("UMask=0077\nNice=10\nIOSchedulingClass=idle\n")
+	b.WriteString("TimeoutStartSec=30min\nUMask=0077\nNice=10\nIOSchedulingClass=idle\n")
 	b.WriteString(scheduleHardening)
 	b.WriteString("ReadWritePaths=" + rw + "\n")
-	if usesProvider(sf.auditArgs) {
+	if sf.provider {
 		b.WriteString("# --provider reads the provider firewall over HTTPS, so IP traffic stays\n")
 		b.WriteString("# allowed. Give the credentials with EnvironmentFile=, never in ExecStart.\n")
 	} else {
@@ -354,24 +389,16 @@ WantedBy=timers.target
 func writeAccount(b *strings.Builder, user string) {
 	b.WriteString("User=" + user + "\n")
 	if user == scheduleRootAccount {
-		b.WriteString("# Full coverage needs root. The bounding set keeps only what the\n")
-		b.WriteString("# collectors use to read: root only files, the Docker socket, the\n")
-		b.WriteString("# firewall ruleset and which process owns which socket.\n")
+		b.WriteString("# Full coverage needs root. The bounding set keeps what the collectors\n")
+		b.WriteString("# use: files root does not own, the firewall ruleset (CAP_NET_ADMIN can\n")
+		b.WriteString("# also change it) and which process owns which socket. See the docs for\n")
+		b.WriteString("# what each one allows; the output directories must be owned by root.\n")
 		b.WriteString("CapabilityBoundingSet=" + rootCapabilities + "\n")
 		return
 	}
 	b.WriteString("# Not root: checks that need root say unknown, and the account must be\n")
 	b.WriteString("# able to write its output directories.\n")
 	b.WriteString("CapabilityBoundingSet=\n")
-}
-
-func usesProvider(args []string) bool {
-	for _, a := range args {
-		if name, ok := flagName(a); ok && name == "provider" {
-			return true
-		}
-	}
-	return false
 }
 
 // execWord prints one ExecStart argument. A word made of safe characters

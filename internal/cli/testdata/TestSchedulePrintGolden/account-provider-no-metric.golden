@@ -15,7 +15,8 @@ CapabilityBoundingSet=
 ExecStart=/usr/bin/stackward audit --format json --fail-on never --out /srv/audit/report.json.tmp --provider hetzner --profile tunnel --timeout=30s
 # Each file is written under a temporary name and renamed into place
 # (rename is atomic), and only when the audit succeeded.
-ExecStartPost=/bin/mv -f /srv/audit/report.json.tmp /srv/audit/report.json
+ExecStartPost=/bin/mv -fT /srv/audit/report.json.tmp /srv/audit/report.json
+TimeoutStartSec=30min
 UMask=0077
 Nice=10
 IOSchedulingClass=idle
@@ -38,6 +39,10 @@ RestrictNamespaces=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+# No collector mounts, loads modules, reboots, sets the clock or traces a
+# process: those system calls fail with EPERM.
+SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation @obsolete @raw-io @debug
+SystemCallErrorNumber=EPERM
 ReadWritePaths=/srv/audit
 # --provider reads the provider firewall over HTTPS, so IP traffic stays
 # allowed. Give the credentials with EnvironmentFile=, never in ExecStart.
