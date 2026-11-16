@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:cc24e0cbf4b08870  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     1 planned (0 safe, 1 networking, 0 access-critical), 1 opt in, 12 not planned
+steps:     1 planned (0 safe, 1 networking, 0 access-critical), 1 opt in, 13 not planned
 restarts:  docker
 
 1. docker-log-rotation  [networking]  fixes DKR-031
@@ -34,6 +34,7 @@ Not planned:
   sysctl-hardening     unknown  KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades  unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-install unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
+  paas-env-perms       unknown  SEC-001 is unknown and SEC-002 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-reboot unknown  SYS-002 is unknown, SYS-003 is unknown and UPD-004 is unknown; nothing to plan until the audit can inspect it
   admin-user           unknown  the accounts were not audited
   paas-user            unknown  the accounts were not audited

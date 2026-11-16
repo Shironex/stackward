@@ -235,6 +235,7 @@ STACKWARD_EOF
 # unattended-upgrades-install (passing): UPD-001 already passes or does not
 # apply
 # docker-log-rotation (passing): DKR-031 already passes or does not apply
+# paas-env-perms (passing): SEC-001 and SEC-002 already pass or do not apply
 # admin-user (passing): an admin account besides root and the cloud default
 # exists (alice)
 # paas-user (manual): the platform logs in as root unless it has its own

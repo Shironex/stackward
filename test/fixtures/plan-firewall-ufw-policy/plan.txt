@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:88fcffd365f6d89e  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     1 planned (0 safe, 0 networking, 1 access-critical), 0 opt in, 12 not planned
+steps:     1 planned (0 safe, 0 networking, 1 access-critical), 0 opt in, 13 not planned
 
 1. ufw-policy  [access-critical]  fixes NET-001
    Turn UFW on with a default deny incoming policy
@@ -131,6 +131,7 @@ Not planned:
   unattended-upgrades  unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-install unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
   docker-log-rotation  passing  DKR-031 already passes or does not apply
+  paas-env-perms       unknown  SEC-001 is unknown and SEC-002 is unknown; nothing to plan until the audit can inspect it
   unattended-upgrades-reboot unknown  the updates facts are missing (planning from a report alone, or the updates collector did not run)
   admin-user           passing  an admin account besides root and the cloud default exists (alice)
   paas-user            unknown  the platform facts are missing (the paas collector did not run)

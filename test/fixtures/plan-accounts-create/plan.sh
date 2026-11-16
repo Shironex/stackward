@@ -101,6 +101,8 @@ STACKWARD_EOF
 # until the audit can inspect it
 # docker-log-rotation (unknown): DKR-031 is unknown; nothing to plan until
 # the audit can inspect it
+# paas-env-perms (unknown): SEC-001 is unknown and SEC-002 is unknown;
+# nothing to plan until the audit can inspect it
 # unattended-upgrades-reboot (unknown): SYS-002 is unknown, SYS-003 is
 # unknown and UPD-004 is unknown; nothing to plan until the audit can
 # inspect it

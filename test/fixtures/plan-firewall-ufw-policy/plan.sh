@@ -183,6 +183,8 @@ STACKWARD_EOF
 # unattended-upgrades-install (unknown): UPD-001 is unknown; nothing to plan
 # until the audit can inspect it
 # docker-log-rotation (passing): DKR-031 already passes or does not apply
+# paas-env-perms (unknown): SEC-001 is unknown and SEC-002 is unknown;
+# nothing to plan until the audit can inspect it
 # unattended-upgrades-reboot (unknown): the updates facts are missing
 # (planning from a report alone, or the updates collector did not run)
 # admin-user (passing): an admin account besides root and the cloud default

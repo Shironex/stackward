@@ -17,6 +17,8 @@ set -eu
 # unattended-upgrades-install (unknown): UPD-001 is unknown; nothing to plan
 # until the audit can inspect it
 # docker-log-rotation (passing): DKR-031 already passes or does not apply
+# paas-env-perms (unknown): SEC-001 is unknown and SEC-002 is unknown;
+# nothing to plan until the audit can inspect it
 # unattended-upgrades-reboot (unknown): SYS-002 is unknown, SYS-003 is
 # unknown and UPD-004 is unknown; nothing to plan until the audit can
 # inspect it
