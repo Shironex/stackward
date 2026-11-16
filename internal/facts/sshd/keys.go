@@ -1,6 +1,7 @@
 package sshd
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -8,14 +9,25 @@ import (
 	"strings"
 )
 
-// PubKey is what stackward keeps about one public key: its algorithm and
-// size. Key material and comments (which often name people and machines)
-// are never kept.
+// PubKey is what stackward keeps about one public key: its algorithm, size
+// and fingerprint. Key material and comments (which often name people and
+// machines) are never kept.
 type PubKey struct {
 	Type string `json:"type"`
 	// Bits is the key size: the modulus for RSA, p for DSA, the curve size
 	// for ECDSA and 256 for Ed25519. Zero when unknown (certificates).
 	Bits int `json:"bits,omitempty"`
+	// Fingerprint is the OpenSSH SHA256 fingerprint ("SHA256:" and the
+	// unpadded base64 of the blob's SHA-256), as ssh-keygen -l prints it.
+	// It names the key without being the key, so stackward diff can tell
+	// a new authorized key from a replaced one.
+	Fingerprint string `json:"fingerprint,omitempty"`
+}
+
+// Fingerprint returns the OpenSSH SHA256 fingerprint of a public key blob.
+func Fingerprint(blob []byte) string {
+	sum := sha256.Sum256(blob)
+	return "SHA256:" + base64.RawStdEncoding.EncodeToString(sum[:])
 }
 
 // KeyList is the result of parsing an authorized_keys or .pub file.
@@ -58,6 +70,7 @@ func parseKeyLine(line string) (PubKey, bool) {
 		if err != nil || k.Type != toks[i] {
 			continue
 		}
+		k.Fingerprint = Fingerprint(blob)
 		return k, true
 	}
 	return PubKey{}, false
