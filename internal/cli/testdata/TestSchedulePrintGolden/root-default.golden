@@ -42,9 +42,11 @@ RestrictNamespaces=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
-# No collector mounts, loads modules, reboots, sets the clock or traces a
-# process: those system calls fail with EPERM.
-SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation @obsolete @raw-io @debug
+# No collector mounts, loads modules, reboots, sets the clock, traces a
+# process or touches another process's memory: those system calls fail with
+# EPERM. (Writing /proc/<pid>/mem is a plain file write, which only the
+# Landlock sandbox stops.)
+SystemCallFilter=~@mount @module @reboot @swap @clock @cpu-emulation @obsolete @raw-io @debug process_vm_readv process_vm_writev
 SystemCallErrorNumber=EPERM
 ReadWritePaths=/var/lib/stackward /var/lib/prometheus/node-exporter
 # The audit makes no network calls.
