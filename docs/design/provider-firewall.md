@@ -407,6 +407,12 @@ do not, rather than every pending rule being ignored. Every "from anywhere"
 question is also asked for each source port a source-port-only permit names,
 because a stateless filter cannot tell a crafted packet from a reply.
 
+After the second gate review: permits and denies read sources in opposite
+directions (a permit from /8 or wider or from an unparsable source reaches
+anywhere; a deny only blocks anywhere from an empty source or a true /0),
+and crafted source ports are tried at both edges of every source port range,
+not only at its first port.
+
 Two details differ from the table above: a firewall that is not in force
 makes PFW-002 to PFW-005 and PFW-007 `skip` with a pointer to PFW-001
 instead of repeating its failure, and every PFW result names the address it
