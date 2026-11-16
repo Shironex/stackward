@@ -104,6 +104,37 @@ func TestGoldenMarkdown(t *testing.T) {
 	}
 }
 
+// textfileFixtures have a Prometheus textfile golden (expected.prom) next to
+// expected.json: the metric names and labels are a public interface.
+var textfileFixtures = []string{"net-firewall-off-public", "ssh-nonroot-partial", "ubuntu-2404-clean"}
+
+func TestGoldenTextfile(t *testing.T) {
+	for _, name := range textfileFixtures {
+		t.Run(name, func(t *testing.T) {
+			dir := filepath.Join("fixtures", name)
+			rep := evaluate(t, filepath.Join(dir, "facts.json"))
+			var buf bytes.Buffer
+			if err := report.WriteTextfile(&buf, rep); err != nil {
+				t.Fatal(err)
+			}
+			expPath := filepath.Join(dir, "expected.prom")
+			if *update {
+				if err := os.WriteFile(expPath, buf.Bytes(), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			want, err := os.ReadFile(expPath)
+			if err != nil {
+				t.Fatalf("%v (run: go test ./test/ -update)", err)
+			}
+			if !bytes.Equal(buf.Bytes(), want) {
+				t.Errorf("textfile differs from %s (rerun with -update and review the diff)\n--- got\n%s", expPath, buf.Bytes())
+			}
+		})
+	}
+}
+
 func evaluate(t *testing.T, factsPath string) *report.Report {
 	t.Helper()
 	fh, err := os.Open(factsPath)

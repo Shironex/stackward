@@ -1,0 +1,30 @@
+# HELP stackward_results Results of the last stackward audit, by level (a check gives one result per subject).
+# TYPE stackward_results gauge
+stackward_results{level="fail"} 0
+stackward_results{level="warn"} 0
+stackward_results{level="unknown"} 100
+stackward_results{level="info"} 0
+stackward_results{level="pass"} 4
+stackward_results{level="skip"} 1
+# HELP stackward_last_run_timestamp_seconds Unix time at which the last stackward audit collected its facts.
+# TYPE stackward_last_run_timestamp_seconds gauge
+stackward_last_run_timestamp_seconds 1772366400
+# HELP stackward_coverage_ratio Share of the last audit's results that could be judged: checked over checked plus unknown. Skipped results do not count.
+# TYPE stackward_coverage_ratio gauge
+stackward_coverage_ratio 0.03846
+# HELP stackward_run_as_root 1 when the last audit ran as root (full coverage), else 0.
+# TYPE stackward_run_as_root gauge
+stackward_run_as_root 1
+# HELP stackward_sandbox_confined 1 when the Landlock sandbox confined the last audit, else 0.
+# TYPE stackward_sandbox_confined gauge
+stackward_sandbox_confined 0
+# HELP stackward_collectors Collectors of the last audit, by how they ended.
+# TYPE stackward_collectors gauge
+stackward_collectors{status="ok"} 1
+stackward_collectors{status="partial"} 0
+stackward_collectors{status="failed"} 0
+stackward_collectors{status="timeout"} 0
+stackward_collectors{status="skipped"} 0
+# HELP stackward_info The stackward version and ingress profile of the last audit; the value is always 1.
+# TYPE stackward_info gauge
+stackward_info{version="test",profile="unknown"} 1

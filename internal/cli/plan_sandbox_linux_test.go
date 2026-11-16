@@ -21,6 +21,9 @@ func TestMain(m *testing.M) {
 	if dir := os.Getenv(planChildEnv); dir != "" {
 		os.Exit(planChild(dir))
 	}
+	if dir := os.Getenv(textfileChildEnv); dir != "" {
+		os.Exit(textfileChild(dir))
+	}
 	os.Exit(m.Run())
 }
 

@@ -96,6 +96,7 @@ type auditFlags struct {
 	jsonOut      bool
 	mdOut        bool
 	out          string
+	textfile     string
 	failOn       string
 	dumpFacts    bool
 	factsFile    string
@@ -119,7 +120,8 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.StringVar(&af.format, "format", "text", "output format: text, json or md")
 	fs.BoolVar(&af.jsonOut, "json", false, "shorthand for --format json")
 	fs.BoolVar(&af.mdOut, "md", false, "shorthand for --format md (Markdown for issues and handover notes)")
-	fs.StringVar(&af.out, "out", "", "write the report to this file (the only file stackward writes)")
+	fs.StringVar(&af.out, "out", "", "write the report to this file (with --textfile, the only files stackward writes)")
+	fs.StringVar(&af.textfile, "textfile", "", "also write a Prometheus textfile metric (counts only) to this file, for node_exporter")
 	fs.StringVar(&af.failOn, "fail-on", "fail", "exit 1 when a result is at or above: fail, warn or never")
 	fs.BoolVar(&af.dumpFacts, "dump-facts", false, "print the collected facts as redacted JSON instead of a report (for bug reports)")
 	fs.StringVar(&af.factsFile, "facts", "", "evaluate checks over a saved facts file instead of this host")
@@ -159,6 +161,10 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 		fmt.Fprintf(stderr, "stackward audit: --format must be text, json or md, not %q\n", af.format)
 		return af, "", report.ExitError, true
 	}
+	if af.textfile != "" && af.dumpFacts {
+		fmt.Fprintln(stderr, "stackward audit: --textfile needs a report; it cannot be used with --dump-facts")
+		return af, "", report.ExitError, true
+	}
 	if err := af.prov.check(af.factsFile != ""); err != nil {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return af, "", report.ExitError, true
@@ -194,6 +200,15 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		}
 		defer func() { _ = outFile.Close() }()
 		w = outFile
+	}
+	var metricFile *os.File
+	if af.textfile != "" {
+		metricFile, err = createTextfile(af.textfile)
+		if err != nil {
+			fmt.Fprintf(stderr, "stackward audit: %v\n", err)
+			return report.ExitError
+		}
+		defer func() { _ = metricFile.Close() }()
 	}
 	textOpts := textOptions(stdout, outFile != nil, af.plain)
 	textOpts.Passing, textOpts.Info, textOpts.Group = af.all, af.info, af.group
@@ -259,6 +274,12 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "stackward audit: writing report: %v\n", err)
 		return report.ExitError
+	}
+	if metricFile != nil {
+		if err := report.WriteTextfile(metricFile, rep); err != nil {
+			fmt.Fprintf(stderr, "stackward audit: writing --textfile: %v\n", err)
+			return report.ExitError
+		}
 	}
 	return rep.ExitCode(failOn)
 }
