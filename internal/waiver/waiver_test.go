@@ -70,13 +70,13 @@ func TestParseRefuses(t *testing.T) {
 		"no version":        {"waivers: []\n", "missing \"version: 1\""},
 		"no waivers":        {"version: 1\n", "missing \"waivers:\""},
 		"bad version":       {"version: 2\nwaivers: []\n", "unsupported version"},
-		"unknown top key":   {"version: 1\nwaivers: []\nextra: x\n", "unknown key \"extra\""},
+		"unknown top key":   {"version: 1\nwaivers: []\nextra: x\n", "unknown key on line 3 (want"},
 		"duplicate top key": {"version: 1\nversion: 1\nwaivers: []\n", "duplicate key"},
 		"missing reason":    {entry(full[0], full[1], full[3]), "no \"reason\""},
 		"missing expires":   {entry(full[0], full[1], full[2]), "no \"expires\""},
 		"missing subject":   {entry(full[0], full[2], full[3]), "no \"subject\""},
 		"missing check":     {entry(full[1], full[2], full[3]), "no \"check\""},
-		"unknown key":       {entry(append(full, "owner: me")...), "unknown key \"owner\""},
+		"unknown key":       {entry(append(full, "owner: me")...), "unknown key on line 7 (a waiver"},
 		"duplicate key":     {entry(append(full, "reason: again")...), "duplicate key \"reason\""},
 		"bad check id":      {with(0, "check: net-4"), "not a check id"},
 		"empty reason":      {with(2, "reason: \"  \""), "reason is empty"},
@@ -111,11 +111,14 @@ func TestParseRefuses(t *testing.T) {
 		"line separator":  {with(2, "reason: a\u2028b"), "invisible format"},
 		"para separator":  {with(2, "reason: a\u2029b"), "invisible format"},
 		"long line":       {"version: 1\nwaivers: []\n# " + strings.Repeat("x", maxLineBytes) + "\n", "longer than"},
-		"no space":        {"version:1\nwaivers: []\n", "space after"},
+		"no space":        {"version:1\nwaivers: []\n", "space after the colon"},
 	}
 	// Errors name the line and key, never the value.
 	if _, err := Parse([]byte(with(0, "check: SECRETVALUE"))); err == nil || strings.Contains(err.Error(), "SECRETVALUE") {
 		t.Errorf("error echoes the value: %v", err)
+	}
+	if _, err := Parse([]byte(entry(append(full, "secretkey: x")...))); err == nil || strings.Contains(err.Error(), "secretkey") {
+		t.Errorf("error echoes the key: %v", err)
 	}
 	for name, c := range cases {
 		_, err := Parse([]byte(c.src))

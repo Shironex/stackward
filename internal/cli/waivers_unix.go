@@ -11,29 +11,27 @@ import (
 
 // openWaivers opens the waivers file without following a symlink and
 // without blocking on a FIFO, then checks what it opened: a regular file,
-// not writable by group or others, and for the implicit default file
-// (checkOwner) owned by the user running stackward or by root. Otherwise
-// anyone who can drop a .stackward.yml where root runs an audit could
-// accept findings for it. A file named with --waivers is the operator's
-// own choice, so its owner is not checked.
-func openWaivers(path string, checkOwner bool) (*os.File, error) {
+// not writable by group or others, owned by someone ownerAllowed accepts.
+// Otherwise anyone who can drop a file where root runs an audit (a shared
+// checkout, a predictable /tmp path) could accept findings for it.
+func openWaivers(path string) (*os.File, error) {
 	if fi, err := os.Lstat(path); err != nil {
 		return nil, err
 	} else if fi.Mode()&os.ModeSymlink != 0 {
-		return nil, errors.New("is a symlink; name the file it points to with --waivers")
+		return nil, errors.New("is a symlink")
 	}
 	fh, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkWaiversFile(fh, checkOwner); err != nil {
+	if err := checkWaiversFile(fh); err != nil {
 		_ = fh.Close()
 		return nil, err
 	}
 	return fh, nil
 }
 
-func checkWaiversFile(fh *os.File, checkOwner bool) error {
+func checkWaiversFile(fh *os.File) error {
 	fi, err := fh.Stat()
 	if err != nil {
 		return err
@@ -45,12 +43,16 @@ func checkWaiversFile(fh *os.File, checkOwner bool) error {
 		return fmt.Errorf("writable by group or others (mode %04o); run chmod go-w on it", perm)
 	}
 	st, ok := fi.Sys().(*syscall.Stat_t)
-	if !checkOwner || !ok {
+	if !ok {
 		return nil
 	}
-	if euid := os.Geteuid(); int64(st.Uid) != int64(euid) && st.Uid != 0 {
-		return fmt.Errorf("owned by uid %d, not by you (uid %d) or root; the default file is only read when it is yours. "+
-			"Under sudo in your own checkout, pass it explicitly with --waivers %s, or chown it to root", st.Uid, euid, fh.Name())
+	euid := os.Geteuid()
+	allowed, sudoOwner := ownerAllowed(int64(st.Uid), int64(euid), os.Getenv("SUDO_UID"))
+	switch {
+	case allowed:
+		return nil
+	case sudoOwner:
+		return fmt.Errorf("owned by uid %d, the user who ran sudo, but stackward runs as uid %d; run it as root with sudo, or pass it with --waivers as uid %d", st.Uid, euid, st.Uid)
 	}
-	return nil
+	return fmt.Errorf("owned by uid %d, not by you (uid %d) or root; chown it if it is meant for this run", st.Uid, euid)
 }

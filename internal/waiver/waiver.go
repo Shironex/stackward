@@ -242,7 +242,7 @@ func (p *parser) topKey(l line) error {
 		}
 		return fmt.Errorf("line %d: waivers must be a list of entries starting with \"- \"", l.n)
 	}
-	return fmt.Errorf("line %d: unknown key %q (want version or waivers)", l.n, key)
+	return fmt.Errorf("unknown key on line %d (want version or waivers)", l.n)
 }
 
 // items reads the block sequence under "waivers:".
@@ -318,7 +318,7 @@ func field(l line, fields map[string]string) error {
 		return err
 	}
 	if !slices.Contains(waiverKeys, key) {
-		return fmt.Errorf("line %d: unknown key %q (a waiver has check, subject, reason, expires and level)", l.n, key)
+		return fmt.Errorf("unknown key on line %d (a waiver has check, subject, reason, expires and level)", l.n)
 	}
 	if _, dup := fields[key]; dup {
 		return fmt.Errorf("line %d: duplicate key %q", l.n, key)
@@ -371,7 +371,7 @@ func splitKey(l line) (key, rest string, err error) {
 		return "", "", fmt.Errorf("line %d: expected \"key: value\"", l.n)
 	}
 	if rest != "" && rest[0] != ' ' {
-		return "", "", fmt.Errorf("line %d: put a space after %q", l.n, key+":")
+		return "", "", fmt.Errorf("line %d: put a space after the colon", l.n)
 	}
 	return key, rest, nil
 }

@@ -129,3 +129,32 @@ func TestAuditWarnWaiverDoesNotAcceptFail(t *testing.T) {
 		t.Errorf("summary %+v, waivers %+v", rep.Summary, rep.Waivers)
 	}
 }
+
+func TestOwnerAllowed(t *testing.T) {
+	cases := []struct {
+		name            string
+		uid, euid       int64
+		sudoUID         string
+		ok, sudoOwnerOf bool
+	}{
+		{"own file", 1000, 1000, "", true, false},
+		{"root owned, user run", 0, 1000, "", true, false},
+		{"root owned, root run", 0, 0, "", true, false},
+		{"other user, user run", 1001, 1000, "", false, false},
+		{"other user, root run", 1001, 0, "", false, false},
+		{"sudo user's file under sudo", 1000, 0, "1000", true, true},
+		{"someone else's file under sudo", 1001, 0, "1000", false, false},
+		{"sudo user's file, not root (sudo -u)", 1000, 1002, "1000", false, true},
+		{"SUDO_UID zero ignored", 1000, 0, "0", false, false},
+		{"SUDO_UID negative ignored", 1000, 0, "-1000", false, false},
+		{"SUDO_UID garbage ignored", 1000, 0, "1000x", false, false},
+		{"SUDO_UID empty ignored", 1000, 0, "", false, false},
+		{"SUDO_UID with space ignored", 1000, 0, " 1000", false, false},
+	}
+	for _, c := range cases {
+		ok, sudoOwner := ownerAllowed(c.uid, c.euid, c.sudoUID)
+		if ok != c.ok || sudoOwner != c.sudoOwnerOf {
+			t.Errorf("%s: ownerAllowed(%d, %d, %q) = %v, %v; want %v, %v", c.name, c.uid, c.euid, c.sudoUID, ok, sudoOwner, c.ok, c.sudoOwnerOf)
+		}
+	}
+}
