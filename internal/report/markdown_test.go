@@ -53,6 +53,14 @@ func TestMarkdownEscapesAndOrders(t *testing.T) {
 	}
 }
 
+// TestMarkdownEscapesMentions: an @name in free text is escaped, so a
+// report or diff pasted into an issue notifies nobody.
+func TestMarkdownEscapesMentions(t *testing.T) {
+	if got := MarkdownText("ping @admin"); got != `ping \@admin` {
+		t.Errorf("MarkdownText = %q", got)
+	}
+}
+
 func TestMarkdownPassingAndHostname(t *testing.T) {
 	r := mdFixture()
 	r.Host = Host{Hostname: "web_1.example.com"}

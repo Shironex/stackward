@@ -256,13 +256,21 @@ func codeSpan(s string) string {
 
 var mdReplacer = strings.NewReplacer(
 	"\\", "\\\\", "`", "\\`", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]",
-	"<", "&lt;", ">", "&gt;", "|", "\\|", "#", "\\#", "!", "\\!", "~", "\\~",
+	"<", "&lt;", ">", "&gt;", "|", "\\|", "#", "\\#", "!", "\\!", "~", "\\~", "@", "\\@",
 	"\r\n", " ", "\n", " ", "\r", " ",
 )
 
 // mdEscape makes free text render literally: no emphasis, links, HTML,
-// headings or table breaks.
+// headings or table breaks, and no @name mention that would notify someone
+// when the Markdown is pasted into a GitHub issue.
 func mdEscape(s string) string { return mdReplacer.Replace(s) }
+
+// MarkdownText escapes free text so it renders literally in Markdown, for
+// renderers outside this package (stackward diff).
+func MarkdownText(s string) string { return mdEscape(s) }
+
+// MarkdownCode renders s as a code span that is also safe in a table cell.
+func MarkdownCode(s string) string { return strings.ReplaceAll(codeSpan(s), "|", "\\|") }
 
 func mdOrDash(s string) string {
 	if s == "" {
