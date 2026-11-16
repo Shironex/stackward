@@ -7,10 +7,10 @@
   profile:   tunnel (inferred)
   root:      yes
   sandbox:   unavailable (golden test)
-  coverage:  104 checks, 181 results: 169 checked, 3 unknown, 9 skipped
+  coverage:  112 checks, 189 results: 169 checked, 11 unknown, 9 skipped
 
   +- Summary -----------------------------------------------------------------------------------+
-  | x 4 fail   ! 5 warn   ? 3 unknown   i 17 info   + 143 pass   - 9 skip                       |
+  | x 4 fail   ! 5 warn   ? 11 unknown   i 17 info   + 143 pass   - 9 skip                      |
   |                                                                                             |
   | Fails, most severe first                                                                    |
   | x critical  DKR-001   coolify is reachable from anywhere past the host firewall...          |
@@ -68,6 +68,48 @@
              tcp/8080 (crowdsec) listens on private addresses only
   i NET-006  DOCKER-USER exists with no filtering rules: published ports are not filtered by the
              host firewall
+
+  -- PFW  Provider firewall ------------------------------------------------------------------------
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-001, high
+    rule: A provider firewall is attached and in force
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-002, high
+    rule: Inbound traffic is denied by default at the provider
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-003, high
+    rule: No provider rule allows all UDP from anywhere
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-004, moderate
+    rule: Every port the provider allows has a service behind it
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-005, high
+    rule: SSH is not open to anywhere at the provider
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-006, high
+    rule: IPv6 is covered by the provider or the host firewall
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-007, high
+    rule: A stateless provider firewall lets return traffic in
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    UNKNOWN, PFW-008, info
+    rule: What the provider firewall allows
 
   -- DKR  Docker, 76 passing or skipped not shown --------------------------------------------------
 
@@ -157,5 +199,5 @@
              off the server
   i BAK-002  no restic, borg, borgmatic, kopia or rclone found
 
-  summary: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip
+  summary: 4 fail, 5 warn, 11 unknown, 17 info, 143 pass, 9 skip
   explain any check with: stackward explain <id>

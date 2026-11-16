@@ -675,9 +675,30 @@ func checkUFWDockerBackend(in Input) []Result {
 	return One(Unknown, "Docker's firewall backend could not be read (run with sudo)", ev)
 }
 
-func checkProviderFirewall(Input) []Result {
-	return One(Unknown,
-		"the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable",
+func checkProviderFirewall(in Input) []Result {
+	pf := in.Facts.ProviderFirewall
+	if pf == nil || pf.Status != facts.ProviderOK {
+		return One(Unknown,
+			"the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable",
+			map[string]any{"visible_from_host": false})
+	}
+	firewalls, rules, read := 0, 0, 0
+	for _, t := range pf.Targets {
+		if t.Status != facts.ProviderOK {
+			continue
+		}
+		read++
+		firewalls += t.Firewalls
+		rules += len(t.Rules)
+	}
+	if read == 0 {
+		return One(Unknown,
+			fmt.Sprintf("the %s API was asked but no resource of this account has the host's address; run `stackward probe` from another machine to see what is reachable", pf.Provider),
+			map[string]any{"visible_from_host": false})
+	}
+	return One(Info,
+		fmt.Sprintf("read %d %s firewall(s) with %d rules over the provider's API; the PFW checks carry the judgement, and `stackward probe` from another machine still shows what is reachable end to end",
+			firewalls, pf.Provider, rules),
 		map[string]any{"visible_from_host": false})
 }
 

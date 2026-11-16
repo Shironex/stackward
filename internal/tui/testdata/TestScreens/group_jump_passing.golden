@@ -1,8 +1,8 @@
  stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
- 104 checks, 115 results  3 fail  5 warn  79 unknown  7 info  17 pass  4 skip   
+ 112 checks, 123 results  3 fail  5 warn  87 unknown  7 info  17 pass  4 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  115 of 115          +passing │ DETAIL                       1-17 of 65
+FINDINGS  123 of 123          +passing │ DETAIL                       1-17 of 65
 Firewall and exposure NET           14 │ NET-004  Firewall and exposure         
 › WARN    NET-004  tcp/443 is a publi… │ rule Exposure: every listening socket  
   WARN    NET-004  tcp/80 is a publis… │      and who can reach it              

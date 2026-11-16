@@ -47,6 +47,7 @@ var Groups = []Group{
 	{"SSH", "SSH"},
 	{"USR", "Users and privilege"},
 	{"NET", "Firewall and exposure"},
+	{"PFW", "Provider firewall"},
 	{"DKR", "Docker"},
 	{"TS", "Tailscale"},
 	{"CF", "Cloudflare Tunnel"},

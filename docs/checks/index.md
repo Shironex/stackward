@@ -4,7 +4,7 @@
 
 Every check has a stable id that is never reused. Severity is how bad a failure is; the result of a run is `pass`, `warn`, `fail`, `unknown` (could not inspect, never a pass) or `skip` (does not apply). See [the threat model](../threat-model.md) for what stackward reads and why there is no score.
 
-110 checks in the catalog.
+118 checks in the catalog.
 
 ## System (SYS)
 
@@ -62,6 +62,19 @@ Every check has a stable id that is never reused. Severity is how bad a failure 
 | [NET-007](NET-007.md) | high | ufw-docker is loaded and lets tailnet traffic reach published ports |
 | [NET-008](NET-008.md) | high | ufw-docker is not paired with Docker's nftables backend |
 | [NET-009](NET-009.md) | info | Provider firewall (outside view) |
+
+## Provider firewall (PFW)
+
+| Id | Severity | Check |
+|---|---|---|
+| [PFW-001](PFW-001.md) | high | A provider firewall is attached and in force |
+| [PFW-002](PFW-002.md) | high | Inbound traffic is denied by default at the provider |
+| [PFW-003](PFW-003.md) | high | No provider rule allows all UDP from anywhere |
+| [PFW-004](PFW-004.md) | moderate | Every port the provider allows has a service behind it |
+| [PFW-005](PFW-005.md) | high | SSH is not open to anywhere at the provider |
+| [PFW-006](PFW-006.md) | high | IPv6 is covered by the provider or the host firewall |
+| [PFW-007](PFW-007.md) | high | A stateless provider firewall lets return traffic in |
+| [PFW-008](PFW-008.md) | info | What the provider firewall allows |
 
 ## Docker (DKR)
 

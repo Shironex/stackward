@@ -13,10 +13,10 @@
     "source": "inferred"
   },
   "coverage": {
-    "checks": 104,
-    "results": 115,
+    "checks": 112,
+    "results": 123,
     "checked": 50,
-    "unknown": 51,
+    "unknown": 59,
     "skipped": 14,
     "root": true,
     "sandbox": {
@@ -61,7 +61,7 @@
   "summary": {
     "fail": 0,
     "warn": 2,
-    "unknown": 51,
+    "unknown": 59,
     "info": 3,
     "pass": 45,
     "skip": 14
@@ -752,6 +752,141 @@
       },
       "fix": {
         "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "PFW-001",
+      "group": "PFW",
+      "title": "A provider firewall is attached and in force",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Create a provider firewall that allows only the ports your ingress needs and attach it to this server (Hetzner) or enable the Edge Network Firewall for this address (OVH)",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-002",
+      "group": "PFW",
+      "title": "Inbound traffic is denied by default at the provider",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "OVH: add a last rule (sequence 19) that denies protocol IPv4 from any source, after the permit rules for your services and for return traffic",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-003",
+      "group": "PFW",
+      "title": "No provider rule allows all UDP from anywhere",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Allow only the UDP ports your services use; on OVH, give source port rules a destination port range too where the service allows it (the ephemeral range 32768 to 60999 for replies)",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-004",
+      "group": "PFW",
+      "title": "Every port the provider allows has a service behind it",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Delete the provider rules for ports nothing should serve, or start the service that should be there",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-005",
+      "group": "PFW",
+      "title": "SSH is not open to anywhere at the provider",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Allow SSH at the provider only from the addresses you administer from (a panel, a bastion, your office), or close it there and reach SSH over the tailnet",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-006",
+      "group": "PFW",
+      "title": "IPv6 is covered by the provider or the host firewall",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Keep a host firewall that denies incoming IPv6 by default (UFW with IPV6=yes), or remove the global IPv6 address if nothing uses it",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-007",
+      "group": "PFW",
+      "title": "A stateless provider firewall lets return traffic in",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "OVH: add, before the final deny, permit TCP with option established; permit UDP source port 53; permit UDP source port 123; and for a QUIC tunnel permit UDP source port 7844",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-008",
+      "group": "PFW",
+      "title": "What the provider firewall allows",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+      "evidence": {
+        "provider": "none",
+        "status": "not_requested"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this lists the rules the other PFW checks judge"
       }
     },
     {

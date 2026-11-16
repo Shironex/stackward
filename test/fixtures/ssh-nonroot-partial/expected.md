@@ -6,7 +6,7 @@
 - **Profile:** unknown (inferred)
 - **Root:** no
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 104 checks, 106 results: 6 checked, 100 unknown, 0 skipped, root: no
+- **Coverage:** 112 checks, 114 results: 6 checked, 108 unknown, 0 skipped, root: no
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 0 |
 | warn | 0 |
-| unknown | 100 |
+| unknown | 108 |
 | info | 0 |
 | pass | 6 |
 | skip | 0 |
@@ -23,9 +23,9 @@ No findings.
 
 ## Not inspected
 
-Not root: 100 results could not be inspected; run with sudo for full coverage.
+Not root: 108 results could not be inspected; run with sudo for full coverage.
 
-<details><summary>100 checks not inspected</summary>
+<details><summary>108 checks not inspected</summary>
 
 **SYS: System**
 
@@ -80,6 +80,19 @@ Not root: 100 results could not be inspected; run with sudo for full coverage.
 | [NET-007](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-007.md) | ufw-docker is loaded and lets tailnet traffic reach published ports | `host` | not inspected: the firewall collector did not run |
 | [NET-008](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-008.md) | ufw-docker is not paired with Docker's nftables backend | `host` | not inspected: the firewall collector did not run |
 | [NET-009](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-009.md) | Provider firewall (outside view) | `host` | the provider firewall cannot be seen from inside the host; run \`stackward probe\` from another machine to see what is reachable |
+
+**PFW: Provider firewall**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [PFW-001](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-001.md) | A provider firewall is attached and in force | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-002](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-002.md) | Inbound traffic is denied by default at the provider | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-003](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-003.md) | No provider rule allows all UDP from anywhere | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-004](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-004.md) | Every port the provider allows has a service behind it | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-005](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-005.md) | SSH is not open to anywhere at the provider | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-006](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-006.md) | IPv6 is covered by the provider or the host firewall | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-007](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-007.md) | A stateless provider firewall lets return traffic in | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-008](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-008.md) | What the provider firewall allows | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
 
 **DKR: Docker**
 

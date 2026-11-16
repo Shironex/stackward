@@ -26,7 +26,7 @@
       "summary": {
         "fail": 6,
         "warn": 4,
-        "unknown": 71,
+        "unknown": 79,
         "info": 7,
         "pass": 9,
         "skip": 12

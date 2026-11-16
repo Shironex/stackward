@@ -7,10 +7,10 @@
   profile:   tunnel (inferred)
   root:      yes
   sandbox:   unavailable (golden test)
-  coverage:  104 checks, 181 results: 169 checked, 3 unknown, 9 skipped
+  coverage:  112 checks, 189 results: 169 checked, 11 unknown, 9 skipped
 
   +- Summary -----------------------------------------------------------------------------------+
-  | x 4 fail   ! 5 warn   ? 3 unknown   i 17 info   + 143 pass   - 9 skip                       |
+  | x 4 fail   ! 5 warn   ? 11 unknown   i 17 info   + 143 pass   - 9 skip                      |
   |                                                                                             |
   | Fails, most severe first                                                                    |
   | x critical  DKR-001   coolify is reachable from anywhere past the host firewall...          |
@@ -88,12 +88,47 @@
     fix:  Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release
           line.
 
-  -- UNKNOWN (3) -----------------------------------------------------------------------------------
+  -- UNKNOWN (11) ----------------------------------------------------------------------------------
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-001, high
+    rule: A provider firewall is attached and in force
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-002, high
+    rule: Inbound traffic is denied by default at the provider
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-003, high
+    rule: No provider rule allows all UDP from anywhere
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-005, high
+    rule: SSH is not open to anywhere at the provider
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-006, high
+    rule: IPv6 is covered by the provider or the host firewall
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-007, high
+    rule: A stateless provider firewall lets return traffic in
 
   ? only an outside view proves the origin does not answer; run `stackward probe` against the origin
     address from another machine
     CF-005, high
     rule: The origin IP does not answer on 80/443 from outside (probe)
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-004, moderate
+    rule: Every port the provider allows has a service behind it
 
   ? proxy bouncers pulled within the last 60 s; the interval itself is in the bouncer config, which
     holds the API key and is not read
@@ -104,6 +139,11 @@
     machine to see what is reachable
     NET-009, info
     rule: Provider firewall (outside view)
+
+  ? provider firewall not requested; run the audit with --provider to read it over the provider's
+    API
+    PFW-008, info
+    rule: What the provider firewall allows
 
   -- INFO (17) -------------------------------------------------------------------------------------
 
@@ -342,5 +382,5 @@
   - CS-007    behind a tunnel a firewall bouncer is the wrong tool (see CS-003)
   - PAAS-008  Dokploy not found; Swarm ports are only judged on Dokploy hosts
 
-  summary: 4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip
+  summary: 4 fail, 5 warn, 11 unknown, 17 info, 143 pass, 9 skip
   explain any check with: stackward explain <id>
