@@ -14,54 +14,51 @@ import (
 // SocketMask returns the mount that hides the Docker socket inside the
 // container when bind b holds the socket's folder, and false when the
 // socket stays reachable through b or b does not hold it. Only a proven
-// cover counts: a direct bind of the socket file is never masked, and an
-// unknown mount type, a relative destination or a cover that itself holds
-// the socket keeps it reachable.
+// cover counts, and only over the whole socket folder: a bind of /run or
+// /var/run (or of the socket file itself) is never masked, since covering
+// docker.sock alone leaves containerd.sock and the rest of /run in view.
 //
-// The host's /var/run is a symlink to /run, so the socket lives at
-// /run/docker.sock: through a bind of / it shows at <target>/run/docker.sock,
-// and the <target>/var/run symlink resolves inside the container, not on the
-// host. A bind of /var holds only that symlink (or, on a host where /var/run
-// is still a folder, the socket), so it is masked only by a cover of
-// <target>/run.
+// The host's /var/run is a symlink to /run, so the socket lives in /run:
+// through a bind of / it shows under <target>/run, and the <target>/var/run
+// symlink resolves inside the container, not on the host. A bind of /var
+// holds only that symlink (or, on a host where /var/run is still a folder,
+// the socket folder itself). Either way the cover must sit exactly on
+// <target>/run, the folder, never deeper.
 func SocketMask(ms []DockerMount, b DockerMount) (DockerMount, bool) {
 	if b.Type != "bind" {
 		return DockerMount{}, false
 	}
-	var rel string
 	switch path.Clean(b.Source) {
-	case "/":
-		rel = "run/docker.sock"
-	case "/run", "/var/run":
-		rel = "docker.sock"
-	case "/var":
-		rel = "run"
-	default: // the socket file itself, or not a folder that holds it
-		return DockerMount{}, false
+	case "/", "/var":
+		return MaskOf(ms, b, "run", IsDockerSocketPath)
 	}
-	return MaskOf(ms, b, rel, IsDockerSocketPath)
+	return DockerMount{}, false
 }
 
-// MaskOf returns the mount that hides rel (a path relative to bind b's
-// source) inside the container, and false when b still shows it. The
+// MaskOf returns the mount that hides rel (a clean path relative to bind
+// b's source) inside the container, and false when b still shows it. The
 // cover is the deepest mount whose destination lies strictly inside b's
 // destination and contains b's destination joined with rel. It hides rel
-// only when it is a tmpfs, a volume, or a bind whose source exposed does
-// not flag; when several mounts share that destination, every one must
-// qualify.
+// only when it is a tmpfs, a volume, or a bind whose source is a proven
+// host folder that exposed does not flag; when several mounts share that
+// destination, every one must qualify. Any destination among the mounts
+// that is relative or not already clean (a "." or ".." element, a doubled
+// or trailing slash) leaves the layout unproven, and nothing is masked.
 func MaskOf(ms []DockerMount, b DockerMount, rel string, exposed func(source string) bool) (DockerMount, bool) {
-	if !path.IsAbs(b.Target) {
+	for _, m := range ms {
+		if !isCleanAbs(m.Target) {
+			return DockerMount{}, false
+		}
+	}
+	if !isCleanAbs(b.Target) {
 		return DockerMount{}, false
 	}
-	root := path.Clean(b.Target)
+	root := b.Target
 	want := path.Join(root, rel)
 	var covers []DockerMount
 	depth := -1
 	for _, m := range ms {
-		if !path.IsAbs(m.Target) {
-			continue
-		}
-		t := path.Clean(m.Target)
+		t := m.Target
 		if !strictlyInside(t, root) || !within(want, t) {
 			continue
 		}
@@ -83,6 +80,9 @@ func MaskOf(ms []DockerMount, b DockerMount, rel string, exposed func(source str
 	return covers[0], true
 }
 
+// isCleanAbs reports whether p is an absolute path already in clean form.
+func isCleanAbs(p string) bool { return path.IsAbs(p) && path.Clean(p) == p }
+
 // hides reports whether a covering mount shows something other than the
 // host path it covers.
 func hides(m DockerMount, exposed func(string) bool) bool {
@@ -90,7 +90,9 @@ func hides(m DockerMount, exposed func(string) bool) bool {
 	case "tmpfs", "volume":
 		return true
 	case "bind":
-		return m.Source != "" && !exposed(m.Source)
+		// A relative or unclean source, or one under /proc (whose links
+		// lead anywhere), is not a proven folder.
+		return isCleanAbs(m.Source) && !within(m.Source, "/proc") && !exposed(m.Source)
 	}
 	return false
 }

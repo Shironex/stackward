@@ -210,6 +210,14 @@ func TestSocketMountMaskedByTmpfs(t *testing.T) {
 		t.Errorf("unmasked: got %s %q", rs[0].Level, rs[0].Message)
 	}
 
+	fileBind := app("alloy", alloyMounts(), func(c *facts.DockerContainer) {
+		c.Mounts = append(c.Mounts, facts.DockerMount{Type: "bind", Source: "/dev/null", Target: "/rootfs/run/docker.sock"})
+	})
+	rs = checkSocketMounted(Input{Facts: dockerHost(fileBind)})
+	if only(t, rs) != Fail || strings.Contains(rs[0].Message, "masked") {
+		t.Errorf("file bind over the socket: got %s %q", rs[0].Level, rs[0].Message)
+	}
+
 	direct := app("alloy", alloyMounts("/rootfs/run"), func(c *facts.DockerContainer) {
 		c.Mounts = append(c.Mounts, facts.DockerMount{Type: "bind", Source: "/var/run/docker.sock", Target: "/var/run/docker.sock", ReadOnly: true},
 			facts.DockerMount{Type: "tmpfs", Target: "/var/run"})
