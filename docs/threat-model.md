@@ -52,8 +52,9 @@ Run with `sudo` for full coverage; the promises below hold either way.
 
 In version 0.1 stackward:
 
-- **writes nothing** to the system it audits. The only file it creates is the
-  report you ask for with `--out`;
+- **writes nothing** to the system it audits. The only files it creates are
+  the report you ask for with `--out` and the metric you ask for with
+  `--textfile`;
 - **makes no network calls during `audit`.** No telemetry, no update check,
   no lookups, no uploads. Only `probe`, which you run from another machine,
   touches the network (see below), and the provider firewall fetch when you
@@ -154,6 +155,21 @@ open for the whole audit, as `probe` does) would weaken every collector and
 was rejected. If this trade is not acceptable to you, do not pass
 `--provider`; a separate command that only fetches and writes facts for
 `audit --facts` remains an option if a review asks for it.
+
+## Scheduled runs
+
+`stackward schedule --print` only prints a systemd service and timer; it
+writes, enables and contacts nothing, so a bug in it can at worst print a
+wrong unit, which you read before you install it. The risk it guards against
+is a unit that does more than you asked: every value that reaches a unit is
+refused when it holds a newline, a control character or a `%` (a systemd
+specifier), paths are limited to a small character set, and audit flags are
+parsed like audit's own, then quoted with `%` and `$` escaped. The printed
+service drops every capability a root audit does not use to read, makes the
+file system read only except the two output directories and blocks IP
+traffic. The rename of each output into place is done by `mv` in the unit,
+so the audit process keeps its Landlock sandbox unchanged. Details:
+[schedule.md](schedule.md).
 
 ## What is out of scope
 

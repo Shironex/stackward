@@ -82,11 +82,12 @@ The PRB checks run in `stackward probe`, not in `audit`.
 
 ## The read only promise
 
-`audit`, `probe`, `explain` and `tui` only read. `plan` changes nothing either;
+`audit`, `probe`, `explain`, `tui` and `schedule` only read. `plan` changes nothing either;
 `apply`, `undo` and `confirm` are the only commands that change a system (see
 [docs/apply.md](docs/apply.md)). The audit:
 
-- writes no file except the report you ask for with `--out`;
+- writes no file except the report you ask for with `--out` (and the
+  Prometheus metric you ask for with `--textfile`);
 - confines itself with a Landlock sandbox where the kernel supports it
   (Linux 5.13+): no file writes, and no TCP connections on Linux 6.7+. The
   report header says whether the sandbox was applied;
@@ -189,7 +190,9 @@ stackward audit [--info] [--group] [--plain]
 stackward audit --md --out report.md  Markdown for an issue or handover note
 stackward audit --dump-facts          redacted facts, for bug reports
 stackward audit --facts FILE          evaluate a saved facts file
+stackward audit --textfile FILE       also write a Prometheus textfile metric
 stackward explain [id]                explain a check, or list them all
+stackward schedule --print [-- FLAGS] print a systemd service and timer for a scheduled audit (installs nothing)
 stackward tui [--report FILE | --facts FILE]
                                       browse the findings in the terminal
 stackward tui --plan PLAN.json        pick plan steps in a guided list, apply what you confirm (root)
@@ -230,6 +233,19 @@ Exit codes: `0` no result at or above `--fail-on` (default `fail`), `1`
 findings, `2` the tool itself failed. `--fail-on warn` also counts warnings;
 `unknown` never trips it. The JSON report follows
 [schema/report.v1.json](schema/report.v1.json).
+
+### Scheduled audits
+
+```sh
+stackward schedule --print -- --profile tunnel   # prints a service and a timer, writes nothing
+```
+
+stackward never installs anything, so it prints a hardened systemd service
+and timer for you to install by hand. The scheduled run writes the JSON
+report and a Prometheus textfile metric for node_exporter, each through a
+temporary file and a rename. [docs/schedule.md](docs/schedule.md) shows how to
+install and remove the units, lists the metric names and labels, and has
+alerting rules to start from.
 
 ### Explain a check
 

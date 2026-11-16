@@ -10,7 +10,8 @@ running apply's code on the steps you confirm) (see [below](#apply-rules)). The 
 design and, on supported kernels, by the Landlock sandbox described in the
 [threat model](threat-model.md):
 
-- no file writes except the report you ask for with `--out`;
+- no file writes except the report you ask for with `--out` and the
+  metric you ask for with `--textfile` (both opened before the sandbox);
 - no network calls during `audit` (only `probe`, run from another machine,
   connects to the one host you name);
 - Docker is only ever sent GET requests;
