@@ -71,8 +71,8 @@ Package layering (depguard, from [docs/architecture.md](docs/architecture.md)):
   `plan` or `apply`).
 - `internal/tui` only browses a `report.Report`: no `facts`, `plan` or
   `apply`.
-- `redact`, `catalog`, `sandbox`, `schemacheck` and `version` import
-  nothing else from this module.
+- `redact`, `catalog`, `sandbox`, `schemacheck`, `version` and `waiver`
+  import nothing else from this module.
 - `os/exec` is imported only by `internal/apply` and
   `internal/facts/system.go`.
 

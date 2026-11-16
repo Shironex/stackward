@@ -324,6 +324,28 @@ and the coverage line, which says how many results were unknown, whether root
 was available and whether the sandbox was applied. Fix the highest severity
 `fail` results first.
 
+### Accepting a finding
+
+A finding you accept on purpose (a port that is public by design, a known
+sudoer) goes in a waivers file, `.stackward.yml` in the working directory or
+`--waivers FILE`, with the check id, the exact subject, a reason and an
+expiry date:
+
+```yaml
+version: 1
+waivers:
+  - check: NET-004
+    subject: port:tcp/443
+    reason: public web server by design
+    expires: 2027-01-31
+```
+
+The finding is then shown as accepted, with its reason and expiry, and no
+longer trips `--fail-on`; it is never hidden and its evidence never changes.
+When the date passes it comes back at its real level, and expired, stale and
+unknown waivers are listed for review. Why waivers must expire and how the
+file is checked: [docs/waivers.md](docs/waivers.md).
+
 ## Coverage and limits
 
 - **Root matters.** 53 of the 112 checks need root to read what they judge

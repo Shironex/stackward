@@ -35,6 +35,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/apply` | `stackward apply` and `undo`: the `Host` seam (every write and command), selection, preconditions, backups, atomic writes, the run journal, undo. The only code that writes to a system; `applytest` holds the fakes its tests share |
 | `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press), and the guided step list of `tui --plan`, which only presents steps the CLI judged and returns a choice; it imports neither plan nor apply |
 | `internal/redact` | secret masking for strings and decoded JSON |
+| `internal/waiver` | the waivers file (`.stackward.yml`, `--waivers`): a strict parser for its one shape, with size caps; `report.Build` applies the waivers ([waivers.md](waivers.md)) |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
 | `internal/provider` | the opt in provider firewall client (`--provider`): credentials from env or a file, GET only to fixed API hosts, normalised into `facts.ProviderFirewall` before the sandbox; the PFW checks judge it |
 | `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |
@@ -190,6 +191,12 @@ The hostname is hashed (`sha256:` plus 16 hex digits) unless
 `--show-hostname`. `coverage` counts results (not checks) as checked
 (pass, warn, fail, info), unknown and skipped, plus `root`, the sandbox
 state and every collector's status.
+
+Waivers ([waivers.md](waivers.md)) only add optional fields: a `waiver`
+object on each fail or warn result one matches, `summary.accepted` and
+`coverage.accepted` (results counted as accepted instead of fail or warn,
+and still as checked) and the top level `waivers` list with each entry's
+state. A waiver never changes a result's level or evidence.
 
 ## Plan steps
 
