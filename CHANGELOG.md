@@ -5,6 +5,85 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.2.0 (2026-11-16)
+
+stackward can now fix what it finds. 0.1.2 only reported; 0.2 adds a plan you
+can read, applies only the steps you choose, keeps backups and a journal, and
+undoes any run. `audit`, `probe`, `explain` and `tui` stay read only, and
+`plan` changes nothing. `install.sh` now installs 0.2.0.
+
+### Added
+
+- `stackward plan`: writes the changes that would fix the findings, as file
+  diffs and commands with a risk class (safe, networking, access-critical)
+  and an undo for every step. Nothing on the host changes. `--out` saves the
+  plan.v1 JSON, `--emit-script` prints it as a script to read.
+- `stackward apply`: applies the steps you name from a saved plan. Every file
+  is checked against the plan first, every overwrite is backed up under
+  `/var/backups/stackward/<run-id>/`, writes are atomic, and a run journal
+  records everything. One lock covers apply and undo.
+- `stackward undo --run ID`: reverses a run from its journal. A file that
+  changed after the run is left alone, and a purge or account removal for
+  something that never came to be is skipped, with the reason in the
+  journal. Directories apply created for a new file are removed while they
+  are empty.
+- Access-critical steps (SSH, firewall, accounts) run alone inside a
+  transaction: a systemd timer and a boot unit roll them back unless
+  `stackward confirm` runs from a new SSH session before the deadline
+  (`--confirm-within`, 5 minutes by default; `--console` for the provider
+  console).
+- The lockout guard: before a step narrows a way in, stackward proves from
+  the live host that a second way in stays open for the session applying it,
+  at plan time and again at apply time. It refuses when it cannot prove it.
+- The never touched list: things no step may change (Docker's data root, the
+  data directories and SSH keys of Coolify and Dokploy, and more), checked at
+  plan, apply and undo time.
+- Steps: journald size cap, kernel sysctls, Docker log rotation, the
+  admin-user and paas-user accounts, lock-default-user, sshd hardening,
+  unattended upgrades, fail2ban for sshd, a default deny UFW policy, and the
+  opt in ufw-docker, unattended-upgrades reboot and paas-env-perms (a timer
+  that keeps Coolify and Dokploy `.env` files closed) steps.
+- `--admin-keys-from root` works on a server where root is the only account:
+  admin-user copies `/root/.ssh/authorized_keys` to the new account, and the
+  plan says where the keys came from and that sshd-hardening turns root login
+  off once the new account is confirmed.
+- `stackward tui --plan plan.json`: a guided step list grouped by risk class,
+  with each step's change, the checks it fixes, its undo and the guard's
+  proof. It applies through `stackward apply` after a review screen.
+- `install.sh`: guided install, update and uninstall, and it names
+  `stackward plan` among the next steps.
+
+### Changed
+
+- Apply refuses to run in a CI job unless the job declares a throwaway VM
+  (`STACKWARD_CI_APPLY=throwaway-vm`). Undo and confirm are never refused.
+- A step that installs a package (fail2ban-sshd, unattended-upgrades-install)
+  installs it before writing any file, so a failed install leaves nothing
+  behind and ends the transaction `rolled-back`. When the audit saw the
+  package lists empty (a fresh cloud image) or older than 3 days,
+  `apt-get update` runs first, named in the plan with a note.
+- USR-004 reports the sudoers drop-in stackward wrote as info, when it
+  matches what stackward writes byte for byte.
+- When CS-010 or SSH-011 cannot tell whether SSH is protected, the message
+  names what could not be read, and says to run with sudo only when the
+  audit did not run as root.
+
+### Fixed
+
+- CF-003 and NET-004 judge published ports through Docker's forward filter.
+- Probe warns before probing the machine it runs on.
+- A step that was rolled back or undone no longer leaves a pending restart
+  for the next apply.
+- A leftover `/etc/fail2ban` without the fail2ban program no longer counts
+  as fail2ban being installed.
+
+### Testing
+
+- Verified end to end on a real Ubuntu 24.04 VPS and by the CI VM matrix
+  (Ubuntu 22.04 and 24.04, Debian 12 and 13), which checks rollback,
+  confirm, a guard refusal, the account steps and a root only server over
+  real SSH.
+
 ## 0.2.0-rc.2 (2026-11-16)
 
 The second pre-release of 0.2, with the fixes from testing 0.2.0-rc.1 on a
