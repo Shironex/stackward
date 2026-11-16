@@ -39,7 +39,7 @@ func FindPending(h Host) (pending []Pending, warnings []string, err error) {
 			warnings = append(warnings, lerr.Error())
 			continue
 		}
-		if j.Status == RunUndone {
+		if j.Status == RunUndone || rolledBack(j) {
 			continue
 		}
 		for i, js := range j.Steps {
@@ -54,6 +54,13 @@ func FindPending(h Host) (pending []Pending, warnings []string, err error) {
 		}
 	}
 	return pending, warnings, nil
+}
+
+// rolledBack reports whether the run was a transaction that rolled back,
+// or tried to: its files are the rollback's business, and finishing a
+// restart would load something the rollback meant to take away.
+func rolledBack(j *Journal) bool {
+	return j.Transaction != nil && (j.Transaction.Status == TxnRolledBack || j.Transaction.Status == TxnRollbackFailed)
 }
 
 // PendingOptions configure FinishPending.

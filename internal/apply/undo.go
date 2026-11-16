@@ -183,6 +183,9 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 				return changed, err
 			}
 		}
+		// The files a pending restart would load are restored: there is
+		// nothing left to restart, whatever the undo commands do next.
+		js.RestartPending = false
 		for k := len(js.Files) - 1; k >= 0; k-- {
 			removed, err := removeCreatedDirs(h, js.Files[k].CreatedDirs)
 			changed = changed || removed
@@ -213,7 +216,6 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 				return changed, fmt.Errorf("step %s: %w", js.ID, err)
 			}
 		}
-		js.RestartPending = false // the undo restored the files and ran its commands
 		o.Progress("%s: undone", js.ID)
 	}
 	j.Status, j.UndoneAt = RunUndone, stamp(o.Now())
