@@ -175,6 +175,9 @@ func TestOVHFailures(t *testing.T) {
 		}, facts.ProviderDenied, "403"},
 		{"time unreadable", func(a map[string]answer) { a["/1.0/auth/time"] = answer{body: "soon"} }, facts.ProviderError, "auth/time"},
 		{"rule missing", func(a map[string]answer) { delete(a, "/1.0/ip/192.0.2.10%2F32/firewall/192.0.2.10/rule/4") }, facts.ProviderOK, ""},
+		{"source unparsable", func(a map[string]answer) {
+			a["/1.0/ip/192.0.2.10%2F32/firewall/192.0.2.10/rule/4"] = answer{body: `{"sequence":4,"action":"permit","protocol":"udp","source":"0.0.0.0 garbage","sourcePort":"eq 53","state":"ok"}`}
+		}, facts.ProviderOK, ""},
 		{"rule unparsable", func(a map[string]answer) {
 			a["/1.0/ip/192.0.2.10%2F32/firewall/192.0.2.10/rule/4"] = answer{body: `{"sequence":4,"action":"permit","protocol":"udp","sourcePort":"neq 53","state":"ok"}`}
 		}, facts.ProviderOK, ""},
@@ -260,6 +263,39 @@ func TestAutoPicksByCredentials(t *testing.T) {
 	pf := Fetch(context.Background(), Options{Provider: Auto, Addresses: []string{"192.0.2.10"}, Env: envOf(ovhEnv()), Transport: rec, Now: localClock})
 	if pf.Provider != OVH || pf.Status != facts.ProviderOK {
 		t.Errorf("auto with OVH credentials: %+v", pf)
+	}
+}
+
+func TestOVHSource(t *testing.T) {
+	for in, want := range map[string]string{"any": "", "": "", "0.0.0.0/0": "", "203.0.113.7/32": "203.0.113.7/32",
+		"203.0.113.7": "203.0.113.7/32", "2001:db8::7": "2001:db8::7/128", "198.51.100.0/24": "198.51.100.0/24"} {
+		got, err := ovhSource(in)
+		if err != nil {
+			t.Errorf("%q: %v", in, err)
+			continue
+		}
+		s := ""
+		if len(got) == 1 {
+			s = got[0]
+		}
+		if s != want {
+			t.Errorf("%q = %q, want %q", in, s, want)
+		}
+	}
+	for _, bad := range []string{"garbage", "203.0.113.300", "203.0.113.7/40"} {
+		if _, err := ovhSource(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
+
+func TestOVHTimeErrorDoesNotEchoTheAnswer(t *testing.T) {
+	a := ovhAnswers()
+	a["/1.0/auth/time"] = answer{body: "<html>" + strings.Repeat("provider text ", 50) + "</html>"}
+	rec := newRecorder(t, a)
+	pf := fetchOVHWith(t, rec, "192.0.2.10")
+	if pf.Status != facts.ProviderError || strings.Contains(pf.Reason, "provider text") || len(pf.Reason) > 120 {
+		t.Errorf("pf = %+v", pf)
 	}
 }
 
