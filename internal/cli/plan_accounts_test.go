@@ -58,3 +58,16 @@ func TestPlanRefusesTheLockWithoutTheAdminSession(t *testing.T) {
 		t.Errorf("sshd-hardening is proven by ops and should be planned: %+v", p.Skipped)
 	}
 }
+
+// root gives its keys (a root only image has no other account), but is
+// never the account to create.
+func TestAccountFlagsLetRootGiveItsKeys(t *testing.T) {
+	if err := checkAccountFlags(plan.AccountChoices{Admin: "ops", AdminKeysFrom: "root"}); err != nil {
+		t.Errorf("--admin-keys-from root: %v", err)
+	}
+	for _, a := range []plan.AccountChoices{{Admin: "root", AdminKeysFrom: "root"}, {PaaS: "root"}, {Admin: "ops", AdminKeysFrom: "Root"}} {
+		if err := checkAccountFlags(a); err == nil {
+			t.Errorf("%+v accepted", a)
+		}
+	}
+}

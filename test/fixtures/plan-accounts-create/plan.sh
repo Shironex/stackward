@@ -10,6 +10,8 @@ set -eu
 
 # 1/2 admin-user [access-critical] fixes SSH-003, USR-003
 # Create an admin account with sudo and the keys of an existing account
+# Note: The keys come from ubuntu (/home/ubuntu/.ssh/authorized_keys),
+# copied on the host; nothing is changed there.
 # Note: ops gets sudo without a password (NOPASSWD), like the cloud image's
 # default account; USR-004 lists it. Set a password and drop NOPASSWD later
 # if you prefer.
@@ -46,7 +48,7 @@ STACKWARD_EOF
 	useradd --create-home --home-dir /home/ops --user-group --shell /bin/bash ops
 	# create ~/.ssh, owned by the account, mode 0700
 	install -d -m 0700 -o ops -g ops /home/ops/.ssh
-	# copy the authorized keys of ubuntu on the host, so no key passes through the plan
+	# copy the authorized keys of ubuntu (/home/ubuntu/.ssh/authorized_keys) on the host, so no key passes through the plan
 	install -m 0600 -o ops -g ops /home/ubuntu/.ssh/authorized_keys /home/ops/.ssh/authorized_keys
 }
 

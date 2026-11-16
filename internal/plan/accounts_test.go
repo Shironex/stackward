@@ -139,9 +139,9 @@ func TestAdminUserSkips(t *testing.T) {
 		"no key source": {in: func() Input {
 			return Input{Facts: cloudFacts(), Accounts: AccountChoices{Admin: "ops"}}
 		}, kind: SkipManual, want: "never invents a key"},
-		"key source is root": {in: func() Input {
+		"key source is root without readable keys": {in: func() Input {
 			return Input{Facts: cloudFacts(), Accounts: AccountChoices{Admin: "ops", AdminKeysFrom: "root"}}
-		}, kind: SkipManual, want: "root"},
+		}, kind: SkipManual, want: "no readable /root/.ssh/authorized_keys"},
 		"key source has no keys": {in: func() Input {
 			f := cloudFacts()
 			f.SSH.Users = nil
@@ -235,15 +235,16 @@ func TestAdminUserAuthorizeRefusesTampering(t *testing.T) {
 		"a rule for root": func(s *Step) {
 			s.Edits[0].Path = "/etc/sudoers.d/90-stackward-root"
 		},
-		"a default account": func(s *Step) { s.Edits[0].Path = "/etc/sudoers.d/90-stackward-ubuntu" },
-		"other content":     func(s *Step) { setNew(&s.Edits[0], "ALL ALL=(ALL:ALL) NOPASSWD: ALL\n") },
-		"mode 0644":         func(s *Step) { s.Edits[0].Mode = "0644" },
-		"no validation":     func(s *Step) { s.Edits[0].Validate = nil },
-		"keys from root":    func(s *Step) { s.Commands[2].Args[7] = "/root/.ssh/authorized_keys" },
-		"keys from a file":  func(s *Step) { s.Commands[2].Args[7] = "/tmp/keys" },
-		"keys to elsewhere": func(s *Step) { s.Commands[2].Args[8] = "/root/.ssh/authorized_keys" },
-		"a password":        func(s *Step) { s.Commands[0].Args = append(s.Commands[0].Args[:7:7], "--password", "x", "ops") },
-		"another shell":     func(s *Step) { s.Commands[0].Args[6] = "/bin/sh" },
+		"a default account":    func(s *Step) { s.Edits[0].Path = "/etc/sudoers.d/90-stackward-ubuntu" },
+		"other content":        func(s *Step) { setNew(&s.Edits[0], "ALL ALL=(ALL:ALL) NOPASSWD: ALL\n") },
+		"mode 0644":            func(s *Step) { s.Edits[0].Mode = "0644" },
+		"no validation":        func(s *Step) { s.Edits[0].Validate = nil },
+		"keys from /home/root": func(s *Step) { s.Commands[2].Args[7] = "/home/root/.ssh/authorized_keys" },
+		"root's other keys":    func(s *Step) { s.Commands[2].Args[7] = "/root/.ssh/authorized_keys2" },
+		"keys from a file":     func(s *Step) { s.Commands[2].Args[7] = "/tmp/keys" },
+		"keys to elsewhere":    func(s *Step) { s.Commands[2].Args[8] = "/root/.ssh/authorized_keys" },
+		"a password":           func(s *Step) { s.Commands[0].Args = append(s.Commands[0].Args[:7:7], "--password", "x", "ops") },
+		"another shell":        func(s *Step) { s.Commands[0].Args[6] = "/bin/sh" },
 		"an extra command": func(s *Step) {
 			s.Commands = append(s.Commands, Command{Args: []string{"usermod", "-aG", "docker", "ops"}})
 		},
@@ -330,6 +331,15 @@ func TestValidAccountName(t *testing.T) {
 	for _, bad := range []string{"", "root", "Ops", "1ops", "ops.x", "../x", "a b", strings.Repeat("a", 32), "-ops"} {
 		if err := ValidAccountName(bad); err == nil {
 			t.Errorf("%q accepted", bad)
+		}
+	}
+	// root gives keys but is never created.
+	if err := ValidKeySource("root"); err != nil {
+		t.Errorf("root as a key source: %v", err)
+	}
+	for _, bad := range []string{"", "Root", "../root", "root/.ssh"} {
+		if err := ValidKeySource(bad); err == nil {
+			t.Errorf("key source %q accepted", bad)
 		}
 	}
 }

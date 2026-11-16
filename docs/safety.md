@@ -220,7 +220,7 @@ selected (or of the run you undo):
 | `visudo -c -f <staged file>` | admin-user, paas-user | before the sudoers drop-in is moved into place |
 | `useradd --create-home --home-dir /home/NAME --user-group --shell /bin/bash NAME` | admin-user, paas-user | after the drop-in is written |
 | `install -d -m 0700 -o NAME -g NAME /home/NAME/.ssh` | admin-user, paas-user | after `useradd` |
-| `install -m 0600 -o NAME -g NAME /home/USER/.ssh/authorized_keys /home/NAME/.ssh/authorized_keys` | admin-user | copies the keys on the host |
+| `install -m 0600 -o NAME -g NAME /home/USER/.ssh/authorized_keys /home/NAME/.ssh/authorized_keys` | admin-user | copies the keys on the host; with `--admin-keys-from root` the source is `/root/.ssh/authorized_keys`, which is only read |
 | `userdel --remove NAME` | admin-user, paas-user | undo only |
 | `sshd -t -f <staged file>` | sshd-hardening | before the drop-in is moved into place |
 | `systemctl try-reload-or-restart ssh.service` | sshd-hardening | after the drop-in changed; undo |
@@ -506,6 +506,7 @@ step for anything else the entry covers.
 | Step | Entry | What it may do | Exact targets |
 |---|---|---|---|
 | `paas-env-perms` | `paas-data` | remove the group and other permission bits (`chmod` only) of the platform's `.env` files, from a timer, because the platform rewrites them loose on every deploy; never their content, never their owner | the `.env` files under `/data/coolify/applications`, `/data/coolify/services`, `/etc/dokploy/applications` and `/etc/dokploy/compose`, and `/data/coolify/source/.env` |
+| `admin-user` | `root-keys` | read root's `authorized_keys` as the source of the new admin account's keys (`--admin-keys-from root`, on an image with root only); `install` copies it into the new account's home and never changes root's file | `file:/root/.ssh/authorized_keys` (read only) |
 
 ### What will still go wrong
 

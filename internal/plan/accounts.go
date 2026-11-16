@@ -31,7 +31,8 @@ type AccountChoices struct {
 	// Admin is the admin account to create (--admin-user).
 	Admin string
 	// AdminKeysFrom is the existing account whose authorized_keys the
-	// admin account gets (--admin-keys-from).
+	// admin account gets (--admin-keys-from). root is allowed: on a root
+	// only image its keys are the only ones there are.
 	AdminKeysFrom string
 	// PaaS is the account the platform logs in as (--paas-user).
 	PaaS string
@@ -56,15 +57,32 @@ const (
 
 var accountName = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,30}$`)
 
-// ValidAccountName refuses a name stackward would not create or copy keys
-// from: not a plain lower case login name, root, or a cloud image's
-// default account (those are what the lock step locks).
+// rootAccount is the one account whose keys may be copied although it is
+// never created, locked or changed: copying its keys only reads
+// /root/.ssh/authorized_keys.
+const rootAccount = "root"
+
+// ValidAccountName refuses a name stackward would not create: not a plain
+// lower case login name, or root.
 func ValidAccountName(name string) error {
-	switch {
-	case !accountName.MatchString(name):
+	if err := plainName(name); err != nil {
+		return err
+	}
+	if name == rootAccount {
+		return errors.New("root is not an account to create, lock or change")
+	}
+	return nil
+}
+
+// ValidKeySource refuses a name stackward would not copy authorized keys
+// from: not a plain lower case login name. root is a key source (a root
+// only image has no other account), and copying its keys never changes
+// root.
+func ValidKeySource(name string) error { return plainName(name) }
+
+func plainName(name string) error {
+	if !accountName.MatchString(name) {
 		return fmt.Errorf("%q is not a plain login name (a lower case letter, then up to 30 lower case letters, digits, _ or -)", name)
-	case name == "root":
-		return errors.New("root is not an account to create or copy keys from")
 	}
 	return nil
 }
@@ -97,6 +115,27 @@ func homeOf(name string) string { return homeRoot + "/" + name }
 
 func keysFile(name string) string { return homeOf(name) + "/.ssh/authorized_keys" }
 
+// rootKeysFile is root's authorized_keys, the key source on a root only
+// image.
+const rootKeysFile = "/root/.ssh/authorized_keys"
+
+// sourceKeysFile is the authorized_keys the keys are copied from: root's
+// own, or the one in /home of any other account.
+func sourceKeysFile(name string) string {
+	if name == rootAccount {
+		return rootKeysFile
+	}
+	return keysFile(name)
+}
+
+// sourceHome is the home a key source must have.
+func sourceHome(name string) string {
+	if name == rootAccount {
+		return "/root"
+	}
+	return homeOf(name)
+}
+
 // visudoCheck validates the staged sudoers drop-in.
 var visudoCheck = []string{"visudo", "-c", "-f"}
 
@@ -116,7 +155,7 @@ func (a accountSpec) commands() [][]string {
 		{"install", "-d", "-m", "0700", "-o", a.name, "-g", a.name, homeOf(a.name) + "/.ssh"},
 	}
 	if a.keysFrom != "" {
-		out = append(out, []string{"install", "-m", "0600", "-o", a.name, "-g", a.name, keysFile(a.keysFrom), keysFile(a.name)})
+		out = append(out, []string{"install", "-m", "0600", "-o", a.name, "-g", a.name, sourceKeysFile(a.keysFrom), keysFile(a.name)})
 	}
 	return out
 }
@@ -134,7 +173,7 @@ func (a accountSpec) step(notes []string) *Step {
 	why := []string{
 		"create the account with a home and its own group; its password stays locked",
 		"create ~/.ssh, owned by the account, mode 0700",
-		"copy the authorized keys of " + a.keysFrom + " on the host, so no key passes through the plan",
+		"copy the authorized keys of " + a.keysFrom + " (" + sourceKeysFile(a.keysFrom) + ") on the host, so no key passes through the plan",
 	}
 	s := &Step{
 		Restarts: []string{},
@@ -247,16 +286,22 @@ func planAdminUser(in Input) Outcome {
 		return Skip(SkipManual, "%s", why)
 	}
 	a := accountSpec{id: AdminUserID, name: ch.Admin, keysFrom: ch.AdminKeysFrom}
-	return Outcome{Step: a.step([]string{
+	notes := []string{
+		fmt.Sprintf("The keys come from %s (%s), copied on the host; nothing is changed there.", a.keysFrom, sourceKeysFile(a.keysFrom)),
 		fmt.Sprintf("%s gets sudo without a password (NOPASSWD), like the cloud image's default account; USR-004 lists it. Set a password and drop NOPASSWD later if you prefer.", a.name),
 		fmt.Sprintf("Prove it before you confirm: open a new SSH session as %s with the key of %s and run sudo stackward confirm from there.", a.name, a.keysFrom),
-		"lock-default-user is planned once a session of this account applies it.",
-	})}
+	}
+	if a.keysFrom == rootAccount {
+		notes = append(notes, fmt.Sprintf("Root keeps its keys and its login. Once the login as %s is confirmed, plan again from a session of %s: sshd-hardening then turns root login off (PermitRootLogin no).", a.name, a.name))
+	} else {
+		notes = append(notes, "lock-default-user is planned once a session of this account applies it.")
+	}
+	return Outcome{Step: a.step(notes)}
 }
 
 // keySource says why account name cannot give its authorized keys, or "".
 func keySource(u *facts.Users, s *facts.SSH, name string) string {
-	if err := ValidAccountName(name); err != nil {
+	if err := ValidKeySource(name); err != nil {
 		return err.Error()
 	}
 	var acc *facts.Account
@@ -268,23 +313,25 @@ func keySource(u *facts.Users, s *facts.SSH, name string) string {
 	switch {
 	case acc == nil:
 		return fmt.Sprintf("there is no account %s to copy authorized keys from", name)
-	case acc.UID == 0:
-		return fmt.Sprintf("%s has uid 0; stackward does not copy root's keys", name)
-	case acc.Home != homeOf(name):
-		return fmt.Sprintf("the home of %s is %s, not %s; copy the keys by hand", name, acc.Home, homeOf(name))
+	case acc.UID == 0 && name != rootAccount:
+		return fmt.Sprintf("%s has uid 0 but is not root; stackward copies keys only from root or an ordinary account", name)
+	case name == rootAccount && acc.UID != 0:
+		return "the account named root does not have uid 0; copy the keys by hand"
+	case acc.Home != sourceHome(name):
+		return fmt.Sprintf("the home of %s is %s, not %s; copy the keys by hand", name, acc.Home, sourceHome(name))
 	}
 	if s.UsersError != "" {
 		return "the authorized keys could not be read: " + s.UsersError
 	}
 	for _, kf := range keysOf(s, name) {
-		if kf.Path == keysFile(name) && kf.Error == "" {
+		if kf.Path == sourceKeysFile(name) && kf.Error == "" {
 			if usableKeys(kf) == 0 {
 				return fmt.Sprintf("%s holds no key current OpenSSH accepts", kf.Path)
 			}
 			return ""
 		}
 	}
-	return fmt.Sprintf("%s has no readable %s to copy (run the audit as root)", name, keysFile(name))
+	return fmt.Sprintf("%s has no readable %s to copy (run the audit as root)", name, sourceKeysFile(name))
 }
 
 // otherAdmins lists the accounts that are not root or a cloud default and
@@ -335,6 +382,20 @@ func planPaaSUser(in Input) Outcome {
 
 var adminKeySource = regexp.MustCompile(`^/home/([a-z][a-z0-9_-]{0,30})/\.ssh/authorized_keys$`)
 
+// keySourceOf reads the key source back from the path the copy command
+// reads: root's authorized_keys, or /home/USER/.ssh/authorized_keys of an
+// account that is not root.
+func keySourceOf(p string) (string, bool) {
+	if p == rootKeysFile {
+		return rootAccount, true
+	}
+	m := adminKeySource.FindStringSubmatch(p)
+	if m == nil || m[1] == rootAccount {
+		return "", false
+	}
+	return m[1], true
+}
+
 // authorizeAccount re-derives an account step from the names it holds:
 // the account from its sudoers drop-in, the key source from the copy
 // command. Everything else must be exactly what the step renders.
@@ -355,14 +416,14 @@ func authorizeAccount(id string, s Step) error {
 		if len(s.Commands) != 3 || len(s.Commands[2].Args) != 9 {
 			return errors.New("commands are not the ones the step runs: the admin account step creates the account, its ~/.ssh and copies one authorized_keys file")
 		}
-		m := adminKeySource.FindStringSubmatch(s.Commands[2].Args[7])
-		if m == nil {
-			return fmt.Errorf("the keys are copied from %q, the step copies only /home/USER/.ssh/authorized_keys", s.Commands[2].Args[7])
+		src, ok := keySourceOf(s.Commands[2].Args[7])
+		if !ok {
+			return fmt.Errorf("the keys are copied from %q, the step copies only /home/USER/.ssh/authorized_keys or %s", s.Commands[2].Args[7], rootKeysFile)
 		}
-		if err := ValidAccountName(m[1]); err != nil || m[1] == name {
-			return fmt.Errorf("the keys are copied from %s, which is not an account the step copies keys from", m[1])
+		if err := ValidKeySource(src); err != nil || src == name {
+			return fmt.Errorf("the keys are copied from %s, which is not an account the step copies keys from", src)
 		}
-		a.keysFrom = m[1]
+		a.keysFrom = src
 	}
 	if e.Action != Create || e.Mode != "0440" {
 		return fmt.Errorf("%s: the step creates it with mode 0440 (action %q, mode %q)", e.Path, e.Action, e.Mode)
@@ -387,9 +448,9 @@ func authorizeAccount(id string, s Step) error {
 func specOf(s Step) accountSpec {
 	name := strings.TrimPrefix(s.Edits[0].Path, "/etc/sudoers.d/90-stackward-")
 	a := accountSpec{id: s.ID, name: name}
-	if s.ID == AdminUserID && len(s.Commands) == 3 {
-		if m := adminKeySource.FindStringSubmatch(s.Commands[2].Args[7]); m != nil {
-			a.keysFrom = m[1]
+	if s.ID == AdminUserID && len(s.Commands) == 3 && len(s.Commands[2].Args) == 9 {
+		if src, ok := keySourceOf(s.Commands[2].Args[7]); ok {
+			a.keysFrom = src
 		}
 	}
 	return a
@@ -440,12 +501,12 @@ func pinAccount(r Reader, s Step) error {
 		return fmt.Errorf("%s exists now; its undo would delete it, so stackward refuses to create %s over it", homeOf(a.name), a.name)
 	}
 	if a.keysFrom != "" {
-		b, err := r.ReadFile(keysFile(a.keysFrom))
+		b, err := r.ReadFile(sourceKeysFile(a.keysFrom))
 		if err != nil {
-			return fmt.Errorf("the keys to copy, %s: %w", keysFile(a.keysFrom), err)
+			return fmt.Errorf("the keys to copy, %s: %w", sourceKeysFile(a.keysFrom), err)
 		}
 		if len(strings.TrimSpace(string(b))) == 0 {
-			return fmt.Errorf("%s is empty now; there is no key to copy", keysFile(a.keysFrom))
+			return fmt.Errorf("%s is empty now; there is no key to copy", sourceKeysFile(a.keysFrom))
 		}
 	}
 	return nil
