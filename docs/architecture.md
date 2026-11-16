@@ -33,7 +33,7 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/report` | `report.v1` types, `Build`, text, Markdown and JSON renderers, exit codes |
 | `internal/plan` | `stackward plan`: the step model, the generator registry, `Build` (vetoes, redaction), unified diffs, the plan.v1 JSON, the text summary and the shell script; per step `Authorize` and `Check` for apply |
 | `internal/apply` | `stackward apply` and `undo`: the `Host` seam (every write and command), selection, preconditions, backups, atomic writes, the run journal, undo. The only code that writes to a system; `applytest` holds the fakes its tests share |
-| `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press) |
+| `internal/tui` | `stackward tui`: Bubble Tea findings browser over a `report.Report` (reads only; OSC 52 copy on a key press), and the guided step list of `tui --plan`, which only presents steps the CLI judged and returns a choice; it imports neither plan nor apply |
 | `internal/redact` | secret masking for strings and decoded JSON |
 | `internal/sandbox` | Landlock self sandbox on Linux, no-op elsewhere |
 | `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |

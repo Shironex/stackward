@@ -5,7 +5,8 @@
 Version 0.1 audits. It does not change your server, so it cannot lock you
 out or break a service. From 0.2 on the same holds for `audit`, `probe`,
 `tui` and `plan`; only `apply`, `undo` and `confirm` write, and only what the
-plan's selected steps say (see [below](#apply-rules)). The promise, enforced by
+plan's selected steps say (the step list of `tui --plan` writes only by
+running apply's code on the steps you confirm) (see [below](#apply-rules)). The promise, enforced by
 design and, on supported kernels, by the Landlock sandbox described in the
 [threat model](threat-model.md):
 
