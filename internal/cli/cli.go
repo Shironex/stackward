@@ -28,7 +28,7 @@ import (
 
 const usage = `stackward audits a Linux server running Docker, a PaaS, tunnels and
 intrusion prevention, and reports what is exposed and misconfigured.
-audit, probe, tui and plan only read; only apply, undo and confirm change
+audit, probe, tui, schedule and plan only read; only apply, undo and confirm change
 the host, and only what the plan's selected steps say.
 
 Usage:
@@ -37,13 +37,14 @@ Usage:
   stackward version           print the version
   stackward probe <host>      check a host from outside (run from another machine)
   stackward tui [flags]       browse the findings in the terminal
+  stackward schedule --print  print a systemd service and timer for a daily audit (installs nothing)
   stackward plan [flags]      write the changes that would fix the findings (changes nothing)
   stackward apply PLAN.json   apply the selected steps of a plan, with backups and a journal (root)
   stackward undo --run ID     reverse an apply run from its journal (root)
   stackward confirm ID        keep an access-critical change, from a new SSH session (root)
 
-Run "stackward <command> -h" for the flags of audit, probe, tui, plan, apply, undo
-and confirm.
+Run "stackward <command> -h" for the flags of audit, probe, tui, schedule, plan,
+apply, undo and confirm.
 
 Exit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.
 `
@@ -66,6 +67,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runTUI(args[1:], stdout, stderr)
 	case "probe":
 		return runProbe(args[1:], stdout, stderr)
+	case "schedule":
+		return runSchedule(args[1:], stdout, stderr)
 	case "plan":
 		return runPlan(args[1:], stdout, stderr)
 	case "apply":

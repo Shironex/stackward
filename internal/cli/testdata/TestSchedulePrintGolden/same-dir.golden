@@ -1,0 +1,60 @@
+# /etc/systemd/system/stackward-audit.service
+# Printed by stackward schedule --print. stackward never installs or
+# enables this unit: install it by hand as docs/schedule.md shows.
+[Unit]
+Description=stackward read only audit
+Documentation=https://github.com/Shironex/stackward/blob/main/docs/schedule.md
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+# Full coverage needs root. The bounding set keeps only what the
+# collectors use to read: root only files, the Docker socket, the
+# firewall ruleset and which process owns which socket.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE
+ExecStart=/opt/stackward/bin/stackward audit --format json --fail-on never --out /var/lib/node-exporter/report.json.tmp --textfile /var/lib/node-exporter/stackward.prom.tmp
+# Each file is written under a temporary name and renamed into place
+# (rename is atomic), and only when the audit succeeded.
+ExecStartPost=/bin/mv -f /var/lib/node-exporter/report.json.tmp /var/lib/node-exporter/report.json
+ExecStartPost=/bin/mv -f /var/lib/node-exporter/stackward.prom.tmp /var/lib/node-exporter/stackward.prom
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+# Hardening: the audit only reads, so the whole file system is read only
+# except the output directories. Nothing here hides what the audit inspects
+# (no PrivateNetwork, PrivateDevices or ProtectProc).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+ReadWritePaths=/var/lib/node-exporter
+# The audit makes no network calls.
+IPAddressDeny=any
+
+# /etc/systemd/system/stackward-audit.timer
+# Printed by stackward schedule --print. Enable it yourself:
+#   systemctl daemon-reload && systemctl enable --now stackward-audit.timer
+[Unit]
+Description=Run the stackward audit on a schedule
+Documentation=https://github.com/Shironex/stackward/blob/main/docs/schedule.md
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=0
+Persistent=true
+
+[Install]
+WantedBy=timers.target
