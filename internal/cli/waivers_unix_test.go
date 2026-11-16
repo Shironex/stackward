@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -16,6 +17,18 @@ func TestWaiversFIFORefused(t *testing.T) {
 	}
 	// Would block forever on open if the type were not checked first.
 	if _, err := loadWaivers(p); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestWaiversSymlinkRefused(t *testing.T) {
+	dir := t.TempDir()
+	target := writeWaivers(t, t.TempDir(), usrWaivers, 0o600)
+	link := filepath.Join(dir, "link.yml")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skip(err)
+	}
+	if _, err := loadWaivers(link); err == nil || !strings.Contains(err.Error(), "symlink") {
 		t.Errorf("err = %v", err)
 	}
 }

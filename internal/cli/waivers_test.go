@@ -85,7 +85,10 @@ func TestAuditWaiversErrors(t *testing.T) {
 		"no expiry": {func() string {
 			return writeWaivers(t, t.TempDir(), "version: 1\nwaivers:\n  - check: NET-004\n    subject: host\n    reason: x\n", 0o600)
 		}, "no \"expires\""},
-		"directory":      {func() string { return t.TempDir() }, "not a regular file"},
+		"directory": {func() string { return t.TempDir() }, "not a regular file"},
+		"secret subject": {func() string {
+			return writeWaivers(t, t.TempDir(), "version: 1\nwaivers:\n  - check: USR-004\n    subject: file:/etc/sudoers.d/token=alpha\n    reason: x\n    expires: 2027-01-01\n", 0o600)
+		}, "line 3: subject looks like it holds a secret"},
 		"group writable": {func() string { return writeWaivers(t, t.TempDir(), usrWaivers, 0o664) }, "writable by group or others"},
 	}
 	for name, tc := range cases {
