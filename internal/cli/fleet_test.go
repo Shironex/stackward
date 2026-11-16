@@ -212,6 +212,7 @@ func TestAuditSSHFlagChecks(t *testing.T) {
 		{"--ssh", "--no-sandbox", "web1"},
 		{"--ssh", "--waivers", "waivers.yml", "web1"},
 		{"--ssh", "--textfile", "fleet.prom.tmp", "web1"},
+		{"--ssh", "--baseline", "base.json", "web1"},
 		{"--ssh", "--provider", "hetzner", "web1"},
 		{"--ssh", "--ssh-parallel", "0", "web1"},
 		{"--ssh", "--ssh-parallel", "99", "web1"},
@@ -231,11 +232,13 @@ func TestAuditSSHFlagChecks(t *testing.T) {
 	}
 }
 
+// TestAuditSSHRefusesWaiversAndTextfile also covers --baseline: one
+// baseline names one host, so a fleet run refuses it before ssh starts.
 func TestAuditSSHRefusesWaiversAndTextfile(t *testing.T) {
 	calls, _ := fakeFleet(t)
 	work := t.TempDir()
 	t.Chdir(work)
-	for flag, value := range map[string]string{"--waivers": "waivers.yml", "--textfile": "fleet.prom.tmp"} {
+	for flag, value := range map[string]string{"--waivers": "waivers.yml", "--textfile": "fleet.prom.tmp", "--baseline": "base.json"} {
 		code, _, errs := run("audit", "--ssh", flag, value, "web1")
 		if code != report.ExitError || !strings.Contains(errs, "--ssh cannot be combined with "+flag) {
 			t.Errorf("%s: exit %d, stderr %q", flag, code, errs)
