@@ -5,6 +5,151 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.4.0 (2026-11-16)
+
+A minor release: stackward becomes something you repeat. You can accept a
+finding on purpose with a waiver, compare two reports to spot drift, audit
+several hosts over your own ssh, and print a systemd timer that writes a
+Prometheus metric. Nothing here changes what a plain `audit` does without the
+new flags. `install.sh` now installs 0.4.0.
+
+### Added
+
+- Waivers (#111). `audit` and `tui` read `.stackward.yml` from the working
+  directory, or the file named with `--waivers FILE` (which must exist). A
+  waiver names a check id, the exact subject of a result, a reason and an
+  expiry date (`YYYY-MM-DD`, judged against the time of the run), and has an
+  optional `level: warn|fail` (default `warn`). A matching result is shown as
+  accepted with its reason and expiry in text, JSON, Markdown and the TUI. It
+  is never hidden and its level and evidence never change. An accepted result
+  counts in `summary.accepted` instead of `fail` or `warn`, so it does not
+  trip `--fail-on`. An expired waiver puts the finding back at its real level.
+  A waiver for an unknown check, a subject that no longer matches, a result
+  above its level, or one that matches several results is listed under
+  waivers to review (`unknown-check`, `stale`, `expired`, `level-exceeded`,
+  `ambiguous`, `long-lived`). The report stays `report.v1`: the new fields
+  are optional, and a report without a waivers file is byte for byte as
+  before. See [docs/waivers.md](docs/waivers.md).
+- `stackward diff [flags] OLD.json NEW.json` (#116) compares two saved
+  reports of one host and prints the drift and the findings that were added,
+  removed or changed, in text, Markdown or JSON (new `schema/diff.v1.json`).
+  `stackward audit --baseline OLD.json` audits and prints the diff against
+  the baseline instead of the report. Drift is read from report evidence: a
+  new or newly public listener (NET-004), a new authorized key for a user
+  (SSH-014), a new NOPASSWD sudoer (USR-004) and a container that now runs as
+  root (DKR-020). A drift check that judged the baseline and is now only
+  `unknown` or `skip`, or missing, is listed as lost coverage, so a blind spot
+  never passes as "no drift". An accepted finding is never reported as fixed
+  or as new, and a waiver never silences drift. See
+  [docs/diff.md](docs/diff.md).
+- `--fail-on-drift any|fail|drift|never` (default `any`) sets the exit code of
+  `diff` and `audit --baseline`: 0 when nothing reaches it, 1 when drift, lost
+  coverage or a new finding does, 2 on an error (bad flags, an unreadable or
+  invalid report, reports of different hosts without `--force-host`). On
+  `audit --baseline` an explicit `--fail-on` also counts; the default one does
+  not, because old findings are what a baseline is for.
+- `stackward audit --ssh [flags] [--] HOST...` and `--ssh-hosts FILE` (#112)
+  run the same read only audit on one or several other machines through your
+  own `ssh`, and print one fleet report (text, `--md` or `--json`) with each
+  host's counts and coverage line, then each host's full report. The binary is
+  copied to a private `mktemp` directory, run, and removed again, even when
+  the run fails (a second connection removes what a failed run left). The
+  binary is this executable or `--ssh-binary PATH` (repeatable, one per
+  architecture), checked from its ELF header; a mismatch copies nothing and
+  names the release asset to use. `--ssh-sudo` runs it with `sudo -n`,
+  `--ssh-parallel` (default 4, at most 32) bounds the parallelism and
+  `--ssh-timeout` (default 10m) the time per host. One failing host never
+  stops the others: exit 2 when any host could not be audited, otherwise the
+  worst code for `--fail-on`. New `schema/fleet.v1.json`; each audited host
+  carries its `report.v1`.
+- `stackward schedule --print` (#110) prints a hardened systemd service and
+  timer unit. It writes no file, creates no directory, enables nothing and
+  contacts nothing; without `--print` it refuses. Flags: `--on-calendar`
+  (default `daily`), `--randomized-delay` (default 1h), `--user` (default
+  `root`), and the audit flags after `--`. The unit runs the audit, then
+  renames the report and the metric into place only after a successful run, so
+  a failed run leaves the old files and the last run timestamp stops moving.
+  See [docs/schedule.md](docs/schedule.md), which also has the metric names
+  and Prometheus alert rules.
+- `stackward audit --textfile DIR/NAME.prom.tmp` (#110) writes a Prometheus
+  textfile metric next to the report: `stackward_results{level}`,
+  `stackward_last_run_timestamp_seconds`, `stackward_coverage_ratio`,
+  `stackward_run_as_root`, `stackward_sandbox_confined`,
+  `stackward_collectors{status}` and `stackward_info{version,profile}`. It
+  carries counts only: no hostname, subject or message.
+- SSH-014 evidence now carries `fingerprints`, the sorted OpenSSH `SHA256:`
+  fingerprints of the authorized keys (never key material). Drift needs them
+  to tell one key from another; a report without them falls back to a growing
+  key count.
+
+### Changed
+
+- DKR-010 honours a mask over the Docker socket (#109). A container that binds
+  `/` or `/var` but covers the socket folder `<target>/run` with a tmpfs (compose
+  `tmpfs:`, `docker run --tmpfs`) or a volume no longer fails: it passes with
+  the mask named, and `masked_socket_mounts` appears in the evidence only when
+  present. A bind of `/run`, `/var/run` or the socket file is never treated as
+  masked, and a bind of part of `/run` beneath the cover cancels the mask.
+  Compose `tmpfs:` entries are now read into the facts as tmpfs mounts.
+- `--out` that is one of the input reports or the `--baseline` is refused
+  before the file is truncated. The output files of `audit` are opened as
+  regular files only (a symlink, FIFO, device or hard link is refused), and the
+  textfile path is unlinked first and created with `O_EXCL`.
+- The report schema `report.v1` is unchanged. `--baseline`, `--waivers` and
+  `--textfile` are refused together with `--ssh`, because they name one host.
+
+### Fixed
+
+- Free text in Markdown reports escapes `@`, so a pasted report or diff
+  mentions nobody.
+- Redaction no longer masks a SHA256 key fingerprint as a token. The
+  structural rules (private key blocks, URL passwords, Authorization headers)
+  still run over the whole string first, and a fingerprint is kept only when it
+  stands alone, so a token glued to one is still masked.
+
+### Security and privacy
+
+- `diff` and `audit --baseline` treat both report files as untrusted. They are
+  opened (with `--out`) before the Landlock sandbox is applied, must be regular
+  files of at most 32 MiB holding one JSON value that validates against the
+  embedded `report.v1` schema, and every string in them is cleaned of control,
+  bidi and zero width characters and redacted before it is shown. Reports of
+  different hosts (by hostname hash) are refused unless `--force-host`.
+  Someone who can rewrite the baseline can still hide drift; the docs say so.
+- Fingerprints are public identifiers, not secrets, but they say which key is
+  authorized. They appear in reports and in `--dump-facts` from now on.
+- `audit --ssh` uses no SSH library and handles no key or password. `ssh`
+  runs without a shell, with `BatchMode=yes`, no forwarding and no agent.
+  Host names are validated and passed after `--`, every remote command is a
+  constant of stackward, and `--no-sandbox`, `--provider`, `--facts` and
+  `--dump-facts` are refused with `--ssh`, so no provider credential goes to a
+  host. A host's report is capped at 32 MiB and cleaned before rendering. The
+  fleet side applies no Landlock sandbox, because ssh needs the network; the
+  remote audit is sandboxed as usual. `audit --ssh` is the one way the audit
+  writes to a host: the copied binary, in a private directory. See
+  [docs/threat-model.md](docs/threat-model.md#auditing-other-hosts-over-ssh).
+- `schedule --print` refuses control characters, `%` and backslash in every
+  value it prints, requires clean absolute paths for the binary and output
+  directories, and refuses audit flags the unit owns or a scheduled run must
+  not have. The textfile is world readable by design and holds counts only.
+  The docs say plainly what a compromised audit run as root can do and
+  suggest `--user` for a smaller blast radius.
+- The waivers file is opened without following a symlink and must be a regular
+  file with a safe owner and mode. A parse error names the line and key, never
+  a value.
+
+### Known limits
+
+- DKR-010: a bind of a `/proc` source beneath the cover, and a named volume
+  whose driver options bind host `/run`, can still count as a mask (#113).
+- Waivers are not pinned to evidence: a waiver can still accept a changed
+  result on the same subject (#114).
+- Markdown renders catalog placeholders such as `<container-port>` as HTML,
+  one `audit --ssh` wait path has no test, and a hostile host can name itself
+  inside its own section (#115).
+- `audit --facts F --out F` truncates F before it is read, and the order of the
+  redaction rules is not pinned by a test (#117).
+
 ## 0.3.0 (2026-11-16)
 
 A minor release: stackward can now read your cloud provider's firewall, which

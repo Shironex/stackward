@@ -1,12 +1,14 @@
 # Roadmap
 
-This is the public plan for stackward. Each milestone below is a GitHub milestone, and each item links to its issue. Dates are not promised; the order inside a milestone is the order of work, and the first item of v0.3 is waivers.
+This is the public plan for stackward. Each milestone below is a GitHub milestone, and each item links to its issue. Dates are not promised; the order inside a milestone is the order of work.
 
 Version 0.1 is released (`v0.1.0` on 2026-11-15, patches `v0.1.1` and `v0.1.2` the same day): the read only audit, `probe`, `explain`, the TUI and signed releases.
 
 Version 0.2 is released (`v0.2.0` on 2026-11-16): `plan`, `apply`, `undo` and `confirm`, and the guided step list in the TUI.
 
-Version 0.3 is released (`v0.3.0` on 2026-11-16) with the opt in provider firewall audit (`--provider hetzner|ovh`, the PFW checks), the first part of the provider firewall item (#41). The items planned under the v0.3 heading below (waivers, diff, `audit --ssh`, `schedule`) move to the next minor release; the GitHub milestones keep their names for now.
+Version 0.3 is released (`v0.3.0` on 2026-11-16) with the opt in provider firewall audit (`--provider hetzner|ovh`, the PFW checks), the first part of the provider firewall item (#41).
+
+Version 0.4 is released (`v0.4.0` on 2026-11-16): the waivers file, `stackward diff` and `audit --baseline`, `audit --ssh` for several hosts and `schedule --print` with a Prometheus textfile (#34, #35, #36, #37). The GitHub milestones keep their names for now.
 
 ## v0.2: Harden with plan and apply (released)
 
@@ -26,9 +28,9 @@ Version 0.3 is released (`v0.3.0` on 2026-11-16) with the opt in provider firewa
 
 [Milestone on GitHub](https://github.com/Shironex/stackward/milestone/1)
 
-## Next minor (planned as v0.3 on GitHub): Make it a habit
+## v0.4: Make it a habit (released, planned as v0.3 on GitHub)
 
-Audits become something you repeat. Waivers come first, so an accepted finding stops being noise without being hidden.
+Audits become something you repeat. Waivers come first, so an accepted finding stops being noise without being hidden. All four items are in `v0.4.0`; the follow-ups found in review are #113, #114, #115 and #117.
 
 - [Add a waivers file so accepted findings stay accepted](https://github.com/Shironex/stackward/issues/34) (#34)
 - [Add stackward diff and --baseline to spot drift](https://github.com/Shironex/stackward/issues/35) (#35)
@@ -37,7 +39,7 @@ Audits become something you repeat. Waivers come first, so an accepted finding s
 
 [Milestone on GitHub](https://github.com/Shironex/stackward/milestone/2)
 
-## v0.4: Beyond the box
+## Next minor (planned as v0.4 on GitHub): Beyond the box
 
 Read only API modules for things the host cannot see. Each needs a token you provide per run with read scopes only; the token is never stored, and without one the checks say `unknown`.
 
