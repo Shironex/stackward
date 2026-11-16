@@ -364,10 +364,11 @@ func TestPFWOVHMissingReplies(t *testing.T) {
 			t.Errorf("message %q lacks %q", r.Message, want)
 		}
 	}
-	// A pending permit counts as in force.
-	rules = append(rules, facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53), Pending: true})
+	// An applied DNS permit lets DNS replies in (a pending one does not,
+	// see TestPFWRepliesPendingRules).
+	rules = append(rules, facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53)})
 	if r := runOne(t, checkPFWReturnTraffic, pfwFacts(ovhPF(rules))); strings.Contains(r.Message, "DNS replies") {
-		t.Errorf("pending DNS permit not counted: %s", r.Message)
+		t.Errorf("DNS permit not counted: %s", r.Message)
 	}
 }
 
@@ -410,6 +411,70 @@ func TestPFWRepliesLeanTowardAFinding(t *testing.T) {
 	mapped := est
 	mapped.Sources = []string{"::ffff:0.0.0.0/96"}
 	wantLevel(t, run(mapped, dns, final), Pass, "")
+}
+
+// TestPFWRepliesPendingRules: in the reply checks a pending deny counts and
+// a pending permit does not (the fourth gate review, probes Q1 to Q4, Q13).
+func TestPFWRepliesPendingRules(t *testing.T) {
+	stubTunnel(t, false)
+	est := facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", TCPOption: "established"}
+	dns := facts.ProviderRule{Order: 2, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53)}
+	final := facts.ProviderRule{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"}
+	run := func(rules ...facts.ProviderRule) Result {
+		f := pfwFacts(ovhPF(rules))
+		f.Clock = nil
+		return runOne(t, checkPFWReturnTraffic, f)
+	}
+	pending := func(r facts.ProviderRule) facts.ProviderRule { r.Pending = true; return r }
+
+	// Q1: the established permit is being removed.
+	wantLevel(t, run(pending(est), dns, final), Fail, "seq 19 denies them")
+	// Q2: a pending deny before the established permit.
+	wantLevel(t, run(pending(facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "ipv4"}), est, dns, final), Fail, "seq 0 denies them")
+	// Q3: a pending DNS reply deny before the DNS permit.
+	wantLevel(t, run(est, pending(facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "udp", SrcPorts: port(53)}), dns, final), Warn, "DNS replies")
+	// Q4: the DNS permit itself is pending.
+	wantLevel(t, run(est, pending(dns), final), Warn, "DNS replies")
+	// Q13: a first final deny still pending, no UDP reply permits.
+	wantLevel(t, run(est, pending(final)), Warn, "DNS replies")
+
+	// The checks where a packet getting in is the finding keep the other
+	// reading: a pending permit counts, a pending deny does not.
+	ssh := facts.ProviderRule{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", DstPorts: port(22), Pending: true}
+	stubTailnet(t, false, true)
+	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(ovhPF([]facts.ProviderRule{ssh, final}))), Warn, "tcp/22")
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, pfwFacts(ovhPF([]facts.ProviderRule{pending(final)}))), Fail, "")
+}
+
+// TestPFWRepliesReservedDeny: a deny from reserved space only drops no
+// internet reply, so it does not count in the reply checks (P14, Q9).
+func TestPFWRepliesReservedDeny(t *testing.T) {
+	stubTunnel(t, false)
+	est := facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", TCPOption: "established"}
+	dns := facts.ProviderRule{Order: 2, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53)}
+	final := facts.ProviderRule{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"}
+	run := func(rules ...facts.ProviderRule) Result {
+		f := pfwFacts(ovhPF(rules))
+		f.Clock = nil
+		return runOne(t, checkPFWReturnTraffic, f)
+	}
+	// P14: deny 10.0.0.0/8 before the established permit.
+	deny := facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"10.0.0.0/8"}}
+	wantLevel(t, run(deny, est, dns, final), Pass, "")
+	// Q9: a DNS reply deny from several reserved ranges before the DNS permit.
+	deny53 := facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "udp", SrcPorts: port(53),
+		Sources: []string{"192.168.0.0/16", "172.16.0.0/12", "100.64.0.0/10", "::ffff:127.0.0.0/104"}}
+	wantLevel(t, run(est, deny53, dns, final), Pass, "")
+	// A source wider than a reserved range makes the deny count again.
+	wide := deny53
+	wide.Sources = append(append([]string(nil), deny53.Sources...), "0.0.0.0/7")
+	wantLevel(t, run(est, wide, dns, final), Warn, "DNS replies")
+	deny.Sources = []string{"garbage"}
+	wantLevel(t, run(deny, est, dns, final), Fail, "seq 0 denies them")
+	// Where a packet getting in is the finding a reserved deny changes nothing.
+	stubTailnet(t, false, true)
+	deny.Sources = []string{"10.0.0.0/8"}
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, pfwFacts(ovhPF([]facts.ProviderRule{deny}))), Fail, "")
 }
 
 // TestPFWIPv6DenyDoesNotBlockIPv4: a deny from ::/0 is no catch-all for the
@@ -532,10 +597,10 @@ func TestPFWSeveralAddresses(t *testing.T) {
 
 func TestPFWDescribePending(t *testing.T) {
 	tg := ovhPF(nil).Targets[0]
-	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "permit", Protocol: "udp", Pending: true}); !strings.Contains(s, "counted as in force") {
+	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "permit", Protocol: "udp", Pending: true}); !strings.Contains(s, "counts as open, not as letting replies in") {
 		t.Error(s)
 	}
-	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "deny", Protocol: "udp", Pending: true}); !strings.Contains(s, "not counted") {
+	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "deny", Protocol: "udp", Pending: true}); !strings.Contains(s, "counts as dropping replies, not as blocking") {
 		t.Error(s)
 	}
 }
