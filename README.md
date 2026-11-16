@@ -180,14 +180,14 @@ stackward audit --facts FILE          evaluate a saved facts file
 stackward explain [id]                explain a check, or list them all
 stackward tui [--report FILE | --facts FILE]
                                       browse the findings in the terminal
-stackward tui --plan PLAN.json        upcoming 0.2, not released: pick plan steps in a guided list, apply what you confirm (root)
+stackward tui --plan PLAN.json        0.2 pre-release: pick plan steps in a guided list, apply what you confirm (root)
 stackward probe HOST [--hostname NAME] [--ports LIST] [--profile P] [--json] [--out FILE] [--i-own-this]
 stackward plan [--out FILE] [--json | --emit-script]
-                                      upcoming 0.2, not released: the changes that would fix the findings, changing nothing
+                                      0.2 pre-release: the changes that would fix the findings, changing nothing
 stackward apply [--step ID]... [--all-safe] [--confirm-within 5m] [--yes] PLAN.json
-                                      upcoming 0.2, not released: apply the chosen steps with backups and a journal (root)
-stackward undo --run RUN_ID           upcoming 0.2, not released: reverse an apply run from its journal (root)
-stackward confirm ID                  upcoming 0.2, not released: keep an access-critical change, from a new SSH session (root)
+                                      0.2 pre-release: apply the chosen steps with backups and a journal (root)
+stackward undo --run RUN_ID           0.2 pre-release: reverse an apply run from its journal (root)
+stackward confirm ID                  0.2 pre-release: keep an access-critical change, from a new SSH session (root)
 stackward version
 ```
 
@@ -297,7 +297,7 @@ every key, `q` quits. Copying uses the terminal clipboard sequence (OSC 52)
 and only happens when you press `y`; the browser writes no file. It needs
 at least 60x16 and is laid out for 80x24. `NO_COLOR` turns colors off.
 
-In the upcoming 0.2, `sudo stackward tui --plan plan.json` opens a guided
+In 0.2 (pre-release), `sudo stackward tui --plan plan.json` opens a guided
 step list over a saved plan instead: steps grouped safe, networking and
 access-critical, each with what it changes, why, its diff, its undo and,
 for access-critical steps, the lockout guard's proof. Nothing changes until

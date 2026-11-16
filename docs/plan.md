@@ -1,8 +1,8 @@
 # stackward plan
 
 `stackward plan` writes down the exact changes that would fix the audit's
-findings, and changes nothing. It is part of the upcoming 0.2 and is not in a
-release yet. [`stackward apply`](apply.md) runs the steps you choose from a
+findings, and changes nothing. It is part of 0.2, released as a pre-release
+(v0.2.0-rc.1) for testing. [`stackward apply`](apply.md) runs the steps you choose from a
 saved plan.
 
 ```
