@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
+	"regexp"
 
 	"github.com/Shironex/stackward/internal/catalog"
 	"github.com/Shironex/stackward/internal/checks"
@@ -64,19 +65,35 @@ func DumpFacts(w io.Writer, f *facts.Facts, showHostname bool) error {
 	return err
 }
 
-// maskProviderAddresses returns a copy of pf with the last octet of every
-// matched address masked ("192.0.2.x"): facts files are posted in bug
-// reports, and the checks only need the address to name a subject. The full
-// address stays in memory for the live report.
+// maskProviderAddresses returns a copy of pf for a facts dump, which is
+// posted in bug reports: every matched address loses its last octet
+// ("192.0.2.x"), every IPv4 address in a reason (request URLs carry them)
+// too, and every rule network keeps its prefix length but loses its host
+// bits past the first three octets (IPv4) or the first 64 bits (IPv6), so
+// the checks still see how wide each source is. The live report keeps the
+// full values.
 func maskProviderAddresses(pf *facts.ProviderFirewall) *facts.ProviderFirewall {
 	cp := *pf
+	cp.Reason = maskIPv4Text(pf.Reason)
 	cp.Targets = make([]facts.ProviderTarget, len(pf.Targets))
 	for i, t := range pf.Targets {
 		t.Address = maskIPv4(t.Address)
+		t.Reason = maskIPv4Text(t.Reason)
+		t.Rules = make([]facts.ProviderRule, len(pf.Targets[i].Rules))
+		for j, r := range pf.Targets[i].Rules {
+			r.Sources = maskNetworks(r.Sources)
+			r.Destinations = maskNetworks(r.Destinations)
+			t.Rules[j] = r
+		}
 		cp.Targets[i] = t
 	}
 	return &cp
 }
+
+var ipv4Text = regexp.MustCompile(`\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b`)
+
+// maskIPv4Text masks the last octet of every IPv4 address in s.
+func maskIPv4Text(s string) string { return ipv4Text.ReplaceAllString(s, "$1.$2.$3.x") }
 
 func maskIPv4(s string) string {
 	a, err := netip.ParseAddr(s)
@@ -85,4 +102,34 @@ func maskIPv4(s string) string {
 	}
 	b := a.As4()
 	return fmt.Sprintf("%d.%d.%d.x", b[0], b[1], b[2])
+}
+
+// maskNetworks zeroes the host bits of each network past the first 24
+// (IPv4) or 64 (IPv6) bits, keeping its prefix length.
+func maskNetworks(ns []string) []string {
+	if ns == nil {
+		return nil
+	}
+	out := make([]string, len(ns))
+	for i, n := range ns {
+		p, err := netip.ParsePrefix(n)
+		if err != nil {
+			out[i] = n
+			continue
+		}
+		keep := 24
+		if p.Addr().Is6() {
+			keep = 64
+		}
+		if p.Bits() < keep {
+			keep = p.Bits()
+		}
+		masked, err := p.Addr().Prefix(keep)
+		if err != nil {
+			out[i] = n
+			continue
+		}
+		out[i] = netip.PrefixFrom(masked.Addr(), p.Bits()).String()
+	}
+	return out
 }
