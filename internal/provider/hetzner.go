@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -205,6 +206,13 @@ func normaliseHetzner(r hzRule, order int, pending bool) (facts.ProviderRule, er
 		nr.Destinations = r.DestinationIPs
 	default:
 		return nr, fmt.Errorf("unknown direction %q", r.Direction)
+	}
+	// A network that does not parse is refused, so the read counts as
+	// partial instead of the checks guessing how wide it is.
+	for _, n := range append(append([]string(nil), nr.Sources...), nr.Destinations...) {
+		if _, err := netip.ParsePrefix(n); err != nil {
+			return nr, fmt.Errorf("network %q is not in CIDR form", n)
+		}
 	}
 	if r.Port != nil {
 		pr, err := parsePortSpec(*r.Port)
