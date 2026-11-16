@@ -12,13 +12,14 @@ import (
 )
 
 // usrWaivers accepts the one fail of the usr-bad fixture that is not
-// critical.
+// critical; a fail needs level: fail.
 const usrWaivers = `version: 1
 waivers:
   - check: USR-004
     subject: file:/etc/sudoers.d/deploy
     reason: the deploy tool rewrites it
     expires: 2026-06-30
+    level: fail
 `
 
 func writeWaivers(t *testing.T, dir, body string, mode os.FileMode) string {
@@ -108,5 +109,20 @@ func TestTUIWaiversFlag(t *testing.T) {
 	code, _, errs = run("tui", "--no-sandbox", "--facts", fixture("usr-bad"), "--waivers", p)
 	if code != report.ExitError || !strings.Contains(errs, "unsupported version") {
 		t.Errorf("tui with a bad waivers file must fail before the terminal check: exit %d %q", code, errs)
+	}
+}
+
+// A waiver for a warning never accepts a fail on the same subject: the fail
+// counts and trips --fail-on, and the waiver is listed for review.
+func TestAuditWarnWaiverDoesNotAcceptFail(t *testing.T) {
+	body := strings.Replace(usrWaivers, "    level: fail\n", "", 1)
+	p := writeWaivers(t, t.TempDir(), body, 0o600)
+	_, out, errs := run("audit", "--no-sandbox", "--facts", fixture("usr-bad"), "--waivers", p, "--json")
+	var rep report.Report
+	if err := json.Unmarshal([]byte(out), &rep); err != nil {
+		t.Fatalf("%v (stderr %s)", err, errs)
+	}
+	if rep.Summary.Accepted != 0 || rep.Summary.Fail != 3 || rep.Waivers[0].Status != report.WaiverLevelExceeded {
+		t.Errorf("summary %+v, waivers %+v", rep.Summary, rep.Waivers)
 	}
 }

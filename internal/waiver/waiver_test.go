@@ -18,6 +18,7 @@ waivers:
       subject: 'user:deploy'
       reason: "known sudoer: \"deploy\" runs the CI"
       expires: 2026-12-01
+      level: fail
 `
 
 func TestParseGood(t *testing.T) {
@@ -26,8 +27,8 @@ func TestParseGood(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Waiver{
-		{Check: "NET-004", Subject: "port:tcp/443", Reason: "public web server by design", Expires: "2027-01-31", Line: 4},
-		{Check: "USR-002", Subject: "user:deploy", Reason: `known sudoer: "deploy" runs the CI`, Expires: "2026-12-01", Line: 8},
+		{Check: "NET-004", Subject: "port:tcp/443", Level: LevelWarn, Reason: "public web server by design", Expires: "2027-01-31", Line: 4},
+		{Check: "USR-002", Subject: "user:deploy", Level: LevelFail, Reason: `known sudoer: "deploy" runs the CI`, Expires: "2026-12-01", Line: 8},
 	}
 	if len(ws) != len(want) {
 		t.Fatalf("got %d waivers, want %d: %+v", len(ws), len(want), ws)
@@ -103,9 +104,18 @@ func TestParseRefuses(t *testing.T) {
 		"indented top":      {" version: 1\nwaivers: []\n", "unexpected indent"},
 		"duplicate waiver": {"version: 1\nwaivers:\n" +
 			"  - check: NET-004\n    subject: host\n    reason: a\n    expires: 2027-01-01\n" +
-			"  - check: NET-004\n    subject: host\n    reason: b\n    expires: 2027-01-01\n", "second waiver for NET-004 on host (the first is on line 3)"},
-		"long line": {"version: 1\nwaivers: []\n# " + strings.Repeat("x", maxLineBytes) + "\n", "longer than"},
-		"no space":  {"version:1\nwaivers: []\n", "space after"},
+			"  - check: NET-004\n    subject: host\n    reason: b\n    expires: 2027-01-01\n", "second waiver for the same check and subject as line 3"},
+		"bad level":       {entry(append(full, "level: critical")...), "level must be warn or fail"},
+		"bidi override":   {with(2, "reason: ok \u202e"), "invisible format"},
+		"zero width join": {with(2, "reason: a\u200db"), "invisible format"},
+		"line separator":  {with(2, "reason: a\u2028b"), "invisible format"},
+		"para separator":  {with(2, "reason: a\u2029b"), "invisible format"},
+		"long line":       {"version: 1\nwaivers: []\n# " + strings.Repeat("x", maxLineBytes) + "\n", "longer than"},
+		"no space":        {"version:1\nwaivers: []\n", "space after"},
+	}
+	// Errors name the line and key, never the value.
+	if _, err := Parse([]byte(with(0, "check: SECRETVALUE"))); err == nil || strings.Contains(err.Error(), "SECRETVALUE") {
+		t.Errorf("error echoes the value: %v", err)
 	}
 	for name, c := range cases {
 		_, err := Parse([]byte(c.src))
@@ -157,5 +167,24 @@ func TestExpiredAt(t *testing.T) {
 	}
 	if !w.ExpiredAt(time.Time{}) {
 		t.Error("a zero time must count as expired")
+	}
+}
+
+func TestCovers(t *testing.T) {
+	warn, fail := Waiver{Level: LevelWarn}, Waiver{Level: LevelFail}
+	if !warn.Covers("warn") || warn.Covers("fail") || warn.Covers("unknown") {
+		t.Error("a warn waiver accepts warnings only")
+	}
+	if !fail.Covers("warn") || !fail.Covers("fail") || fail.Covers("pass") {
+		t.Error("a fail waiver accepts warnings and fails only")
+	}
+}
+
+func TestLongLivedAt(t *testing.T) {
+	at := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	for exp, want := range map[string]bool{"2027-03-01": false, "2027-03-02": true, "2026-06-30": false} {
+		if got := (Waiver{Expires: exp}).LongLivedAt(at); got != want {
+			t.Errorf("LongLivedAt(%s) = %v, want %v", exp, got, want)
+		}
 	}
 }

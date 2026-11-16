@@ -43,12 +43,27 @@ const (
 // DateLayout is the form of an expiry date.
 const DateLayout = "2006-01-02"
 
+// Levels a waiver can accept up to (the optional level key).
+const (
+	LevelWarn = "warn" // the default: a warning only
+	LevelFail = "fail" // a warning or a fail
+)
+
+// longLivedYears is how far past the audit an expiry may lie before the
+// report lists the waiver for review. Not a cap: the waiver still applies.
+const longLivedYears = 1
+
 // Waiver is one accepted finding: a check id and the exact subject of its
-// result, why it is accepted, and the last day the acceptance holds.
+// result, the worst level it accepts, why it is accepted, and the last day
+// the acceptance holds.
 type Waiver struct {
 	Check   string
 	Subject string
-	Reason  string
+	// Level is the worst result level the waiver accepts: LevelWarn (the
+	// default) or LevelFail. A waiver for a warning never accepts a fail
+	// that appears later on the same subject.
+	Level  string
+	Reason string
 	// Expires is the last day (UTC) the waiver applies, as YYYY-MM-DD.
 	Expires string
 	// Line is where the waiver starts in the file, for messages.
@@ -60,6 +75,17 @@ type Waiver struct {
 // so a report that cannot date itself shows every finding as it is.
 func (w Waiver) ExpiredAt(t time.Time) bool {
 	return t.IsZero() || t.UTC().Format(DateLayout) > w.Expires
+}
+
+// Covers reports whether the waiver accepts a result of level l ("warn"
+// or "fail"); any other level is never accepted.
+func (w Waiver) Covers(l string) bool {
+	return l == LevelWarn || (l == LevelFail && w.Level == LevelFail)
+}
+
+// LongLivedAt reports whether the expiry lies more than a year after t.
+func (w Waiver) LongLivedAt(t time.Time) bool {
+	return !t.IsZero() && w.Expires > t.UTC().AddDate(longLivedYears, 0, 0).Format(DateLayout)
 }
 
 // Load reads and parses a waivers file of at most MaxFileBytes.
@@ -76,8 +102,11 @@ func Load(r io.Reader) ([]Waiver, error) {
 
 var checkID = regexp.MustCompile(`^[A-Z]{2,4}-[0-9]{3}$`)
 
-// waiverKeys are the keys of one waiver, all required.
-var waiverKeys = []string{"check", "subject", "reason", "expires"}
+// requiredKeys are the keys every waiver needs; level is optional.
+var requiredKeys = []string{"check", "subject", "reason", "expires"}
+
+// waiverKeys are all keys a waiver may have.
+var waiverKeys = append([]string{"level"}, requiredKeys...)
 
 // Parse parses the waivers file. The shape is:
 //
@@ -87,9 +116,11 @@ var waiverKeys = []string{"check", "subject", "reason", "expires"}
 //	    subject: port:tcp/443
 //	    reason: public web server by design
 //	    expires: 2027-01-31
+//	    level: warn # optional: warn (default) or fail
 //
-// Every waiver needs all four keys; two waivers for the same check and
-// subject are refused.
+// Every waiver needs check, subject, reason and expires; two waivers for
+// the same check and subject are refused. Errors name the line and the
+// key, never the value, so a value cannot be echoed to a terminal or log.
 func Parse(b []byte) ([]Waiver, error) {
 	lines, err := splitLines(b)
 	if err != nil {
@@ -130,6 +161,12 @@ func splitLines(b []byte) ([]line, error) {
 			}
 			if unicode.IsControl(c) {
 				return nil, fmt.Errorf("line %d: control character %U", n, c)
+			}
+			// Format characters (bidi overrides, zero width joiners) and
+			// line or paragraph separators can make text read differently
+			// from what it is.
+			if unicode.In(c, unicode.Cf, unicode.Zl, unicode.Zp) {
+				return nil, fmt.Errorf("line %d: invisible format or separator character %U", n, c)
 			}
 		}
 		text := strings.TrimLeft(raw, " ")
@@ -189,7 +226,7 @@ func (p *parser) topKey(l line) error {
 			return err
 		}
 		if v != "1" {
-			return fmt.Errorf("line %d: unsupported version %q (want 1)", l.n, v)
+			return fmt.Errorf("line %d: unsupported version (want 1)", l.n)
 		}
 		return nil
 	case "waivers":
@@ -236,7 +273,7 @@ func (p *parser) items() error {
 		}
 		k := [2]string{w.Check, w.Subject}
 		if prev, dup := seen[k]; dup {
-			return fmt.Errorf("line %d: a second waiver for %s on %s (the first is on line %d)", w.Line, w.Check, w.Subject, prev)
+			return fmt.Errorf("line %d: a second waiver for the same check and subject as line %d", w.Line, prev)
 		}
 		seen[k] = w.Line
 		p.out = append(p.out, w)
@@ -281,7 +318,7 @@ func field(l line, fields map[string]string) error {
 		return err
 	}
 	if !slices.Contains(waiverKeys, key) {
-		return fmt.Errorf("line %d: unknown key %q (a waiver has check, subject, reason and expires)", l.n, key)
+		return fmt.Errorf("line %d: unknown key %q (a waiver has check, subject, reason, expires and level)", l.n, key)
 	}
 	if _, dup := fields[key]; dup {
 		return fmt.Errorf("line %d: duplicate key %q", l.n, key)
@@ -296,15 +333,20 @@ func field(l line, fields map[string]string) error {
 
 // build checks the fields of one waiver.
 func build(n int, f map[string]string) (Waiver, error) {
-	for _, k := range waiverKeys {
+	for _, k := range requiredKeys {
 		if _, ok := f[k]; !ok {
 			return Waiver{}, fmt.Errorf("line %d: waiver has no %q; every waiver needs check, subject, reason and expires", n, k)
 		}
 	}
-	w := Waiver{Check: f["check"], Subject: f["subject"], Reason: strings.TrimSpace(f["reason"]), Expires: f["expires"], Line: n}
+	w := Waiver{Check: f["check"], Subject: f["subject"], Level: LevelWarn, Reason: strings.TrimSpace(f["reason"]), Expires: f["expires"], Line: n}
+	if l, ok := f["level"]; ok {
+		w.Level = l
+	}
 	switch {
 	case !checkID.MatchString(w.Check):
-		return w, fmt.Errorf("line %d: check %q is not a check id like NET-004", n, w.Check)
+		return w, fmt.Errorf("line %d: check is not a check id like NET-004", n)
+	case w.Level != LevelWarn && w.Level != LevelFail:
+		return w, fmt.Errorf("line %d: level must be warn or fail", n)
 	case w.Subject == "" || strings.TrimSpace(w.Subject) != w.Subject:
 		return w, fmt.Errorf("line %d: subject must be the exact subject of a result, such as host or port:tcp/443", n)
 	case utf8.RuneCountInString(w.Subject) > maxSubjectLen:
@@ -315,7 +357,7 @@ func build(n int, f map[string]string) (Waiver, error) {
 		return w, fmt.Errorf("line %d: reason is longer than %d characters", n, maxReasonLen)
 	}
 	if _, err := time.Parse(DateLayout, w.Expires); err != nil {
-		return w, fmt.Errorf("line %d: expires %q is not a date like 2027-01-31", n, w.Expires)
+		return w, fmt.Errorf("line %d: expires is not a date like 2027-01-31", n)
 	}
 	return w, nil
 }

@@ -7,11 +7,11 @@
   profile:   unknown (inferred)
   root:      yes
   sandbox:   unavailable (golden test)
-  coverage:  112 checks, 109 results: 13 checked (2 accepted by a waiver), 95 unknown, 1 skipped
-  waivers:   2 applied, 1 expired, 1 stale, 1 for an unknown check
+  coverage:  112 checks, 109 results: 13 checked (3 accepted by a waiver), 95 unknown, 1 skipped
+  waivers:   2 applied, 1 long-lived, 1 expired, 1 level-exceeded, 1 stale, 1 for an unknown check
 
   +- Summary ------------------------------------------------------------------------+
-  | x 2 fail   ! 6 warn   ? 95 unknown   i 1 info   + 2 pass   - 1 skip   2 accepted |
+  | x 2 fail   ! 5 warn   ? 95 unknown   i 1 info   + 2 pass   - 1 skip   3 accepted |
   |                                                                                  |
   | Fails, most severe first                                                         |
   | x critical  USR-001  account toor has uid 0 (root equivalent)                    |
@@ -33,10 +33,11 @@
 
   x login account ubuntu has an empty password
     USR-002, critical, user:ubuntu
+    waiver: not accepted, the waiver covers up to warn only: written when this was only a warning
     rule: No login account has an empty password
     fix:  Lock the account with `passwd -l <user>` or set a password.
 
-  -- WARN (6) --------------------------------------------------------------------------------------
+  -- WARN (5) --------------------------------------------------------------------------------------
 
   ! NOPASSWD sudo for ubuntu (line 2): expected for a PaaS account, make sure it is deliberate
     USR-004, high, file:/etc/sudoers.d/90-cloud-init-users
@@ -56,14 +57,11 @@
     rule: Docker group has no extra members
     fix:  Remove users who do not need it: `gpasswd -d <user> docker`.
 
-  ! login account bob has not logged in for 151 days
-    USR-006, low, user:bob
-    rule: Login accounts are used
-    fix:  Lock unused accounts with `passwd -l <user>` or remove them.
-
   ! login account carol has never logged in
     USR-006, low, user:carol
     waiver: expired after 2026-02-01, the finding is back: carol starts in February
+    rule: Login accounts are used
+    fix:  Lock unused accounts with `passwd -l <user>` or remove them.
 
   ! login account ubuntu has never logged in
     USR-006, low, user:ubuntu
@@ -456,7 +454,7 @@
   i USR-007  root password is locked: recovery is the provider console or rescue mode; note where
              that path is stored
 
-  -- ACCEPTED (2), by a waiver until it expires ----------------------------------------------------
+  -- ACCEPTED (3), by a waiver until it expires ----------------------------------------------------
 
   x /etc/sudoers.d/deploy is writable by someone other than root (mode 0666, owner uid 0): that is a
     root escalation
@@ -469,9 +467,22 @@
     waiver: accepted until 2026-06-30: alice runs the deploy containers; reviewed with the team
     rule: Docker group has no extra members
 
-  -- WAIVERS TO REVIEW (3) -------------------------------------------------------------------------
+  ! login account bob has not logged in for 151 days
+    ACCEPTED WARN, USR-006, low, user:bob
+    waiver: accepted until 2027-06-30: bob is on leave; account kept for his return
+    rule: Login accounts are used
 
-  ! USR-006 on user:carol: expired after 2026-02-01; 1 finding is back at its real level
+  -- WAIVERS TO REVIEW (5) -------------------------------------------------------------------------
+
+  ! USR-002 on user:ubuntu: accepts up to warn, but the result is worse, so it counts at its real
+    level; set level: fail only if that is accepted too
+    reason: written when this was only a warning
+
+  ! USR-006 on user:bob: still applies, but expires 2027-06-30, more than a year after this audit
+    reason: bob is on leave; account kept for his return
+
+  ! USR-006 on user:carol: expired after 2026-02-01; a finding it covered counts at its real level
+    again
     reason: carol starts in February
 
   ! USR-001 on user:nobody: no fail or warn result has this subject; the finding is fixed or the
@@ -481,5 +492,5 @@
   ! ZZZ-999 on host: no check has this id
     reason: typo in the check id
 
-  summary: 2 fail, 6 warn, 95 unknown, 1 info, 2 pass, 1 skip, 2 accepted
+  summary: 2 fail, 5 warn, 95 unknown, 1 info, 2 pass, 1 skip, 3 accepted
   explain any check with: stackward explain <id>

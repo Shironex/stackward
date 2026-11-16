@@ -2,16 +2,27 @@
 # state a waiver can end in.
 version: 1
 waivers:
-  # applied to a warning
+  # applied to a warning (level defaults to warn)
   - check: USR-005
     subject: user:alice
     reason: alice runs the deploy containers; reviewed with the team
     expires: 2026-06-30
-  # applied to a fail
+  # applied to a fail: only because the waiver says level: fail
   - check: USR-004
     subject: file:/etc/sudoers.d/deploy
     reason: "the deploy tool rewrites this file; fix tracked in OPS-12"
     expires: 2026-03-01
+    level: fail
+  # level-exceeded: a waiver for a warning never accepts a fail
+  - check: USR-002
+    subject: user:ubuntu
+    reason: written when this was only a warning
+    expires: 2026-12-31
+  # long-lived: still applies, listed because it expires over a year out
+  - check: USR-006
+    subject: user:bob
+    reason: bob is on leave; account kept for his return
+    expires: 2027-06-30
   # expired: the finding counts as a warning again
   - check: USR-006
     subject: user:carol
