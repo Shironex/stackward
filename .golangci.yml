@@ -38,6 +38,7 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/audit, desc: "audit imports checks, not the other way round"}
             - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "checks never sandbox or touch the host"}
             - {pkg: net/http, desc: "checks never use the network"}
+            - {pkg: github.com/Shironex/stackward/internal/provider, desc: "checks read provider facts, never the provider API"}
         facts-are-leaves:
           # Collectors read the host and fill the model; judging is the
           # checks' job and rendering the report's.
@@ -90,6 +91,20 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/apply, desc: "tui must not import apply"}
             - {pkg: github.com/Shironex/stackward/internal/probe, desc: "tui must not import probe"}
             - {pkg: github.com/Shironex/stackward/internal/audit, desc: "tui must not import audit"}
+        provider-is-a-leaf:
+          # The provider client fills facts.ProviderFirewall and nothing
+          # else; the CLI calls it before the sandbox.
+          files: ["**/internal/provider/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "provider must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "provider must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/checks, desc: "provider only fetches; the PFW checks judge"}
+            - {pkg: github.com/Shironex/stackward/internal/report, desc: "provider must not import report"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "provider must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "provider never writes"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "provider must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "provider must not import audit"}
+            - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "the CLI orders the fetch before the sandbox"}
         leaf-packages:
           # No imports from this module at all.
           files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "!$test"]

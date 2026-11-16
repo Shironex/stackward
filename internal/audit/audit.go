@@ -3,7 +3,9 @@
 package audit
 
 import (
+	"fmt"
 	"io"
+	"net/netip"
 
 	"github.com/Shironex/stackward/internal/catalog"
 	"github.com/Shironex/stackward/internal/checks"
@@ -51,10 +53,36 @@ func DumpFacts(w io.Writer, f *facts.Facts, showHostname bool) error {
 		h.Hostname = report.HashHostname(h.Hostname)
 		cp.Host = &h
 	}
+	if cp.ProviderFirewall != nil {
+		cp.ProviderFirewall = maskProviderAddresses(cp.ProviderFirewall)
+	}
 	b, err := redact.JSON(&cp)
 	if err != nil {
 		return err
 	}
 	_, err = w.Write(b)
 	return err
+}
+
+// maskProviderAddresses returns a copy of pf with the last octet of every
+// matched address masked ("192.0.2.x"): facts files are posted in bug
+// reports, and the checks only need the address to name a subject. The full
+// address stays in memory for the live report.
+func maskProviderAddresses(pf *facts.ProviderFirewall) *facts.ProviderFirewall {
+	cp := *pf
+	cp.Targets = make([]facts.ProviderTarget, len(pf.Targets))
+	for i, t := range pf.Targets {
+		t.Address = maskIPv4(t.Address)
+		cp.Targets[i] = t
+	}
+	return &cp
+}
+
+func maskIPv4(s string) string {
+	a, err := netip.ParseAddr(s)
+	if err != nil || !a.Is4() {
+		return s
+	}
+	b := a.As4()
+	return fmt.Sprintf("%d.%d.%d.x", b[0], b[1], b[2])
 }

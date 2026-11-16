@@ -106,6 +106,7 @@ type auditFlags struct {
 	info         bool
 	group        bool
 	plain        bool
+	prov         providerFlags
 }
 
 // parseAuditArgs parses and checks the audit flags. done is true when the
@@ -128,9 +129,11 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.BoolVar(&af.info, "info", false, "text output: list every info result in full instead of one line each")
 	fs.BoolVar(&af.group, "group", false, "text output: lay results out by check group instead of fail, warn, unknown, info")
 	fs.BoolVar(&af.plain, "plain", false, "text output: no colors, Unicode or box lines, as when piped (NO_COLOR drops only colors)")
+	addProviderFlags(fs, &af.prov)
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward audit [flags]\n\nFlags:\n")
 		fs.PrintDefaults()
+		fmt.Fprint(stderr, providerHelp)
 		fmt.Fprintf(stderr, "\nExit codes: 0 no finding at or above --fail-on, 1 findings, 2 error.\n")
 	}
 	if err := fs.Parse(args); err != nil {
@@ -151,6 +154,10 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	}
 	if af.format != "text" && af.format != "json" && af.format != "md" {
 		fmt.Fprintf(stderr, "stackward audit: --format must be text, json or md, not %q\n", af.format)
+		return af, "", report.ExitError, true
+	}
+	if err := af.prov.check(af.factsFile != ""); err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return af, "", report.ExitError, true
 	}
 	failOn = report.FailOn(af.failOn)
@@ -196,18 +203,23 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	var sys facts.System
+	var pfw *facts.ProviderFirewall
 	if loaded == nil {
 		sys = hostSystem(af.noSandbox)
+		// The provider API is asked before the sandbox, which denies
+		// TCP connect for good once applied.
+		pfw = fetchProvider(ctx, af.prov, sys)
 	}
 
 	sb := sandbox.Apply(sandbox.Options{Disabled: af.noSandbox})
 
 	f := loaded
 	if f == nil {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
 		f = facts.Run(ctx, sys, facts.Collectors(), facts.RunOptions{Timeout: af.timeout})
+		f.ProviderFirewall = pfw
 	}
 
 	if af.dumpFacts {

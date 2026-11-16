@@ -1,0 +1,17 @@
+{
+  "primary_ips": [
+    {
+      "id": 4711,
+      "ip": "192.0.2.10",
+      "name": "primary-ip-example",
+      "type": "ipv4",
+      "labels": {"env": "example"},
+      "assignee_id": 42,
+      "assignee_type": "server",
+      "auto_delete": true,
+      "blocked": false,
+      "dns_ptr": [{"ip": "192.0.2.10", "dns_ptr": "web.example.com"}]
+    }
+  ],
+  "meta": {"pagination": {"page": 1, "per_page": 25, "previous_page": null, "next_page": null, "last_page": 1, "total_entries": 1}}
+}

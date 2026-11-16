@@ -63,6 +63,12 @@ var DefaultAllowlist = []Entry{
 		Why:   "stackward probe connects to the one host the user named and consented to",
 	},
 	{
+		Pkg:   "internal/provider",
+		Files: []string{"http.go"},
+		Allow: []Category{Net},
+		Why:   "opt in provider firewall audit (--provider): GET requests only, to a fixed list of provider API hosts, no redirects, no proxy, capped answers, before the sandbox",
+	},
+	{
 		Pkg:   "internal/sandbox",
 		Allow: []Category{RawSyscall},
 		Why:   "applies the Landlock sandbox with raw system calls",

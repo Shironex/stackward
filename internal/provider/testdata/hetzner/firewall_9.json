@@ -1,0 +1,10 @@
+{
+  "firewall": {
+    "id": 9,
+    "name": "pending-example",
+    "rules": [
+      {"direction": "in", "protocol": "tcp", "port": "22", "source_ips": ["0.0.0.0/0"], "destination_ips": []}
+    ],
+    "applied_to": [{"type": "server", "server": {"id": 43}}]
+  }
+}

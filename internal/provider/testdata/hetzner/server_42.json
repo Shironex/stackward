@@ -1,0 +1,15 @@
+{
+  "server": {
+    "id": 42,
+    "name": "web-example",
+    "status": "running",
+    "labels": {"role": "web"},
+    "public_net": {
+      "ipv4": {"id": 4711, "ip": "192.0.2.10", "blocked": false, "dns_ptr": "web.example.com"},
+      "ipv6": {"id": 4811, "ip": "2001:db8:1::/64", "blocked": false, "dns_ptr": []},
+      "floating_ips": [],
+      "firewalls": [{"id": 7, "status": "applied"}]
+    },
+    "private_net": [{"network": 3, "ip": "10.0.0.2", "alias_ips": [], "mac_address": "86:00:00:00:00:01"}]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "server": {
+    "id": 45,
+    "name": "multi-example",
+    "public_net": {
+      "ipv4": {"id": 4712, "ip": "192.0.2.11"},
+      "ipv6": {"id": 4812, "ip": "2001:db8:2::/64"},
+      "floating_ips": [],
+      "firewalls": [{"id": 7, "status": "applied"}, {"id": 8, "status": "applied"}]
+    }
+  }
+}
