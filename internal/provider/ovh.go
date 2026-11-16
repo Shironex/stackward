@@ -94,7 +94,9 @@ func (c *ovhClient) syncTime(ctx context.Context) error {
 	}
 	secs, err := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
 	if err != nil {
-		return fmt.Errorf("decoding /auth/time: %w", err)
+		// The answer is not echoed: it is the provider's text, and the
+		// reason ends up in reports.
+		return fmt.Errorf("decoding /auth/time: not a number (%d bytes)", len(b))
 	}
 	c.delta = time.Unix(secs, 0).Sub(c.now())
 	return nil
@@ -238,14 +240,11 @@ func normaliseOVH(r ovhRule) (facts.ProviderRule, error) {
 		return nr, fmt.Errorf("unknown action %q", r.Action)
 	}
 	if r.Source != nil {
-		src := strings.TrimSpace(*r.Source)
-		switch {
-		case src == "" || src == "any" || src == "0.0.0.0/0":
-		case strings.Contains(src, "/"):
-			nr.Sources = []string{src}
-		default:
-			nr.Sources = []string{src + "/32"}
+		src, err := ovhSource(*r.Source)
+		if err != nil {
+			return nr, err
 		}
+		nr.Sources = src
 	}
 	var err error
 	if nr.SrcPorts, err = parseOVHPorts(r.SourcePort); err != nil {
@@ -267,6 +266,26 @@ func normaliseOVH(r ovhRule) (facts.ProviderRule, error) {
 	}
 	nr.Fragments = r.Fragments != nil && *r.Fragments
 	return nr, nil
+}
+
+// ovhSource normalises a rule source: "any" (or empty, or 0.0.0.0/0) is any
+// source, a prefix stays as it is, a bare address becomes a host prefix
+// (/32, or /128 for IPv6). Anything else is refused, so the read counts as
+// partial instead of the checks guessing how wide the source is.
+func ovhSource(s string) ([]string, error) {
+	s = strings.TrimSpace(s)
+	switch s {
+	case "", "any", "0.0.0.0/0":
+		return nil, nil
+	}
+	if p, err := netip.ParsePrefix(s); err == nil {
+		return []string{p.String()}, nil
+	}
+	a, err := netip.ParseAddr(s)
+	if err != nil {
+		return nil, fmt.Errorf("source %q is neither an address nor a prefix", s)
+	}
+	return []string{netip.PrefixFrom(a, a.BitLen()).String()}, nil
 }
 
 // parseOVHPorts reads the port strings OVH prints: "53", "eq 53",
