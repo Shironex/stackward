@@ -191,6 +191,8 @@ How they read the rules:
 - A rule network that does not parse is refused by the client, so the rule
   read becomes partial and the checks say `unknown`. The rules above only
   apply to a hand edited facts file.
+- An OVH rule source `any` means any source, and a bare address becomes a
+  host prefix (`/32`, or `/128` for IPv6).
 - On an ordered firewall (OVH) the first matching rule wins, so a deny
   before a permit makes the permit dead and the other way round.
 - Rules for ICMP, ESP, GRE, AH or every IPv4 packet are listed in PFW-008
