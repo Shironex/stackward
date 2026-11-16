@@ -6,7 +6,7 @@ downloaded before you run it. The install script and the `.deb` need root to
 install; the download and verify steps do not, and nothing here runs the audit
 for you until the [first run](#first-run) section.
 
-The newest release is `v0.2.1`, and `releases/latest` points at it. The
+The newest release is `v0.3.0`, and `releases/latest` points at it. The
 commands below name the tag so that what you verify is exactly what you run.
 The release notes are the matching section of `CHANGELOG.md` in the
 repository.
@@ -44,7 +44,7 @@ with apt, and check the version. These are the whole steps, for amd64 and
 arm64 alike:
 
 ```sh
-VERSION=v0.2.1
+VERSION=v0.3.0
 case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; esac   # or set it by hand
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 cd "$(mktemp -d)" && chmod 755 .   # apt's _apt user must be able to read the file
@@ -169,7 +169,7 @@ curl -fsSLO "https://github.com/Shironex/stackward/releases/latest/download/get.
 less get.sh
 sh get.sh -d "$HOME/.local/bin"
 # a specific release instead of the latest:
-sh get.sh -v v0.2.1 -d "$HOME/.local/bin"
+sh get.sh -v v0.3.0 -d "$HOME/.local/bin"
 ```
 
 Without `-v` (or `STACKWARD_VERSION`) it installs the latest stable release;
@@ -190,7 +190,7 @@ The tarball route, one step at a time. It needs no script and no root until
 you choose to copy the binary into your `PATH`.
 
 ```sh
-VERSION=v0.2.1
+VERSION=v0.3.0
 case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; esac   # or set it by hand
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -260,8 +260,8 @@ what a check means and how to fix it by hand. `plan` and `apply` are the command
 | `get.sh` | run it again, with `-v` for a version | delete the file |
 | tarball | repeat the steps, copy again | `sudo rm /usr/local/bin/stackward` |
 
-**Pin a version.** Name the tag: `VERSION=v0.2.1` in the manual steps,
-`sudo sh install.sh --version v0.2.1`, or `sh get.sh -v v0.2.1`. To stop apt
+**Pin a version.** Name the tag: `VERSION=v0.3.0` in the manual steps,
+`sudo sh install.sh --version v0.3.0`, or `sh get.sh -v v0.3.0`. To stop apt
 from upgrading the `.deb` on its own, `sudo apt-mark hold stackward`, and
 `sudo apt-mark unhold stackward` to release it. `releases/latest` and the
 scripts without a version pick the latest stable release, so a script run

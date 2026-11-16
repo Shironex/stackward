@@ -5,12 +5,12 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
-## 0.2.1 (2026-11-16)
+## 0.3.0 (2026-11-16)
 
-A patch release: stackward can now read your cloud provider's firewall, which
+A minor release: stackward can now read your cloud provider's firewall, which
 the host cannot see. Everything is opt in. Without `--provider` stackward
 sends no network request, and the audit judges the host exactly as in 0.2.0.
-`install.sh` now installs 0.2.1.
+`install.sh` now installs 0.3.0.
 
 ### Added
 
