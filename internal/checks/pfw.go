@@ -48,7 +48,9 @@ type packet struct {
 // getting in is the finding (PFW-002 to PFW-005), a permit counts with
 // looseWorld and a deny with exactWorld. Where a packet being dropped is the
 // finding (the reply checks in PFW-007), the two swap: a deny counts with
-// looseWorld and a permit with exactWorld.
+// looseWorld and a permit with exactWorld, and a deny whose sources all lie
+// in reserved space (onlyReserved) does not count, since no internet reply
+// comes from there. Pending rules follow the same split (inForceFor).
 
 // looseWorld reports whether sources may cover a sender anywhere: no
 // source, a source of /8 or wider, or a source that does not parse.
@@ -97,6 +99,9 @@ func parseSource(s string) (netip.Prefix, error) {
 // fromWorld picks the predicate for r's action and what p's check counts
 // as a finding.
 func fromWorld(r facts.ProviderRule, p packet) bool {
+	if p.blockIsFinding && r.Action == "deny" && onlyReserved(r.Sources) {
+		return false
+	}
 	if (r.Action == "permit") != p.blockIsFinding {
 		return looseWorld(r.Sources)
 	}
@@ -118,17 +123,63 @@ func portsMatch(ranges []facts.PortRange, port int) bool {
 	return false
 }
 
-// inForce reports whether r is an inbound rule the checks count. A pending
-// permit counts (it may already let traffic in, or will shortly); a pending
-// deny does not (it may not block anything yet). Both errors would err on
-// the side of a finding.
+// inForce reports whether r is an inbound rule the checks count where a
+// packet getting in is the finding: a pending permit counts (it may already
+// let traffic in, or will shortly) and a pending deny does not (it may not
+// block anything yet).
 func inForce(r facts.ProviderRule) bool {
 	return r.Direction == "in" && (!r.Pending || r.Action == "permit")
 }
 
+// inForceFor is inForce for p's check. Where a dropped packet is the
+// finding (the reply checks) it swaps: a pending deny counts and a pending
+// permit does not.
+func inForceFor(r facts.ProviderRule, p packet) bool {
+	return r.Direction == "in" && (!r.Pending || (r.Action == "permit") != p.blockIsFinding)
+}
+
+// reservedV4 is address space no internet reply comes from: this network,
+// private, shared (CGNAT), loopback, link local, multicast and reserved.
+var reservedV4 = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("10.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("169.254.0.0/16"),
+	netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("224.0.0.0/4"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+}
+
+// onlyReserved reports whether every source lies inside reserved space, so
+// a deny from it never drops a reply from the internet. An empty or
+// unparsable source is not reserved.
+func onlyReserved(sources []string) bool {
+	if len(sources) == 0 {
+		return false
+	}
+	for _, s := range sources {
+		p, err := parseSource(s)
+		if err != nil || !p.Addr().Is4() || !insideReserved(p) {
+			return false
+		}
+	}
+	return true
+}
+
+func insideReserved(p netip.Prefix) bool {
+	for _, r := range reservedV4 {
+		if r.Bits() <= p.Bits() && r.Contains(p.Addr()) {
+			return true
+		}
+	}
+	return false
+}
+
 // matches reports whether r matches p from a sender anywhere.
 func matches(r facts.ProviderRule, p packet) bool {
-	if !inForce(r) || r.Fragments || !fromWorld(r, p) {
+	if !inForceFor(r, p) || r.Fragments || !fromWorld(r, p) {
 		return false
 	}
 	if r.Protocol != "ipv4" && r.Protocol != p.proto {
@@ -308,9 +359,9 @@ func describeRule(t facts.ProviderTarget, r facts.ProviderRule) string {
 	}
 	switch {
 	case r.Pending && r.Action == "permit":
-		b.WriteString(" (pending; counted as in force)")
+		b.WriteString(" (pending; counts as open, not as letting replies in)")
 	case r.Pending:
-		b.WriteString(" (pending; not counted until in force)")
+		b.WriteString(" (pending; counts as dropping replies, not as blocking)")
 	}
 	return b.String()
 }
