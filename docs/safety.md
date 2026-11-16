@@ -495,9 +495,14 @@ it.
 | `pam` | PAM (`/etc/pam.d`, `/etc/pam.conf`, `/etc/security`) | one wrong line refuses every login, the console included, or lets anyone in |
 | `admin-sudo` | sudo rights of existing accounts: `/etc/sudoers` itself, revoking anyone's sudo, deleting accounts | removing the current admin's sudo leaves nobody to undo the change; stackward only adds sudoers drop-ins and locks accounts |
 
-A step that later needs an exception (the planned timer that resets the
-permissions of platform `.env` files is one) gets a narrow, listed
-exception of its own, never a wider list entry.
+A step that needs one narrow thing an entry covers gets an exception of
+its own: one step id and exact targets, never a pattern, so it cannot grow
+into a wider hole. Every other step is still refused there, and so is this
+step for anything else the entry covers.
+
+| Step | Entry | What it may do | Exact targets |
+|---|---|---|---|
+| `paas-env-perms` | `paas-data` | remove the group and other permission bits (`chmod` only) of the platform's `.env` files, from a timer, because the platform rewrites them loose on every deploy; never their content, never their owner | the `.env` files under `/data/coolify/applications`, `/data/coolify/services`, `/etc/dokploy/applications` and `/etc/dokploy/compose`, and `/data/coolify/source/.env` |
 
 ### What will still go wrong
 
