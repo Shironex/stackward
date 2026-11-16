@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/fleet.v1.json",
+  "title": "stackward fleet report v1",
+  "description": "Output of `stackward audit --ssh --json`: one entry per host, in the order given. Each audited host carries its own report, a stackward.report.v1 document (schema/report.v1.json). Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs fleet.v2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tool", "generated_at", "summary", "hosts"],
+  "properties": {
+    "schema": { "const": "stackward.fleet.v1" },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "stackward" },
+        "version": { "type": "string" }
+      }
+    },
+    "generated_at": {
+      "description": "When the fleet run started, RFC 3339 UTC.",
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hosts", "audited", "failed", "results"],
+      "properties": {
+        "hosts": { "type": "integer", "minimum": 0 },
+        "audited": { "type": "integer", "minimum": 0 },
+        "failed": { "description": "Hosts that could not be audited.", "type": "integer", "minimum": 0 },
+        "results": {
+          "description": "Result counts over every audited host.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fail", "warn", "unknown", "info", "pass", "skip"],
+          "properties": {
+            "fail": { "type": "integer", "minimum": 0 },
+            "warn": { "type": "integer", "minimum": 0 },
+            "unknown": { "type": "integer", "minimum": 0 },
+            "info": { "type": "integer", "minimum": 0 },
+            "pass": { "type": "integer", "minimum": 0 },
+            "skip": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["host", "status"],
+        "properties": {
+          "host": { "description": "The host as given to ssh (a name from the ssh config, user@name or an address).", "type": "string" },
+          "status": { "enum": ["audited", "error"] },
+          "arch": { "description": "linux architecture of the host, once known.", "enum": ["amd64", "arm64"] },
+          "error": { "description": "Why the host has no report.", "type": "string" },
+          "cleanup": { "description": "Set when the removal of the temporary directory on the host could not be confirmed after a failure.", "type": "string" },
+          "report": { "description": "The host's stackward.report.v1 document, for an audited host.", "type": "object" }
+        }
+      }
+    }
+  }
+}
