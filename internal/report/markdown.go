@@ -20,6 +20,37 @@ const CheckDocsBase = "https://github.com/Shironex/stackward/blob/main/docs/chec
 type MarkdownOptions struct {
 	// Passing lists passing and skipped results too, not just counts.
 	Passing bool
+	// Untrusted renders every field the audited host supplied (version,
+	// host, OS, kernel, collection time, sandbox and collector text,
+	// messages) as code spans, so it can never become a link, an autolink,
+	// HTML or a heading. Fleet reports set it: there the report came from
+	// another machine.
+	Untrusted bool
+}
+
+// mdText renders host supplied text for a report: escaped Markdown for a
+// local report, a code span for an untrusted one. Empty text is "-".
+type mdText func(string) string
+
+func textRenderer(untrusted bool) mdText {
+	if untrusted {
+		return func(s string) string {
+			if s == "" {
+				return "-"
+			}
+			return codeSpan(s)
+		}
+	}
+	return mdOrDash
+}
+
+// untrustedCell renders host supplied text for a table cell: a code span
+// in which every pipe is replaced by U+2223 (a divides sign that looks
+// alike). Escaping the pipe is not enough: a host can put its own
+// backslash before it, the escape then escapes the backslash, and the pipe
+// ends the cell, so the rest of the text would render as live Markdown.
+func untrustedCell(s string) string {
+	return textRenderer(true)(strings.ReplaceAll(s, "|", "\u2223"))
 }
 
 // levelOrder is the order findings are listed in within a group.
@@ -35,27 +66,7 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
 
-	p("# stackward %s audit\n\n", mdEscape(r.Tool.Version))
-	host := r.Host.HostnameHash
-	if r.Host.Hostname != "" {
-		host = r.Host.Hostname
-	}
-	p("- **Host:** %s\n", mdOrDash(host))
-	p("- **OS:** %s, kernel %s\n", mdOrDash(strings.TrimSpace(r.Host.OS)), mdOrDash(r.Host.Kernel))
-	p("- **Collected:** %s\n", mdOrDash(r.GeneratedAt))
-	p("- **Profile:** %s (%s)\n", mdEscape(string(r.Profile.Name)), mdEscape(r.Profile.Source))
-	p("- **Root:** %s\n", yesNo(r.Coverage.Root))
-	p("- **Sandbox:** %s\n", mdEscape(sandboxLine(r.Coverage.Sandbox)))
-	p("- **Coverage:** %s, root: %s\n", CoverageLine(r.Coverage), yesNo(r.Coverage.Root))
-	if l := WaiversLine(r.Waivers); l != "" {
-		p("- **Waivers:** %s\n", l)
-	}
-	for _, c := range r.Coverage.Collectors {
-		if c.Status == "ok" {
-			continue
-		}
-		p("- **Collector %s:** %s: %s\n", mdEscape(c.Name), mdEscape(string(c.Status)), mdEscape(joinNonEmpty(c.Reason, c.Error)))
-	}
+	writeMarkdownHeader(&b, r, o.Untrusted)
 
 	s := r.Summary
 	p("\n## Summary\n\n| Level | Count |\n|---|---|\n")
@@ -102,25 +113,25 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 		sort.SliceStable(items, func(i, j int) bool { return levelOrder[items[i].Level] < levelOrder[items[j].Level] })
 		p("\n## %s: %s\n", mdEscape(g), mdEscape(catalog.GroupName(g)))
 		for _, it := range items {
-			writeMarkdownItem(&b, it)
+			writeMarkdownItem(&b, it, o.Untrusted)
 		}
 	}
 
 	writeMarkdownWaivers(&b, accepted, WaiversToReview(r.Waivers))
 	if len(info) > 0 {
 		p("\n## Notes\n")
-		writeCompact(&b, "", info, "Result")
+		writeCompact(&b, "", info, "Result", o.Untrusted)
 	}
 	if len(unknown) > 0 {
 		p("\n## Not inspected\n\n")
 		if n := NotRootNote(r); n != "" {
 			p("%s.\n\n", mdEscape(strings.ToUpper(n[:1])+n[1:]))
 		}
-		writeCompact(&b, plural(len(unknown), "check not inspected", "checks not inspected"), unknown, "Reason")
+		writeCompact(&b, plural(len(unknown), "check not inspected", "checks not inspected"), unknown, "Reason", o.Untrusted)
 	}
 	if len(passing) > 0 {
 		p("\n## Passing and skipped\n\n")
-		writeCompact(&b, fmt.Sprintf("%d passing or skipped", len(passing)), passing, "Result")
+		writeCompact(&b, fmt.Sprintf("%d passing or skipped", len(passing)), passing, "Result", o.Untrusted)
 	}
 
 	p("\nExplain any check with `stackward explain <id>`.\n")
@@ -128,12 +139,57 @@ func WriteMarkdown(w io.Writer, r *Report, o MarkdownOptions) error {
 	return err
 }
 
-func writeMarkdownItem(b *strings.Builder, it Item) {
+// writeMarkdownHeader writes the title and the facts about the run: host,
+// OS, profile, root, sandbox, coverage, waivers and the collectors that did
+// not end ok. With untrusted, every host supplied value is a code span.
+func writeMarkdownHeader(b *strings.Builder, r *Report, untrusted bool) {
+	p := func(format string, a ...any) { fmt.Fprintf(b, format, a...) }
+	txt := textRenderer(untrusted)
+	version := mdEscape(r.Tool.Version)
+	if untrusted {
+		version = txt(r.Tool.Version)
+	}
+	p("# stackward %s audit\n\n", version)
+	host := r.Host.HostnameHash
+	if r.Host.Hostname != "" {
+		host = r.Host.Hostname
+	}
+	p("- **Host:** %s\n", txt(host))
+	p("- **OS:** %s, kernel %s\n", txt(strings.TrimSpace(r.Host.OS)), txt(r.Host.Kernel))
+	p("- **Collected:** %s\n", txt(r.GeneratedAt))
+	p("- **Profile:** %s (%s)\n", mdEscape(string(r.Profile.Name)), mdEscape(r.Profile.Source))
+	p("- **Root:** %s\n", yesNo(r.Coverage.Root))
+	sandboxText := mdEscape(sandboxLine(r.Coverage.Sandbox))
+	if untrusted {
+		sandboxText = txt(sandboxLine(r.Coverage.Sandbox))
+	}
+	p("- **Sandbox:** %s\n", sandboxText)
+	p("- **Coverage:** %s, root: %s\n", CoverageLine(r.Coverage), yesNo(r.Coverage.Root))
+	if l := WaiversLine(r.Waivers); l != "" {
+		p("- **Waivers:** %s\n", l)
+	}
+	for _, c := range r.Coverage.Collectors {
+		if c.Status == "ok" {
+			continue
+		}
+		name, why := mdEscape(c.Name), mdEscape(joinNonEmpty(c.Reason, c.Error))
+		if untrusted {
+			name, why = txt(c.Name), txt(joinNonEmpty(c.Reason, c.Error))
+		}
+		p("- **Collector %s:** %s: %s\n", name, mdEscape(string(c.Status)), why)
+	}
+}
+
+func writeMarkdownItem(b *strings.Builder, it Item, untrusted bool) {
 	fmt.Fprintf(b, "\n### %s %s: [%s](%s%s.md) %s\n\n", strings.ToUpper(string(it.Level)), mdEscape(string(it.Severity)),
 		it.ID, CheckDocsBase, it.ID, mdEscape(it.Title))
 	fmt.Fprintf(b, "- **Subject:** %s\n", codeSpan(it.Subject))
 	if it.Message != "" {
-		fmt.Fprintf(b, "- **Result:** %s\n", mdEscape(it.Message))
+		msg := mdEscape(it.Message)
+		if untrusted {
+			msg = codeSpan(it.Message)
+		}
+		fmt.Fprintf(b, "- **Result:** %s\n", msg)
 	}
 	if it.Waiver != nil {
 		fmt.Fprintf(b, "- **Waiver:** %s\n", mdEscape(AcceptedNote(it.Waiver)))
@@ -247,7 +303,7 @@ func byGroup(items []Item, g string) []Item {
 
 // writeCompact writes one table per group inside a collapsed details block.
 // An empty summary writes the tables without the details wrapper.
-func writeCompact(b *strings.Builder, summary string, items []Item, reasonHead string) {
+func writeCompact(b *strings.Builder, summary string, items []Item, reasonHead string, untrusted bool) {
 	if summary != "" {
 		fmt.Fprintf(b, "<details><summary>%s</summary>\n", summary)
 	}
@@ -259,12 +315,30 @@ func writeCompact(b *strings.Builder, summary string, items []Item, reasonHead s
 				reason = string(it.Level)
 			}
 			fmt.Fprintf(b, "| [%s](%s%s.md) | %s | %s | %s |\n", it.ID, CheckDocsBase, it.ID, mdEscape(it.Title),
-				strings.ReplaceAll(codeSpan(it.Subject), "|", "\\|"), mdEscape(reason))
+				subjectCell(it.Subject, untrusted), reasonCell(reason, untrusted))
 		}
 	}
 	if summary != "" {
 		b.WriteString("\n</details>\n")
 	}
+}
+
+// reasonCell renders a compact table's reason: escaped for a local report,
+// a code span for an untrusted one.
+func reasonCell(reason string, untrusted bool) string {
+	if untrusted {
+		return untrustedCell(reason)
+	}
+	return mdEscape(reason)
+}
+
+// subjectCell renders a compact table's subject as a code span; in an
+// untrusted report its pipes are replaced, not escaped (untrustedCell).
+func subjectCell(subject string, untrusted bool) string {
+	if untrusted {
+		return untrustedCell(subject)
+	}
+	return strings.ReplaceAll(codeSpan(subject), "|", "\\|")
 }
 
 func plural(n int, one, many string) string {

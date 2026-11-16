@@ -45,7 +45,7 @@ func fakeFleet(t *testing.T) (calls, remoteTmp string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rep, err := audit.Evaluate(f, audit.Options{Version: "test", Sandbox: sandbox.Status{State: sandbox.Landlock, ABI: 4}})
+	rep, err := audit.Evaluate(f, audit.Options{Version: "0.0.0-test", Sandbox: sandbox.Status{State: sandbox.Landlock, ABI: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestAuditSSHMarkdownOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	md := string(b)
-	for _, want := range []string{"# stackward ", "| Host | Status | Fail | Warn | Unknown | Coverage |", "| web1 | audited |", "## Host web2", "### stackward test audit", "checks, "} {
+	for _, want := range []string{"# stackward ", "| Host | Status | Fail | Warn | Unknown | Coverage |", "| `web1` | audited |", "## Host `web2`", "### stackward `0.0.0-test` audit", "checks, "} {
 		if !strings.Contains(md, want) {
 			t.Errorf("markdown misses %q:\n%s", want, md)
 		}
