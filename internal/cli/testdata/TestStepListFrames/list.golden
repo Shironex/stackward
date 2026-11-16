@@ -1,0 +1,24 @@
+ stackward test · step list · host sha256:ce44d5e688c44d5d       plan plan.json 
+ 7 steps: 2 safe, 1 networking, 4 access-critical, 1 opt in                     
+ 2 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  2 of 7 selected │ DETAIL                       1-17 of 43
+SAFE                                 2 │ journald-cap  SAFE                     
+› [x] journald-cap                     │ Cap the persistent journal at 1G with a
+  [x] sysctl-hardening                 │ journald drop-in                       
+NETWORKING                           1 │                                        
+  [ ] docker-log-rotation       opt in │ WHY: THE CHECKS IT FIXES               
+ACCESS-CRITICAL                      4 │   LOG-001 journald has a size cap      
+  [ ] txn-test-sshd                    │                                        
+  [ ] txn-test-sshd-bad                │ WHAT IT CHANGES                        
+  [ ] txn-test-keys-only               │   create /etc/systemd/                 
+  [ ] txn-test-close-public            │     journald.conf.d/90-stackward-      
+                                       │     journal-cap.conf (0644)            
+                                       │   run systemctl restart systemd-       
+                                       │     journald                           
+                                       │   restarts systemd-journald            
+                                       │                                        
+                                       │ DIFF                                   
+                                       │   --- /dev/null                        
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  

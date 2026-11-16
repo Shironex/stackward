@@ -1,0 +1,24 @@
+ stackward test · step list · host sha256:ce44d5e688c44d5d       plan plan.json 
+ 7 steps: 2 safe, 1 networking, 4 access-critical, 1 opt in                     
+ 2 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  2 of 7 selected │ DETAIL                      35-51 of 51
+SAFE                                 2 │     stackward-txn-test-keys-only.conf  
+  [x] journald-cap                     │   rm -f /etc/ssh/sshd_config.d/01-     
+  [x] sysctl-hardening                 │     stackward-txn-test-keys-only.conf  
+NETWORKING                           1 │   systemctl try-reload-or-restart      
+  [ ] docker-log-rotation       opt in │     ssh.service                        
+ACCESS-CRITICAL                      4 │                                        
+  [ ] txn-test-sshd                    │ LOCKOUT GUARD                          
+  [ ] txn-test-sshd-bad                │   Proven from this host's live state;  
+› [ ] txn-test-keys-only               │     apply proves it again right before 
+  [ ] txn-test-close-public            │     it runs.                           
+                                       │   This step sets password              
+                                       │     authentication                     
+                                       │     (passwordauthentication no).       
+                                       │   A second way in stays: alice (sudo,  
+                                       │     authorized key) logs in with a key 
+                                       │     from 192.0.2.10 over SSH on port   
+                                       │     22.                                
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  
