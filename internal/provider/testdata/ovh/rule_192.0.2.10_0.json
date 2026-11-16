@@ -1,0 +1,15 @@
+{
+  "sequence": 0,
+  "action": "permit",
+  "protocol": "tcp",
+  "source": "any",
+  "sourcePort": null,
+  "destination": "192.0.2.10/32",
+  "destinationPort": null,
+  "tcpOption": "established",
+  "fragments": null,
+  "l3PacketLength": null,
+  "state": "ok",
+  "creationDate": "2026-01-10T10:00:00+01:00",
+  "rule": "permit tcp any"
+}

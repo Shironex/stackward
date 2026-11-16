@@ -66,7 +66,7 @@ var DefaultAllowlist = []Entry{
 		Pkg:   "internal/provider",
 		Files: []string{"http.go"},
 		Allow: []Category{Net},
-		Why:   "opt in provider firewall audit (--provider): GET requests only, to a fixed list of provider API hosts, no redirects, no proxy, capped answers, before the sandbox",
+		Why:   "opt in provider firewall audit (--provider): GET requests only, to a fixed list of provider API hosts (Hetzner, OVH), no redirects, no proxy, capped answers, before the sandbox",
 	},
 	{
 		Pkg:   "internal/sandbox",
