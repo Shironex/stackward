@@ -141,7 +141,14 @@ func TestScheduleRefuses(t *testing.T) {
 		"report dir root home": {append(bin, "--report-dir", "/root/reports"), "must not be in /root"},
 		"textfile dir dev":     {append(bin, "--textfile-dir", "/dev/shm"), "must not be in /dev"},
 		"textfile dir sys":     {append(bin, "--textfile-dir", "/sys/x"), "must not be in /sys"},
-		"report dir top level": {append(bin, "--report-dir", "/var"), "top level"},
+		"report dir top level": {append(bin, "--report-dir", "/var"), "of its own"},
+		"report dir var lib":   {append(bin, "--report-dir", "/var/lib"), "of its own"},
+		"report dir run":       {append(bin, "--report-dir", "/run"), "must not be in /run"},
+		"report dir run sub":   {append(bin, "--report-dir", "/run/stackward"), "must not be in /run"},
+		"report dir home":      {append(bin, "--report-dir", "/home"), "must not be in /home"},
+		"report dir home sub":  {append(bin, "--report-dir", "/home/alice/reports"), "must not be in /home"},
+		"report dir spool":     {append(bin, "--report-dir", "/var/spool"), "must not be in /var/spool"},
+		"textfile dir spool":   {append(bin, "--textfile-dir", "/var/spool/metrics"), "must not be in /var/spool"},
 		"delay under 1s":       {append(bin, "--randomized-delay", "500ms"), "at least 1s"},
 		"delay fraction":       {append(bin, "--randomized-delay", "1500ms"), "whole number of seconds"},
 	}
@@ -158,6 +165,14 @@ func TestScheduleRefuses(t *testing.T) {
 				t.Errorf("stderr %q does not say %q", errs, tc.want)
 			}
 		})
+	}
+}
+
+func TestScheduleAcceptsOwnDirectories(t *testing.T) {
+	for _, dir := range []string{"/var/lib/stackward", "/var/lib/prometheus/node-exporter", "/srv/audit", "/opt/stackward/out", "/var/lib/libvirt-x", "/var/spooler"} {
+		if err := checkOutputDir("--report-dir", dir); err != nil {
+			t.Errorf("%s refused: %v", dir, err)
+		}
 	}
 }
 
