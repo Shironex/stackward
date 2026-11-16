@@ -351,7 +351,7 @@
       "level": "unknown",
       "severity": "high",
       "subject": "host",
-      "message": "sshd is reachable from anywhere on tcp/22, tcp/2222 and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read (run with sudo)",
+      "message": "sshd is reachable from anywhere on tcp/22, tcp/2222 and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read: the CrowdSec facts are missing; the fail2ban facts are missing",
       "evidence": {
         "brute_force_guard": "unknown",
         "open_from_anywhere": "yes",
@@ -1463,7 +1463,7 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo)",
+      "message": "SSH is public; whether fail2ban or CrowdSec protects it could not be read: the CrowdSec facts are missing; the fail2ban facts are missing",
       "evidence": {
         "crowdsec_sshd": false,
         "fail2ban_sshd": "unknown",

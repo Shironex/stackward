@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Shironex/stackward/internal/facts"
@@ -78,4 +79,42 @@ func TestSSH016(t *testing.T) {
 		{"openssh not listening", with(ts(&on), quiet), "", Pass},
 		{"ssh facts missing", with(ts(&on), nil), "", Unknown},
 	})
+}
+
+// When the brute force guard is unknown, CS-010 and SSH-011 say what could
+// not be read. The sudo hint only appears when the audit was not root:
+// telling root to use sudo sends the reader in circles.
+func TestBruteForceGuardUnknownSaysWhat(t *testing.T) {
+	present := func(root bool) *facts.Facts {
+		f := sshCross(sshHardened(), netSSHAnywhere)
+		f.Host = &facts.Host{Root: root}
+		// fail2ban-client is there, the server did not answer, systemd
+		// does not list the unit.
+		f.Fail2ban = &facts.Fail2ban{Installed: true, Unit: &facts.ServiceUnit{LoadState: "not-found"}}
+		return f
+	}
+	for _, id := range []string{"CS-010", "SSH-011"} {
+		r := netOne(t, id, present(true), "")
+		if r.Level != Unknown || strings.Contains(r.Message, "sudo") ||
+			!strings.Contains(r.Message, "fail2ban-client status did not answer") || !strings.Contains(r.Message, "systemd does not list fail2ban.service") {
+			t.Errorf("%s as root: %s %q", id, r.Level, r.Message)
+		}
+		r = netOne(t, id, present(false), "")
+		if r.Level != Unknown || !strings.Contains(r.Message, "fail2ban-client status needs root") || !strings.HasSuffix(r.Message, "(run with sudo)") {
+			t.Errorf("%s not root: %s %q", id, r.Level, r.Message)
+		}
+	}
+	// A running fail2ban whose jail files could not be read says so.
+	f := present(true)
+	f.Fail2ban = &facts.Fail2ban{Installed: true, Unit: &facts.ServiceUnit{LoadState: "loaded", ActiveState: "active"}}
+	if r := netOne(t, "CS-010", f, ""); r.Level != Unknown || !strings.Contains(r.Message, "jail configuration") || strings.Contains(r.Message, "sudo") {
+		t.Errorf("config unread as root: %s %q", r.Level, r.Message)
+	}
+	// An unread CrowdSec hub is named too.
+	f = present(true)
+	f.Fail2ban = &facts.Fail2ban{}
+	f.CrowdSec = &facts.CrowdSec{Installed: true}
+	if r := netOne(t, "CS-010", f, ""); r.Level != Unknown || !strings.Contains(r.Message, "CrowdSec is installed but its collections") {
+		t.Errorf("hub unread: %s %q", r.Level, r.Message)
+	}
 }
