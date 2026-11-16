@@ -307,6 +307,22 @@ client, a maintainer runs this checklist against a throwaway project:
    address as `a.b.c.x`.
 8. Delete the token and the project.
 
+For OVH, on a throwaway VPS or dedicated server:
+
+1. Create application credentials and a consumer key limited to `GET /ip`
+   and `GET /ip/*`, and put the four values in a root owned file with mode
+   600 (`STACKWARD_OVH_CREDENTIALS_FILE`).
+2. Configure the Edge Network Firewall like OVH's example (permit TCP
+   established, UDP source port 53, ICMP, the services, deny IPv4 at
+   sequence 19) and run `stackward audit --provider ovh --all`: PFW-001,
+   PFW-002 and PFW-007 pass, PFW-003 warns about the source port rules.
+3. Move the deny to sequence 0 and run again: PFW-007 fails.
+4. Disable the firewall (rules kept): PFW-001 warns.
+5. Note whether DHCP, DNS and NTP keep working with only the rules above,
+   and whether a QUIC Cloudflare Tunnel connects; the answers settle open
+   questions 4 and 5 of the design.
+6. Revoke the consumer key.
+
 ## Install script
 
 `scripts/install.sh` is tested by `test/install/run.sh` (workflow

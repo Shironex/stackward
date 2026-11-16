@@ -105,7 +105,8 @@ still cannot write anything but `--out`.
 
 ## The provider firewall fetch
 
-`stackward audit --provider hetzner` (and `plan` with the same flag) reads
+`stackward audit --provider hetzner` or `--provider ovh` (and `plan` with
+the same flag) reads
 the cloud provider's firewall over its API ([provider-firewall.md](provider-firewall.md)).
 It is the one exception to "no network during `audit`", and only when asked
 for:
@@ -113,7 +114,8 @@ for:
 - without `--provider` no request is sent, and the PFW checks say the module
   was not requested;
 - the client can only build GET requests, to a fixed list of provider API
-  hosts (`api.hetzner.cloud`), over HTTPS; any other host is refused before
+  hosts (`api.hetzner.cloud`, `eu.api.ovh.com`, `ca.api.ovh.com`,
+  `api.us.ovhcloud.com`), over HTTPS; any other host is refused before
   a connection is made, redirects are never followed and proxy variables are
   ignored, so only the provider sees the credential;
 - every answer is capped at 1 MiB and the whole fetch has one 10 second

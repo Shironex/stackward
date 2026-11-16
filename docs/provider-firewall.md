@@ -10,9 +10,9 @@ firewall over the provider's API and judges it next to the host firewall.
 It is opt in, read only and never stores a credential. Without `--provider`
 no request is sent.
 
-Supported: **Hetzner Cloud Firewall**. The OVHcloud Edge Network Firewall
-follows in a later release; the checks already handle a stateless, ordered,
-IPv4 only firewall like it.
+Supported: **Hetzner Cloud Firewall** (stateful, IPv4 and IPv6) and the
+**OVHcloud Edge Network Firewall** (stateless, ordered, IPv4 only). The
+checks read what the provider can do from the facts, not from its name.
 
 ## Run it
 
@@ -25,7 +25,20 @@ sudo STACKWARD_HETZNER_TOKEN_FILE=/root/stackward-hetzner-token \
   stackward audit --provider hetzner
 ```
 
-`--provider auto` picks the provider whose credentials are set; it is not a
+For OVH, put the four values in a root owned file with mode 600:
+
+```sh
+sudo install -m 600 -o root -g root /dev/null /root/stackward-ovh
+sudo nano /root/stackward-ovh
+# STACKWARD_OVH_APPLICATION_KEY=...
+# STACKWARD_OVH_APPLICATION_SECRET=...
+# STACKWARD_OVH_CONSUMER_KEY=...
+# STACKWARD_OVH_ENDPOINT=ovh-eu
+sudo STACKWARD_OVH_CREDENTIALS_FILE=/root/stackward-ovh stackward audit --provider ovh
+```
+
+`--provider auto` picks the provider whose credentials are set (and refuses
+when both are); it is not a
 network probe. When the public address the provider knows is not on one of
 the host's interfaces (NAT), pass it with `--provider-ip 203.0.113.10`.
 
@@ -36,6 +49,11 @@ the host's interfaces (NAT), pass it with `--provider-ip 203.0.113.10`.
 - **From the environment or a file, per run.**
   - `STACKWARD_HETZNER_TOKEN`, or `STACKWARD_HETZNER_TOKEN_FILE` naming a
     file that holds the token alone.
+  - `STACKWARD_OVH_APPLICATION_KEY`, `STACKWARD_OVH_APPLICATION_SECRET`,
+    `STACKWARD_OVH_CONSUMER_KEY` and `STACKWARD_OVH_ENDPOINT` (`ovh-eu`,
+    `ovh-ca` or `ovh-us`, default `ovh-eu`), or
+    `STACKWARD_OVH_CREDENTIALS_FILE` naming a file with the same names as
+    `KEY=VALUE` lines (blank lines and `#` comments allowed, nothing else).
   - stackward uses its own variable names, not the vendor's (`HCLOUD_TOKEN`),
     so a token set for another tool is never picked up by accident.
 - **A token file** must be a regular file (a symlink is refused), owned by
@@ -44,7 +62,10 @@ the host's interfaces (NAT), pass it with `--provider-ip 203.0.113.10`.
 - **Read only.** Create the Hetzner token with permission **Read**. The API
   cannot tell stackward what a token may do, so a Read & Write token also
   works; stackward only ever sends GET requests, but a leaked Read token
-  can do less harm.
+  can do less harm. For OVH, create the consumer key with access rules
+  limited to `GET /ip` and `GET /ip/*` (or an IAM policy with
+  `ip:apiovh:get`, `ip:apiovh:firewall/get` and
+  `ip:apiovh:firewall/rule/get`).
 - **Never stored.** The token is not in the facts, the report,
   `--dump-facts` or any log. The redaction pass also masks it as a literal
   value wherever it could appear.
@@ -60,7 +81,22 @@ For each public IPv4 address on the host's interfaces (or `--provider-ip`):
 | `GET /v1/servers/ID` | the firewalls applied to the server (directly or through a label selector) |
 | `GET /v1/firewalls/ID` | the rules of each of them |
 
-All of them go to `api.hetzner.cloud` over HTTPS. The client can only build
+For OVH:
+
+| Request | Why |
+|---|---|
+| `GET /1.0/auth/time` | the server time for the request signature (sent without credentials) |
+| `GET /1.0/ip?ip=ADDR` | the IP blocks that hold the address; the filter is "contains or equals", so the narrowest block that really contains it is used |
+| `GET /1.0/ip/{block}/firewall` | whether the address is on the Edge Network Firewall |
+| `GET /1.0/ip/{block}/firewall/{ip}` | enabled and state |
+| `GET /1.0/ip/{block}/firewall/{ip}/rule`, then one per sequence | the rules, at most 20 |
+
+OVH signs each request with SHA-1 over the application secret, the consumer
+key, the method, the URL, the body and the server time. That is the vendor's
+scheme, not a choice.
+
+Hetzner requests go to `api.hetzner.cloud`, OVH requests to the regional host
+(`eu.api.ovh.com`, `ca.api.ovh.com` or `api.us.ovhcloud.com`), over HTTPS. The client can only build
 GET requests, refuses any other host, never follows a redirect, ignores proxy
 variables (a proxy would see the token), caps every answer at 1 MiB and gives
 the whole fetch 10 seconds. A slow or failing API never fails the audit: the
