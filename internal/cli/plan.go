@@ -54,7 +54,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&pf.accounts.AdminKeysFrom, "admin-keys-from", "", "the existing account whose authorized_keys the admin account gets (copied on the host)")
 	fs.StringVar(&pf.accounts.PaaS, "paas-user", "", "plan paas-user: create this account for the platform to log in as")
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: stackward plan [flags]\n\nWrite down the changes that would fix the findings: file edits as diffs,\ncommands, a risk class and an undo for every step. Nothing on the host\nchanges. Part of the upcoming 0.2; apply is not released yet.\n\nFlags:\n")
+		fmt.Fprintf(stderr, "Usage: stackward plan [flags]\n\nWrite down the changes that would fix the findings: file edits as diffs,\ncommands, a risk class and an undo for every step. Nothing on the host\nchanges. Part of 0.2, in pre-release (v0.2.0-rc.1).\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes: 0 plan written, 2 error.\n")
 	}

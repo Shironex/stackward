@@ -109,8 +109,8 @@ command is run.
 
 ## Version 0.2: plan and apply
 
-`stackward plan` and `stackward apply` exist now (in the upcoming 0.2, not yet
-released), and so does the access-critical transaction below: an
+`stackward plan` and `stackward apply` exist now (in 0.2, released as a
+pre-release), and so does the access-critical transaction below: an
 access-critical step runs only inside it. The access-critical steps create
 an admin or PaaS account, write an sshd drop-in and lock the cloud image's
 default account ([plan.md](plan.md#steps-in-this-version)); the transaction

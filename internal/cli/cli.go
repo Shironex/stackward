@@ -36,10 +36,10 @@ Usage:
   stackward version           print the version
   stackward probe <host>      check a host from outside (run from another machine)
   stackward tui [flags]       browse the findings in the terminal
-  stackward plan [flags]      write the changes that would fix the findings (changes nothing; upcoming 0.2)
-  stackward apply PLAN.json   apply the selected steps of a plan, with backups and a journal (root; upcoming 0.2)
-  stackward undo --run ID     reverse an apply run from its journal (root; upcoming 0.2)
-  stackward confirm ID        keep an access-critical change, from a new SSH session (root; upcoming 0.2)
+  stackward plan [flags]      write the changes that would fix the findings (changes nothing; 0.2 pre-release)
+  stackward apply PLAN.json   apply the selected steps of a plan, with backups and a journal (root; 0.2 pre-release)
+  stackward undo --run ID     reverse an apply run from its journal (root; 0.2 pre-release)
+  stackward confirm ID        keep an access-critical change, from a new SSH session (root; 0.2 pre-release)
 
 Run "stackward <command> -h" for the flags of audit, probe, tui, plan, apply, undo
 and confirm.
