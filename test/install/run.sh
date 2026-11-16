@@ -73,7 +73,7 @@ fi
 # ---- fake release server
 root="$T/site"
 mkdir -p "$root"
-for v in 0.0.1 0.0.2-rc.1 0.0.2; do sh "$here/mkrelease.sh" "$root" "$v"; done
+for v in 0.0.1 0.0.2-rc.1 0.0.2 0.2.0-rc.2; do sh "$here/mkrelease.sh" "$root" "$v"; done
 sh "$here/mkrelease.sh" "$root" 0.0.3 tamper
 echo v0.0.2 >"$root/latest.txt"
 python3 "$here/server.py" "$root" "$T/port" &
@@ -117,6 +117,7 @@ check "piped install puts the binary in place" ver_is "$P/bin/stackward" 0.0.2
 check "install writes the record" test -f "$P/share/stackward/install.json"
 check "install says what it installed" out_has "stackward 0.0.2 installed"
 check "summary names next steps" out_has "stackward audit"
+check "a 0.1 or older install does not point at plan" out_lacks "stackward plan"
 check "summary says the signature was not checked" out_has "NOT checked"
 check "plain output has no escape codes" out_lacks "$ESC"
 check "plain output is printable ASCII" sh -c "! LC_ALL=C grep -q '[^[:print:]]' '$T/out'"
@@ -128,6 +129,11 @@ check "re-install says already installed" out_has "already installed"
 inst update --prefix "$P" --yes
 check "update when current exits 0" exit_is 0
 check "update when current says up to date" out_has "up to date"
+
+# plan came with 0.2: its summary names it next to audit.
+inst install --prefix "$T/p02" --version v0.2.0-rc.2 --yes
+check "0.2 install exits 0" exit_is 0
+check "a 0.2 install points at plan" out_has "stackward plan"
 
 inst uninstall --prefix "$P"
 check "uninstall without --yes and no terminal is refused" exit_is 1

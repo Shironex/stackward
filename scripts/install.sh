@@ -1037,6 +1037,8 @@ uninstall)
 		sum_add ""
 		sum_add "Next"
 		sum_add "  sudo $_audit audit"
+		# plan (and apply) came with 0.2; 0.1 only audits.
+		if [ "$(vercmp "$VER" 0.2.0-0)" -ge 0 ]; then sum_add "  sudo $_audit plan"; fi
 		sum_add "  sudo $_audit tui"
 	fi
 	summary_print "$GREEN"
