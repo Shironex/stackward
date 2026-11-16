@@ -14,6 +14,7 @@ import (
 	"github.com/Shironex/stackward/internal/profile"
 	"github.com/Shironex/stackward/internal/redact"
 	"github.com/Shironex/stackward/internal/sandbox"
+	"github.com/Shironex/stackward/internal/waiver"
 )
 
 // SchemaID names the JSON shape. A breaking change gets a new id and a new
@@ -38,6 +39,9 @@ type Report struct {
 	Coverage    Coverage `json:"coverage"`
 	Summary     Summary  `json:"summary"`
 	Results     []Item   `json:"results"`
+	// Waivers lists every entry of the waivers file and what became of
+	// it; absent when no waivers file was read or it had no entries.
+	Waivers []WaiverEntry `json:"waivers,omitempty"`
 	// Probe is set by `stackward probe` only; audit reports never carry it.
 	Probe *Probe `json:"probe,omitempty"`
 }
@@ -115,9 +119,11 @@ type Profile struct {
 // Coverage says how much of the host was actually inspected. Counts are of
 // results, not checks: a check can produce one result per subject.
 type Coverage struct {
-	Checks     int                 `json:"checks"`
-	Results    int                 `json:"results"`
-	Checked    int                 `json:"checked"` // pass, warn, fail, info
+	Checks  int `json:"checks"`
+	Results int `json:"results"`
+	Checked int `json:"checked"` // pass, warn, fail, info
+	// Accepted counts the checked results a waiver accepts.
+	Accepted   int                 `json:"accepted,omitempty"`
 	Unknown    int                 `json:"unknown"`
 	Skipped    int                 `json:"skipped"`
 	Root       bool                `json:"root"`
@@ -133,14 +139,16 @@ type CollectorCoverage struct {
 	Error  string       `json:"error,omitempty"`
 }
 
-// Summary counts results by level.
+// Summary counts results by level. A fail or warn result a waiver accepts
+// is counted as Accepted, not as Fail or Warn.
 type Summary struct {
-	Fail    int `json:"fail"`
-	Warn    int `json:"warn"`
-	Unknown int `json:"unknown"`
-	Info    int `json:"info"`
-	Pass    int `json:"pass"`
-	Skip    int `json:"skip"`
+	Fail     int `json:"fail"`
+	Warn     int `json:"warn"`
+	Accepted int `json:"accepted,omitempty"`
+	Unknown  int `json:"unknown"`
+	Info     int `json:"info"`
+	Pass     int `json:"pass"`
+	Skip     int `json:"skip"`
 }
 
 // Item is one result with its catalog entry folded in.
@@ -154,6 +162,10 @@ type Item struct {
 	Message  string           `json:"message"`
 	Evidence map[string]any   `json:"evidence,omitempty"`
 	Fix      Fix              `json:"fix"`
+	// Waiver is set when an entry of the waivers file matches this result:
+	// accepted, or expired with the finding back at its level. Level and
+	// evidence are always the real ones.
+	Waiver *ResultWaiver `json:"waiver,omitempty"`
 }
 
 // Fix is the short fix hint and an optional docs link.
@@ -172,6 +184,8 @@ type Meta struct {
 	ChecksRun     int
 	// Probe marks a probe report and describes its target.
 	Probe *Probe
+	// Waivers are the entries of the waivers file, if one was read.
+	Waivers []waiver.Waiver
 }
 
 // Build assembles a report. Results must already be in report order (as
@@ -215,7 +229,10 @@ func Build(f *facts.Facts, results []checks.Result, cat *catalog.Catalog, m Meta
 			it.Evidence, _ = redact.Value(toAny(res.Evidence)).(map[string]any)
 		}
 		r.Results = append(r.Results, it)
-		r.count(res.Level)
+	}
+	applyWaivers(r, m.Waivers, cat, f.CollectedAt)
+	for _, it := range r.Results {
+		r.count(it)
 	}
 
 	if m.Probe != nil {
@@ -236,8 +253,14 @@ func Build(f *facts.Facts, results []checks.Result, cat *catalog.Catalog, m Meta
 	return r
 }
 
-func (r *Report) count(l checks.Level) {
-	switch l {
+func (r *Report) count(it Item) {
+	if it.Accepted() {
+		r.Summary.Accepted++
+		r.Coverage.Accepted++
+		r.Coverage.Checked++
+		return
+	}
+	switch it.Level {
 	case checks.Fail:
 		r.Summary.Fail++
 		r.Coverage.Checked++

@@ -40,8 +40,12 @@ func WriteJSON(w io.Writer, r *Report) error {
 // check gives one result per subject (a container, a port, a file), so
 // results outnumber checks; the counts after the colon are results.
 func CoverageLine(c Coverage) string {
-	return fmt.Sprintf("%d checks, %d results: %d checked, %d unknown, %d skipped",
-		c.Checks, c.Results, c.Checked, c.Unknown, c.Skipped)
+	checked := fmt.Sprintf("%d checked", c.Checked)
+	if c.Accepted > 0 {
+		checked += fmt.Sprintf(" (%d accepted by a waiver)", c.Accepted)
+	}
+	return fmt.Sprintf("%d checks, %d results: %s, %d unknown, %d skipped",
+		c.Checks, c.Results, checked, c.Unknown, c.Skipped)
 }
 
 // NotRootNote is the one line that says a run without root left results

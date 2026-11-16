@@ -54,7 +54,8 @@
       "properties": {
         "checks": { "description": "Checks evaluated.", "type": "integer", "minimum": 0 },
         "results": { "description": "Results produced.", "type": "integer", "minimum": 0 },
-        "checked": { "description": "Results with level pass, warn, fail or info.", "type": "integer", "minimum": 0 },
+        "checked": { "description": "Results with level pass, warn, fail or info, accepted ones included.", "type": "integer", "minimum": 0 },
+        "accepted": { "description": "Checked results a waiver accepts (also counted in checked). Absent when none.", "type": "integer", "minimum": 0 },
         "unknown": { "description": "Results with level unknown (could not inspect; never a pass).", "type": "integer", "minimum": 0 },
         "skipped": { "description": "Results with level skip (not applicable).", "type": "integer", "minimum": 0 },
         "root": { "description": "Whether the audit ran as root.", "type": "boolean" },
@@ -63,12 +64,14 @@
       }
     },
     "summary": {
+      "description": "Results by level. A fail or warn result a waiver accepts is counted in accepted, not in fail or warn, so it does not trip --fail-on.",
       "type": "object",
       "additionalProperties": false,
       "required": ["fail", "warn", "unknown", "info", "pass", "skip"],
       "properties": {
         "fail": { "type": "integer", "minimum": 0 },
         "warn": { "type": "integer", "minimum": 0 },
+        "accepted": { "description": "Fail and warn results a waiver accepts. Absent when none.", "type": "integer", "minimum": 0 },
         "unknown": { "type": "integer", "minimum": 0 },
         "info": { "type": "integer", "minimum": 0 },
         "pass": { "type": "integer", "minimum": 0 },
@@ -76,6 +79,11 @@
       }
     },
     "results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+    "waivers": {
+      "description": "Every entry of the waivers file (--waivers or .stackward.yml) in file order, with what became of it. Absent when no waivers file was read.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/waiver" }
+    },
     "probe": { "$ref": "#/$defs/probe" }
   },
   "$defs": {
@@ -131,6 +139,19 @@
         "notes": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "subject", "reason", "expires", "status", "results"],
+      "properties": {
+        "check": { "type": "string", "pattern": "^[A-Z]{2,4}-[0-9]{3}$" },
+        "subject": { "description": "The exact subject of the result it accepts.", "type": "string" },
+        "reason": { "type": "string" },
+        "expires": { "description": "Last day the waiver holds (UTC).", "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "status": { "description": "applied (accepted at least one result), expired (past its date; the results are back at their level), stale (no fail or warn result of the check has this subject) or unknown-check (no check has this id).", "enum": ["applied", "expired", "stale", "unknown-check"] },
+        "results": { "description": "Fail and warn results the waiver matched.", "type": "integer", "minimum": 0 }
+      }
+    },
     "sandbox": {
       "type": "object",
       "additionalProperties": false,
@@ -179,6 +200,17 @@
           "properties": {
             "hint": { "type": "string" },
             "docs": { "type": "string" }
+          }
+        },
+        "waiver": {
+          "description": "Present when a waiver matches this fail or warn result. level and evidence stay the real ones. accepted: counted in summary.accepted instead of its level until expires. expired: counted at its level again.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reason", "expires"],
+          "properties": {
+            "status": { "enum": ["accepted", "expired"] },
+            "reason": { "type": "string" },
+            "expires": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
           }
         }
       }
