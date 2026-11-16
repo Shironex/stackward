@@ -1,8 +1,8 @@
  stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
- 112 checks, 123 results  3 fail  5 warn  87 unknown  7 info  17 pass  4 skip   
+ 112 checks, 116 results  3 fail  5 warn  79 unknown  7 info  17 pass  5 skip   
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  20 of 123               /ssh │ DETAIL                       1-17 of 47
+FINDINGS  19 of 116               /ssh │ DETAIL                       1-17 of 47
 Firewall and exposure NET      2 of 14 │ NET-003  Firewall and exposure         
 › UNKNOWN NET-003 SSH is open to anyw… │ rule SSH is not open to anywhere when a
   INFO    NET-004 tcp/22 (sshd) is pu… │      private path exists               

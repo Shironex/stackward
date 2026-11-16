@@ -1,8 +1,8 @@
  stackward test · host sha256:11d10a4dba4e2a8b                                                     report expected.json 
  profile unknown (inferred) · sandbox unavailable · root yes                                                            
- 112 checks, 149 results  5 fail  11 warn  97 unknown  0 info  34 pass  2 skip                           mostly unknown 
+ 112 checks, 142 results  5 fail  11 warn  89 unknown  0 info  34 pass  3 skip                           mostly unknown 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-FINDINGS  113 of 149                                      │ DETAIL                                            1-25 of 59
+FINDINGS  105 of 142                                      │ DETAIL                                            1-25 of 59
 Docker DKR                                       17 of 53 │ DKR-002  Docker                                             
 › FAIL    DKR-002  Docker API on TCP without tlsverify (… │ rule Docker API is not on TCP without TLS                   
   FAIL    DKR-012  shop/web · shop-web-1 mounts host /et… │ FAIL · critical severity                                    

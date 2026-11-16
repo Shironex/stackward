@@ -41,19 +41,16 @@ type packet struct {
 }
 
 // worldSource reports whether sources reach anywhere: no source means any.
+// A source that does not parse as a prefix counts as anywhere, so a broken
+// or hand edited facts file fails closed (the clients refuse such rules and
+// mark the read partial).
 func worldSource(sources []string) bool {
 	if len(sources) == 0 {
 		return true
 	}
 	for _, s := range sources {
-		if s == "any" {
-			return true
-		}
 		p, err := netip.ParsePrefix(s)
-		if err != nil {
-			continue
-		}
-		if p.Bits() <= worldPrefixBits {
+		if err != nil || p.Bits() <= worldPrefixBits {
 			return true
 		}
 	}
@@ -75,8 +72,13 @@ func portsMatch(ranges []facts.PortRange, port int) bool {
 	return false
 }
 
-// inForce reports whether r is an inbound rule that filters now.
-func inForce(r facts.ProviderRule) bool { return r.Direction == "in" && !r.Pending }
+// inForce reports whether r is an inbound rule the checks count. A pending
+// permit counts (it may already let traffic in, or will shortly); a pending
+// deny does not (it may not block anything yet). Both errors would err on
+// the side of a finding.
+func inForce(r facts.ProviderRule) bool {
+	return r.Direction == "in" && (!r.Pending || r.Action == "permit")
+}
 
 // matches reports whether r matches p from a sender anywhere.
 func matches(r facts.ProviderRule, p packet) bool {
@@ -137,6 +139,50 @@ func verdict(t facts.ProviderTarget, p packet) (bool, *facts.ProviderRule) {
 		return false, deny
 	}
 	return t.DefaultInbound != "deny", nil
+}
+
+// chosenSrcPorts are the source ports a sender anywhere may pick to match a
+// source port rule: anySrcPort plus the first port of every counted permit
+// that names source ports. A stateless filter cannot tell a reply from a
+// packet a sender crafted with that source port.
+func chosenSrcPorts(t facts.ProviderTarget, proto string) []int {
+	out := []int{anySrcPort}
+	seen := map[int]bool{anySrcPort: true}
+	for _, r := range sortedRules(t) {
+		if !inForce(r) || r.Action != "permit" || len(r.SrcPorts) == 0 || (r.Protocol != proto && r.Protocol != "ipv4") {
+			continue
+		}
+		for _, pr := range r.SrcPorts {
+			if !seen[pr.From] {
+				seen[pr.From] = true
+				out = append(out, pr.From)
+			}
+		}
+	}
+	return out
+}
+
+// reachable says whether a sender anywhere, free to pick its source port,
+// gets p (a new connection or datagram) in, the rule that let it in and the
+// source port it used (anySrcPort when any port works).
+func reachable(t facts.ProviderTarget, p packet) (bool, *facts.ProviderRule, int) {
+	for _, src := range chosenSrcPorts(t, p.proto) {
+		q := p
+		q.src = src
+		if ok, r := verdict(t, q); ok {
+			return true, r, src
+		}
+	}
+	return false, nil, anySrcPort
+}
+
+// viaLabel names the rule and, when it took a crafted source port, the
+// port.
+func viaLabel(t facts.ProviderTarget, r *facts.ProviderRule, src int) string {
+	if src == anySrcPort {
+		return ruleLabel(t, r)
+	}
+	return fmt.Sprintf("%s, from source port %d", ruleLabel(t, r), src)
 }
 
 // unusedPort returns a port no rule names, so a packet to it only meets
@@ -205,8 +251,11 @@ func describeRule(t facts.ProviderTarget, r facts.ProviderRule) string {
 	if len(r.DstPorts) > 0 {
 		b.WriteString(" to port " + portList(r.DstPorts))
 	}
-	if r.Pending {
-		b.WriteString(" (pending, not in force)")
+	switch {
+	case r.Pending && r.Action == "permit":
+		b.WriteString(" (pending; counted as in force)")
+	case r.Pending:
+		b.WriteString(" (pending; not counted until in force)")
 	}
 	return b.String()
 }
@@ -253,7 +302,7 @@ func pfwEach(in Input, needs pfwNeeds, judge func(*facts.ProviderFirewall, facts
 // address.
 func pfwGate(pf *facts.ProviderFirewall) (Result, bool) {
 	if pf == nil {
-		return Result{Level: Unknown, Message: "provider firewall not requested; run the audit with --provider to read it over the provider's API",
+		return Result{Level: Skip, Message: "provider firewall not checked; run the audit with --provider and a read only token to read it over the provider's API (docs/provider-firewall.md)",
 			Evidence: map[string]any{"provider": "none", "status": "not_requested"}}, true
 	}
 	ev := map[string]any{"provider": pf.Provider, "status": string(pf.Status)}
