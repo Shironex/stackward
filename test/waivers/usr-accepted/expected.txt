@@ -1,0 +1,485 @@
+  stackward audit  test (stackward.report.v1)
+
+  host:      sha256:82c1a34869ebe223
+  os:        Ubuntu 24.04.1 LTS
+  kernel:    -
+  collected: 2026-03-01T12:00:00Z
+  profile:   unknown (inferred)
+  root:      yes
+  sandbox:   unavailable (golden test)
+  coverage:  112 checks, 109 results: 13 checked (2 accepted by a waiver), 95 unknown, 1 skipped
+  waivers:   2 applied, 1 expired, 1 stale, 1 for an unknown check
+
+  +- Summary ------------------------------------------------------------------------+
+  | x 2 fail   ! 6 warn   ? 95 unknown   i 1 info   + 2 pass   - 1 skip   2 accepted |
+  |                                                                                  |
+  | Fails, most severe first                                                         |
+  | x critical  USR-001  account toor has uid 0 (root equivalent)                    |
+  | x critical  USR-002  login account ubuntu has an empty password                  |
+  |                                                                                  |
+  | Dig in                                                                           |
+  |   stackward tui           browse every result                                    |
+  |   stackward explain <id>  why a check matters and how to fix it                  |
+  |   stackward audit --md    the report as Markdown for an issue                    |
+  |   stackward audit --all   passing results and every info in full                 |
+  +----------------------------------------------------------------------------------+
+
+  -- FAIL (2) --------------------------------------------------------------------------------------
+
+  x account toor has uid 0 (root equivalent)
+    USR-001, critical, user:toor
+    rule: Only root has uid 0
+    fix:  Remove the account, or give it a normal uid with `usermod -u` after checking what it owns.
+
+  x login account ubuntu has an empty password
+    USR-002, critical, user:ubuntu
+    rule: No login account has an empty password
+    fix:  Lock the account with `passwd -l <user>` or set a password.
+
+  -- WARN (6) --------------------------------------------------------------------------------------
+
+  ! NOPASSWD sudo for ubuntu (line 2): expected for a PaaS account, make sure it is deliberate
+    USR-004, high, file:/etc/sudoers.d/90-cloud-init-users
+    rule: sudoers is root owned and NOPASSWD entries are deliberate
+    fix:  Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf
+          <file>`, and keep NOPASSWD to the PaaS account.
+
+  ! default account ubuntu is still usable (login shell, authorized key, NOPASSWD sudo) and another
+    admin exists
+    USR-003, moderate, user:ubuntu
+    rule: Cloud default account is locked down
+    fix:  Lock it: `passwd -l <user>`, set its shell to nologin, move its authorized_keys aside and
+          drop its NOPASSWD line. Keep your own admin account working first.
+
+  ! bob is in the docker group, which is root equivalent (it can mount the host filesystem)
+    USR-005, moderate
+    rule: Docker group has no extra members
+    fix:  Remove users who do not need it: `gpasswd -d <user> docker`.
+
+  ! login account bob has not logged in for 151 days
+    USR-006, low, user:bob
+    rule: Login accounts are used
+    fix:  Lock unused accounts with `passwd -l <user>` or remove them.
+
+  ! login account carol has never logged in
+    USR-006, low, user:carol
+    waiver: expired after 2026-02-01, the finding is back: carol starts in February
+
+  ! login account ubuntu has never logged in
+    USR-006, low, user:ubuntu
+
+  -- UNKNOWN (95) ----------------------------------------------------------------------------------
+
+  ? not inspected: the ssh collector did not run
+    SSH-004, critical
+    rule: Empty passwords are refused
+
+  ? not inspected: the docker collector did not run
+    DKR-001, critical
+    rule: Published container ports do not bypass the host firewall
+
+  ? not inspected: the docker collector did not run
+    DKR-002, critical
+    rule: Docker API is not on TCP without TLS
+
+  ? not inspected: the docker collector did not run
+    DKR-003, critical
+    rule: Docker socket is not world writable
+
+  ? not inspected: the docker collector did not run
+    DKR-010, critical
+    rule: No container mounts the Docker socket
+
+  ? not inspected: the docker collector did not run
+    DKR-021, critical
+    rule: No privileged containers
+
+  ? not inspected: the secrets collector did not run
+    SEC-003, critical
+    rule: Platform SSH key folder is closed to other users
+
+  ? not inspected: the paas collector did not run
+    PAAS-004, critical
+    rule: No platform database is published publicly
+
+  ? not inspected: the ssh collector did not run
+    SSH-001, high
+    rule: Password authentication is off
+
+  ? not inspected: the ssh collector did not run
+    SSH-002, high
+    rule: Keyboard-interactive authentication is off
+
+  ? not inspected: the ssh collector did not run
+    SSH-003, high
+    rule: Root cannot log in over SSH
+
+  ? not inspected: the ssh collector did not run
+    SSH-010, high
+    rule: sshd listens where it is configured to
+
+  ? not inspected: the ssh collector did not run
+    SSH-011, high
+    rule: sshd reachable from anywhere takes keys only and bans brute force
+
+  ? not inspected: the ssh collector did not run
+    SSH-013, high
+    rule: Home, ~/.ssh and authorized_keys are not writable by others
+
+  ? not inspected: the firewall collector did not run
+    NET-001, high
+    rule: A host firewall is active and denies incoming traffic by default
+
+  ? not inspected: the firewall collector did not run
+    NET-002, high
+    rule: UFW filters IPv6 when the host has a global IPv6 address
+
+  ? not inspected: the listeners collector did not run
+    NET-003, high
+    rule: SSH is not open to anywhere when a private path exists
+
+  ? not inspected: the firewall collector did not run
+    NET-007, high
+    rule: ufw-docker is loaded and lets tailnet traffic reach published ports
+
+  ? not inspected: the firewall collector did not run
+    NET-008, high
+    rule: ufw-docker is not paired with Docker's nftables backend
+
+  ? not inspected: the docker collector did not run
+    DKR-011, high
+    rule: Socket proxies do not allow writes
+
+  ? not inspected: the docker collector did not run
+    DKR-012, high
+    rule: No container mounts a sensitive host path
+
+  ? not inspected: the docker collector did not run
+    DKR-020, high
+    rule: Containers do not run as root
+
+  ? not inspected: the docker collector did not run
+    DKR-022, high
+    rule: No dangerous added capabilities
+
+  ? not inspected: the docker collector did not run
+    DKR-023, high
+    rule: No host network, PID or IPC namespace
+
+  ? not inspected: the docker collector did not run
+    DKR-030, high
+    rule: Projects do not share networks
+
+  ? not inspected: the tailscale collector did not run
+    TS-001, high
+    rule: Tailscale is logged in and Running when installed
+
+  ? not inspected: the tailscale collector did not run
+    TS-003, high
+    rule: Tailscale Funnel and Serve expose only what is intended
+
+  ? not inspected: the cloudflared collector did not run
+    CF-003, high
+    rule: The proxy is not reachable on a public address while ingress is the tunnel
+
+  ? not inspected: the cloudflared collector did not run
+    CF-005, high
+    rule: The origin IP does not answer on 80/443 from outside (probe)
+
+  ? not inspected: the crowdsec collector did not run
+    CS-002, high
+    rule: A bouncer is registered and pulling decisions
+
+  ? not inspected: the crowdsec collector did not run
+    CS-003, high
+    rule: Behind a tunnel, an L7 bouncer enforces bans
+
+  ? not inspected: the crowdsec collector did not run
+    CS-004, high
+    rule: Private range whitelists do not swallow tunnel traffic
+
+  ? not inspected: the updates collector did not run
+    UPD-001, high
+    rule: Automatic security updates are enabled
+
+  ? not inspected: the updates collector did not run
+    UPD-003, high
+    rule: Unattended upgrades include the security pocket
+
+  ? not inspected: the updates collector did not run
+    UPD-006, high
+    rule: No pending security updates
+
+  ? not inspected: the sysctl collector did not run
+    KRN-001, high
+    rule: IPv4 forwarding is on where Docker runs
+
+  ? not inspected: the secrets collector did not run
+    SEC-001, high
+    rule: Platform app .env files are readable by their owner only
+
+  ? not inspected: the secrets collector did not run
+    SEC-002, high
+    rule: Platform main .env is not world readable
+
+  ? not inspected: the secrets collector did not run
+    SEC-005, high
+    rule: Private keys are readable by their owner only
+
+  ? not inspected: the secrets collector did not run
+    SEC-007, high
+    rule: No world writable folders under the platform data root
+
+  ? not inspected: the paas collector did not run
+    PAAS-002, high
+    rule: Platform proxy is not published on all interfaces behind a tunnel
+
+  ? not inspected: the paas collector did not run
+    PAAS-003, high
+    rule: Platform panel ports are not open to the world
+
+  ? not inspected: the paas collector did not run
+    PAAS-008, high
+    rule: Docker Swarm ports are restricted to cluster peers
+
+  ? not inspected: os collector recorded nothing
+    SYS-002, moderate
+    rule: No reboot pending
+
+  ? not inspected: os collector recorded nothing
+    SYS-003, moderate
+    rule: Running kernel is the newest installed
+
+  ? not inspected: the clock collector did not run
+    SYS-004, moderate
+    rule: Clock is synchronized
+
+  ? not inspected: the disk collector did not run
+    SYS-005, moderate
+    rule: Disks have free space
+
+  ? not inspected: the ssh collector did not run
+    SSH-008, moderate
+    rule: No early drop-in shadows a later hardening setting
+
+  ? not inspected: the ssh collector did not run
+    SSH-012, moderate
+    rule: Host keys are strong and private
+
+  ? not inspected: the ssh collector did not run
+    SSH-014, moderate
+    rule: Authorized keys are strong and not stale
+
+  ? not inspected: the listeners collector did not run
+    NET-004, moderate
+    rule: Exposure: every listening socket and who can reach it
+
+  ? not inspected: the firewall collector did not run
+    NET-005, moderate
+    rule: No public 80/443 rule on a tunnel or tailnet only host
+
+  ? not inspected: the docker collector did not run
+    DKR-024, moderate
+    rule: Containers keep seccomp and AppArmor, and public ones set no-new-privileges
+
+  ? not inspected: the docker collector did not run
+    DKR-031, moderate
+    rule: Container logs rotate
+
+  ? not inspected: the docker collector did not run
+    DKR-033, moderate
+    rule: Docker manages the firewall
+
+  ? not inspected: the docker collector did not run
+    DKR-034, moderate
+    rule: Docker Engine is supported upstream
+
+  ? not inspected: the tailscale collector did not run
+    TS-002, moderate
+    rule: Node key expiry is disabled on server nodes
+
+  ? not inspected: the firewall collector did not run
+    TS-004, moderate
+    rule: Firewall rules that mention tailscale0 have a running tailnet behind them
+
+  ? not inspected: the cloudflared collector did not run
+    CF-002, moderate
+    rule: The tunnel runs more than one connector
+
+  ? not inspected: the cloudflared collector did not run
+    CF-004, moderate
+    rule: The tunnel token is not a command line argument
+
+  ? not inspected: the crowdsec collector did not run
+    CS-001, moderate
+    rule: CrowdSec runs when installed
+
+  ? not inspected: the crowdsec collector did not run
+    CS-005, moderate
+    rule: The proxy access log is acquired
+
+  ? not inspected: the crowdsec collector did not run
+    CS-006, moderate
+    rule: The CrowdSec local API is not on a wildcard address
+
+  ? not inspected: the crowdsec collector did not run
+    CS-007, moderate
+    rule: The firewall bouncer also protects Docker published ports
+
+  ? not inspected: the listeners collector did not run
+    CS-010, moderate
+    rule: Public SSH has brute force protection on the right port
+
+  ? not inspected: the updates collector did not run
+    UPD-002, moderate
+    rule: Unattended upgrades ran recently
+
+  ? not inspected: the sysctl collector did not run
+    KRN-002, moderate
+    rule: Reverse path filter is loose where Docker or Tailscale run
+
+  ? not inspected: the journal collector did not run
+    LOG-005, moderate
+    rule: The journal survives a reboot
+
+  ? not inspected: the secrets collector did not run
+    SEC-004, moderate
+    rule: No stray backup files in the proxy dynamic config folder
+
+  ? not inspected: the secrets collector did not run
+    SEC-006, moderate
+    rule: Docker client config is readable by its owner only
+
+  ? not inspected: the paas collector did not run
+    PAAS-005, moderate
+    rule: Projects do not share the platform default network
+
+  ? not inspected: the ssh collector did not run
+    SSH-005, low
+    rule: MaxAuthTries is low
+
+  ? not inspected: the ssh collector did not run
+    SSH-006, low
+    rule: Logins are limited with AllowUsers or AllowGroups
+
+  ? not inspected: the ssh collector did not run
+    SSH-007, low
+    rule: X11 and agent forwarding are off
+
+  ? not inspected: the ssh collector did not run
+    SSH-015, low
+    rule: No weak key exchange, cipher or MAC algorithms
+
+  ? not inspected: the tailscale collector did not run
+    SSH-016, low
+    rule: Tailscale SSH and OpenSSH are not both serving
+
+  ? not inspected: the docker collector did not run
+    DKR-032, low
+    rule: Infrastructure containers run pinned images
+
+  ? not inspected: the crowdsec collector did not run
+    CS-008, low
+    rule: The proxy bouncer refreshes decisions often
+
+  ? not inspected: the fail2ban collector did not run
+    CS-011, low
+    rule: fail2ban ignores the tailnet range when Tailscale is used
+
+  ? not inspected: the updates collector did not run
+    UPD-004, low
+    rule: Reboot policy is a decision
+
+  ? not inspected: the sysctl collector did not run
+    KRN-003, low
+    rule: Network sysctls match the hardening baseline
+
+  ? not inspected: the sysctl collector did not run
+    KRN-004, low
+    rule: Kernel hardening sysctls match the baseline
+
+  ? not inspected: the sysctl collector did not run
+    KRN-005, low
+    rule: IPv6 router advertisements are not switched off by a profile
+
+  ? not inspected: the journal collector did not run
+    LOG-001, low
+    rule: journald has a size cap
+
+  ? not inspected: the journal collector did not run
+    LOG-002, low
+    rule: Proxy access logs are rotated
+
+  ? not inspected: the ssh collector did not run
+    SSH-009, info
+    rule: Effective SSH configuration fully confirmed
+
+  ? not inspected: the firewall collector did not run
+    NET-006, info
+    rule: DOCKER-USER chain state
+
+  ? the provider firewall cannot be seen from inside the host; run `stackward probe` from another
+    machine to see what is reachable
+    NET-009, info
+    rule: Provider firewall (outside view)
+
+  ? not inspected: the tailscale collector did not run
+    TS-005, info
+    rule: Tailnet Lock state
+
+  ? not inspected: the cloudflared collector did not run
+    CF-001, info
+    rule: Cloudflare Tunnel presence
+
+  ? not inspected: the journal collector did not run
+    LOG-003, info
+    rule: Journal disk use
+
+  ? not inspected: the journal collector did not run
+    LOG-004, info
+    rule: A metrics agent is present
+
+  ? not inspected: the paas collector did not run
+    PAAS-001, info
+    rule: Self hosted platform detected
+
+  ? not inspected: the paas collector did not run
+    BAK-001, info
+    rule: Platform database backups on the host
+
+  ? not inspected: the secrets collector did not run
+    BAK-002, info
+    rule: Backup tools present
+
+  -- INFO (1), one line each; --info lists them in full --------------------------------------------
+
+  i USR-007  root password is locked: recovery is the provider console or rescue mode; note where
+             that path is stored
+
+  -- ACCEPTED (2), by a waiver until it expires ----------------------------------------------------
+
+  x /etc/sudoers.d/deploy is writable by someone other than root (mode 0666, owner uid 0): that is a
+    root escalation
+    ACCEPTED FAIL, USR-004, high
+    waiver: accepted until 2026-03-01: the deploy tool rewrites this file; fix tracked in OPS-12
+    rule: sudoers is root owned and NOPASSWD entries are deliberate
+
+  ! alice is in the docker group, which is root equivalent (it can mount the host filesystem)
+    ACCEPTED WARN, USR-005, moderate
+    waiver: accepted until 2026-06-30: alice runs the deploy containers; reviewed with the team
+    rule: Docker group has no extra members
+
+  -- WAIVERS TO REVIEW (3) -------------------------------------------------------------------------
+
+  ! USR-006 on user:carol: expired after 2026-02-01; 1 finding is back at its real level
+    reason: carol starts in February
+
+  ! USR-001 on user:nobody: no fail or warn result has this subject; the finding is fixed or the
+    subject is wrong
+    reason: old waiver for a removed account
+
+  ! ZZZ-999 on host: no check has this id
+    reason: typo in the check id
+
+  summary: 2 fail, 6 warn, 95 unknown, 1 info, 2 pass, 1 skip, 2 accepted
+  explain any check with: stackward explain <id>

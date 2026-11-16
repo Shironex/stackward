@@ -1,0 +1,29 @@
+# Waivers for the usr-bad facts, collected 2026-03-01. Each entry shows one
+# state a waiver can end in.
+version: 1
+waivers:
+  # applied to a warning
+  - check: USR-005
+    subject: user:alice
+    reason: alice runs the deploy containers; reviewed with the team
+    expires: 2026-06-30
+  # applied to a fail
+  - check: USR-004
+    subject: file:/etc/sudoers.d/deploy
+    reason: "the deploy tool rewrites this file; fix tracked in OPS-12"
+    expires: 2026-03-01
+  # expired: the finding counts as a warning again
+  - check: USR-006
+    subject: user:carol
+    reason: carol starts in February
+    expires: 2026-02-01
+  # stale: no result has this subject
+  - check: USR-001
+    subject: user:nobody
+    reason: old waiver for a removed account
+    expires: 2026-12-31
+  # unknown check id
+  - check: ZZZ-999
+    subject: host
+    reason: typo in the check id
+    expires: 2026-12-31
