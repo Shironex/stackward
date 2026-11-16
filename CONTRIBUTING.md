@@ -71,8 +71,11 @@ Package layering (depguard, from [docs/architecture.md](docs/architecture.md)):
   `plan` or `apply`).
 - `internal/tui` only browses a `report.Report`: no `facts`, `plan` or
   `apply`.
-- `redact`, `catalog`, `sandbox`, `schemacheck`, `version` and `waiver`
-  import nothing else from this module.
+- `internal/diff` only compares two `report.Report` values: no `cli`,
+  `tui`, `plan`, `apply`, `probe`, `audit`, `sandbox` or `provider`.
+- `redact`, `catalog`, `sandbox`, `schemacheck`, `version`, `waiver` and
+  the root `schema` package (the embedded JSON contracts) import nothing
+  else from this module.
 - `os/exec` is imported only by `internal/apply`,
   `internal/facts/system.go` and `internal/fleet/ssh.go` (the user's ssh for
   `audit --ssh`).

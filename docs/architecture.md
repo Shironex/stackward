@@ -40,10 +40,13 @@ report exactly. That is how bug reports become golden test fixtures.
 | `internal/provider` | the opt in provider firewall client (`--provider`): credentials from env or a file, GET only to fixed API hosts, normalised into `facts.ProviderFirewall` before the sandbox; the PFW checks judge it |
 | `internal/probe` | `stackward probe`: target parsing, consent guard, TCP, banner and HTTP probes into probe `Facts`, and the PRB checks in their own registry (see below) |
 | `internal/fleet` | `stackward audit --ssh`: host validation, architecture match, the remote script, the only exec of the user's `ssh` (`ssh.go`), parallel runs and cleaning what comes back; see [design/audit-ssh.md](design/audit-ssh.md) |
-| `internal/schemacheck` | tiny JSON Schema subset validator used by tests |
+| `internal/diff` | `stackward diff` and `audit --baseline`: loads a report file as untrusted input (size cap, schema check, cleaning, redaction), matches results by check id and subject, derives drift from NET-004, SSH-014, USR-004 and DKR-020 evidence, renders text, Markdown and diff.v1 JSON ([diff.md](diff.md)) |
+| `internal/schemacheck` | tiny JSON Schema subset validator, used by tests and by `internal/diff` to validate report files |
 | `internal/lint/guard` | `stackward-guard`, a static analyzer for the safety model: filesystem writes, program starts and network use only in an allowlist of packages; also caps test file length. Run by CI, see CONTRIBUTING |
 | `internal/version` | link time version (`-X .../internal/version.Version=v0.1.0`) |
 | `schema/report.v1.json` | the JSON contract |
+| `schema/diff.v1.json` | the diff JSON contract |
+| `schema` (Go package) | embeds report.v1 and diff.v1 for run time validation |
 | `schema/plan.v1.json` | the plan JSON contract |
 | `schema/journal.v1.json` | the apply run journal JSON contract |
 | `schema/fleet.v1.json` | the `audit --ssh --json` fleet report contract (each host carries a report.v1) |
