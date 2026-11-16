@@ -1,0 +1,236 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-11-16T12:00:00Z",
+  "host": {
+    "hostname": "edge4.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "status",
+      "status": "active",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "yes",
+      "rules_known": true,
+      "rules": [
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "22",
+          "proto": "tcp",
+          "from": "198.51.100.7"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "443",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "443",
+          "proto": "tcp",
+          "v6": true
+        }
+      ]
+    },
+    "nft": {
+      "installed": true,
+      "listed": true,
+      "tables": [
+        {
+          "family": "ip",
+          "name": "filter"
+        }
+      ],
+      "chains": [
+        {
+          "family": "ip",
+          "table": "filter",
+          "name": "INPUT",
+          "hook": "input",
+          "policy": "drop",
+          "rules": 9
+        }
+      ]
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": {
+        "FORWARD": "DROP",
+        "INPUT": "DROP",
+        "OUTPUT": "ACCEPT"
+      },
+      "chains": [
+        "FORWARD",
+        "INPUT",
+        "OUTPUT",
+        "ufw-before-input",
+        "ufw-user-input"
+      ],
+      "input_rules": 9
+    }
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "owners_source": "ss",
+    "sockets": [
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 443,
+        "processes": [
+          "caddy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 443,
+        "processes": [
+          "caddy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 8080,
+        "processes": [
+          "app"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "interface": "lo",
+        "address": "127.0.0.1",
+        "prefix": 8,
+        "scope": "host"
+      },
+      {
+        "interface": "eth0",
+        "address": "203.0.113.10",
+        "prefix": 24,
+        "scope": "global"
+      }
+    ],
+    "addresses_source": "ip"
+  },
+  "clock": {
+    "ntp_synchronized": true,
+    "ntp_enabled": true,
+    "can_ntp": true,
+    "timezone": "Etc/UTC"
+  },
+  "provider_firewall": {
+    "provider": "ovh",
+    "status": "ok",
+    "stateful": false,
+    "ipv6_filtered": false,
+    "targets": [
+      {
+        "address": "203.0.113.10",
+        "status": "ok",
+        "attached": true,
+        "enabled": true,
+        "state": "ok",
+        "firewalls": 1,
+        "default_inbound": "allow",
+        "ordered": true,
+        "rules_complete": true,
+        "rules": [
+          {
+            "order": 0,
+            "direction": "in",
+            "action": "permit",
+            "protocol": "tcp",
+            "tcp_option": "established"
+          },
+          {
+            "order": 1,
+            "direction": "in",
+            "action": "permit",
+            "protocol": "tcp",
+            "sources": [
+              "198.51.100.7/32"
+            ],
+            "dst_ports": [
+              {
+                "from": 22,
+                "to": 22
+              }
+            ]
+          },
+          {
+            "order": 2,
+            "direction": "in",
+            "action": "permit",
+            "protocol": "tcp",
+            "src_ports": [
+              {
+                "from": 443,
+                "to": 443
+              }
+            ]
+          },
+          {
+            "order": 4,
+            "direction": "in",
+            "action": "permit",
+            "protocol": "udp",
+            "src_ports": [
+              {
+                "from": 53,
+                "to": 53
+              }
+            ]
+          },
+          {
+            "order": 19,
+            "direction": "in",
+            "action": "deny",
+            "protocol": "ipv4"
+          }
+        ]
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "clock",
+      "status": "ok"
+    },
+    {
+      "name": "firewall",
+      "status": "ok"
+    },
+    {
+      "name": "listeners",
+      "status": "ok"
+    }
+  ]
+}

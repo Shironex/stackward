@@ -735,7 +735,8 @@
         "default_inbound": "deny",
         "ordered": false,
         "provider": "hetzner",
-        "status": "ok"
+        "status": "ok",
+        "tcp_open_by": ""
       },
       "fix": {
         "hint": "OVH: add a last rule (sequence 19) that denies protocol IPv4 from any source, after the permit rules for your services and for return traffic",

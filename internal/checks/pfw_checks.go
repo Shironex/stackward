@@ -9,15 +9,20 @@ import (
 )
 
 func init() {
+	// Without --provider only PFW-001 reports, with one skip row that says
+	// how to enable the module; the others leave no row.
 	Register(Check{ID: "PFW-001", Run: checkPFWAttached})
-	Register(Check{ID: "PFW-002", Run: checkPFWDefaultDeny})
-	Register(Check{ID: "PFW-003", Run: checkPFWOpenUDP})
-	Register(Check{ID: "PFW-004", Run: checkPFWStaleRules})
-	Register(Check{ID: "PFW-005", Run: checkPFWSSH})
-	Register(Check{ID: "PFW-006", Run: checkPFWIPv6})
-	Register(Check{ID: "PFW-007", Run: checkPFWReturnTraffic})
-	Register(Check{ID: "PFW-008", Run: checkPFWRules})
+	Register(Check{ID: "PFW-002", Run: checkPFWDefaultDeny, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-003", Run: checkPFWOpenUDP, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-004", Run: checkPFWStaleRules, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-005", Run: checkPFWSSH, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-006", Run: checkPFWIPv6, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-007", Run: checkPFWReturnTraffic, Absent: pfwNotRequested})
+	Register(Check{ID: "PFW-008", Run: checkPFWRules, Absent: pfwNotRequested})
 }
+
+// pfwNotRequested is true when the provider module did not run.
+func pfwNotRequested(in Input) bool { return in.Facts == nil || in.Facts.ProviderFirewall == nil }
 
 // tunnelState is profile.TunnelState, swapped in tests.
 var tunnelState = profile.TunnelState
@@ -59,7 +64,18 @@ func catchAllDeny(t facts.ProviderTarget) *facts.ProviderRule {
 
 func checkPFWDefaultDeny(in Input) []Result {
 	return pfwEach(in, pfwNeeds{enabled: true, rules: true}, func(pf *facts.ProviderFirewall, t facts.ProviderTarget) Result {
-		ev := map[string]any{"default_inbound": t.DefaultInbound, "ordered": t.Ordered, "catch_all_deny": ""}
+		ev := map[string]any{"default_inbound": t.DefaultInbound, "ordered": t.Ordered, "catch_all_deny": "", "tcp_open_by": ""}
+		// A permit that matches only a source port lets a sender who picks
+		// that port reach every TCP port, whatever the final deny says.
+		if ok, r, src := reachable(t, packet{proto: "tcp", dst: unusedPort(t), src: anySrcPort}); ok {
+			ev["tcp_open_by"] = viaLabel(t, r, src)
+			if src != anySrcPort {
+				return pfwResult(pf, t, Fail, fmt.Sprintf("every TCP port is reachable from anywhere by a sender that picks source port %d (%s); a stateless firewall cannot tell that from a reply", src, ruleLabel(t, r)), ev)
+			}
+			if t.DefaultInbound == "deny" || catchAllDeny(t) != nil {
+				return pfwResult(pf, t, Fail, fmt.Sprintf("every TCP port is reachable from anywhere (%s)", ruleLabel(t, r)), ev)
+			}
+		}
 		if d := catchAllDeny(t); d != nil {
 			ev["catch_all_deny"] = ruleLabel(t, d)
 			return pfwResult(pf, t, Pass, fmt.Sprintf("inbound is default deny: %s denies every packet no earlier rule permits", ruleLabel(t, d)), ev)
@@ -201,8 +217,8 @@ func checkPFWSSH(in Input) []Result {
 		}
 		var open []string
 		for _, p := range ports {
-			if ok, r := verdict(t, packet{proto: "tcp", dst: p, src: anySrcPort}); ok {
-				open = append(open, fmt.Sprintf("tcp/%d (%s)", p, ruleLabel(t, r)))
+			if ok, r, src := reachable(t, packet{proto: "tcp", dst: p, src: anySrcPort}); ok {
+				open = append(open, fmt.Sprintf("tcp/%d (%s)", p, viaLabel(t, r, src)))
 			}
 		}
 		running, known := tailnetState(f)

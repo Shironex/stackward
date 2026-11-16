@@ -72,6 +72,11 @@ type Check struct {
 	// Run returns at least one result. Returning none, panicking or
 	// returning an invalid level all turn into an unknown result.
 	Run func(Input) []Result
+	// Absent, when set and true for the input, leaves the check out of
+	// this run's results entirely: for an opt in module the user did not
+	// request, where one row of another check already says so (the PFW
+	// checks without --provider). It must never hide a judgement.
+	Absent func(Input) bool
 }
 
 var (
@@ -117,6 +122,9 @@ func Evaluate(in Input) []Result { return EvaluateChecks(All(), in) }
 func EvaluateChecks(cs []Check, in Input) []Result {
 	var out []Result
 	for _, c := range cs {
+		if c.Absent != nil && c.Absent(in) {
+			continue
+		}
 		for _, r := range runSafe(c, in) {
 			r.ID = c.ID
 			if r.Subject == "" {

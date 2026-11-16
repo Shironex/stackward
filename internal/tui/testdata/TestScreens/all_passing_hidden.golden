@@ -1,8 +1,8 @@
  stackward test · host sha256:82c1a34869ebe223             report expected.json 
  profile unknown (inferred) · sandbox unavailable · root yes                    
- 112 checks, 4 results  0 fail  0 warn  0 unknown  0 info  4 pass  0 skip       
+ 112 checks, 5 results  0 fail  0 warn  0 unknown  0 info  4 pass  1 skip       
 ────────────────────────────────────────────────────────────────────────────────
-FINDINGS  0 of 4                       │ DETAIL                                 
+FINDINGS  0 of 5                       │ DETAIL                                 
                                        │                                        
  Nothing needs attention: every        │                                        
  result passed or was skipped.         │                                        

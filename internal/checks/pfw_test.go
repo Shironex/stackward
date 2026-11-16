@@ -110,7 +110,6 @@ var pfwChecks = map[string]func(Input) []Result{
 
 func TestPFWGateNeverPasses(t *testing.T) {
 	cases := map[string]*facts.ProviderFirewall{
-		"not requested":  nil,
 		"no credentials": {Provider: "hetzner", Status: facts.ProviderNoCredentials, Reason: "STACKWARD_HETZNER_TOKEN is not set"},
 		"denied":         {Provider: "hetzner", Status: facts.ProviderDenied, Reason: "401"},
 		"no targets":     {Provider: "ovh", Status: facts.ProviderOK},
@@ -128,10 +127,80 @@ func TestPFWGateNeverPasses(t *testing.T) {
 			}
 		}
 	}
-	r := runOne(t, checkPFWAttached, pfwFacts(nil))
-	wantLevel(t, r, Unknown, "not requested")
-	r = runOne(t, checkPFWAttached, pfwFacts(cases["no match"]))
+	r := runOne(t, checkPFWAttached, pfwFacts(cases["no match"]))
 	wantLevel(t, r, Unknown, "no resource of this account")
+}
+
+func TestPFWNotRequestedIsOneSkipRow(t *testing.T) {
+	var pfw []Result
+	for _, r := range Evaluate(Input{Facts: pfwFacts(nil)}) {
+		if strings.HasPrefix(r.ID, "PFW-") {
+			pfw = append(pfw, r)
+		}
+	}
+	if len(pfw) != 1 || pfw[0].ID != "PFW-001" || pfw[0].Level != Skip || !strings.Contains(pfw[0].Message, "--provider") {
+		t.Errorf("PFW rows without --provider: %+v", pfw)
+	}
+	// With a provider result every PFW check reports again.
+	n := 0
+	for _, r := range Evaluate(Input{Facts: pfwFacts(&facts.ProviderFirewall{Provider: "hetzner", Status: facts.ProviderNoCredentials})}) {
+		if strings.HasPrefix(r.ID, "PFW-") {
+			n++
+		}
+	}
+	if n != 8 {
+		t.Errorf("PFW rows with a provider result: %d, want 8", n)
+	}
+}
+
+// TestPFWSourcePortOnlyTCPPermit is the rule set from the gate review: a
+// permit for TCP from source port 443 before the final deny lets anyone
+// reach every TCP port, SSH included, by sending from port 443.
+func TestPFWSourcePortOnlyTCPPermit(t *testing.T) {
+	stubTailnet(t, true, true)
+	rules := []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", TCPOption: "established"},
+		{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", Sources: []string{"203.0.113.7/32"}, DstPorts: port(22)},
+		{Order: 2, Direction: "in", Action: "permit", Protocol: "tcp", SrcPorts: port(443)},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"},
+	}
+	f := pfwFacts(ovhPF(rules))
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Fail, "source port 443 (seq 2)")
+	wantLevel(t, runOne(t, checkPFWSSH, f), Fail, "tcp/22 (seq 2, from source port 443)")
+
+	// A source port rule that also names the destination port is fine.
+	rules[2].DstPorts = pr(32768, 60999)
+	f = pfwFacts(ovhPF(rules))
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Pass, "seq 19")
+	wantLevel(t, runOne(t, checkPFWSSH, f), Pass, "")
+}
+
+func TestPFWPendingRules(t *testing.T) {
+	stubTailnet(t, false, true)
+	// A pending permit counts: it may already let traffic in.
+	rules := []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", DstPorts: port(22), Pending: true},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"},
+	}
+	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(ovhPF(rules))), Warn, "tcp/22 (seq 0)")
+	// A pending deny does not: it may block nothing yet.
+	rules = []facts.ProviderRule{
+		{Order: 0, Direction: "in", Action: "deny", Protocol: "tcp", DstPorts: port(22), Pending: true},
+		{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Pending: true},
+	}
+	f := pfwFacts(ovhPF(rules))
+	wantLevel(t, runOne(t, checkPFWSSH, f), Warn, "the default")
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Fail, "no catch-all deny")
+}
+
+func TestPFWUnparsableSourceFailsClosed(t *testing.T) {
+	stubTailnet(t, false, true)
+	for _, src := range []string{"0.0.0.0", "garbage", "203.0.113.7"} {
+		rules := []facts.ProviderRule{
+			{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", Sources: []string{src}, DstPorts: port(22)},
+		}
+		wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(hetznerPF(rules))), Warn, "tcp/22")
+	}
 }
 
 func TestPFWOVHWorkingRuleSet(t *testing.T) {
@@ -204,9 +273,11 @@ func TestPFWOVHMissingReplies(t *testing.T) {
 			t.Errorf("message %q lacks %q", r.Message, want)
 		}
 	}
-	// A pending rule is not in force.
+	// A pending permit counts as in force.
 	rules = append(rules, facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53), Pending: true})
-	wantLevel(t, runOne(t, checkPFWReturnTraffic, pfwFacts(ovhPF(rules))), Warn, "DNS replies")
+	if r := runOne(t, checkPFWReturnTraffic, pfwFacts(ovhPF(rules))); strings.Contains(r.Message, "DNS replies") {
+		t.Errorf("pending DNS permit not counted: %s", r.Message)
+	}
 }
 
 func TestPFWAttachedStates(t *testing.T) {
@@ -269,9 +340,9 @@ func TestPFWHetzner(t *testing.T) {
 	wide[0].Sources = []string{"198.51.0.0/16"}
 	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(hetznerPF(wide))), Pass, "")
 
-	// Rules of a pending firewall are not in force.
+	// Permits of a pending firewall next to an applied one count.
 	pend := hetznerPF([]facts.ProviderRule{{Order: 0, Direction: "in", Action: "permit", Protocol: "tcp", DstPorts: port(22), Pending: true}})
-	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(pend)), Pass, "")
+	wantLevel(t, runOne(t, checkPFWSSH, pfwFacts(pend)), Fail, "tcp/22")
 }
 
 func TestPFWWideAndStale(t *testing.T) {
@@ -314,6 +385,16 @@ func TestPFWSeveralAddresses(t *testing.T) {
 	rs := checkPFWAttached(Input{Facts: pfwFacts(pf)})
 	if len(rs) != 2 || rs[0].Level != Pass || rs[1].Level != Unknown || rs[1].Subject != "address:198.51.100.20" {
 		t.Errorf("results: %+v", rs)
+	}
+}
+
+func TestPFWDescribePending(t *testing.T) {
+	tg := ovhPF(nil).Targets[0]
+	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "permit", Protocol: "udp", Pending: true}); !strings.Contains(s, "counted as in force") {
+		t.Error(s)
+	}
+	if s := describeRule(tg, facts.ProviderRule{Order: 3, Direction: "in", Action: "deny", Protocol: "udp", Pending: true}); !strings.Contains(s, "not counted") {
+		t.Error(s)
 	}
 }
 

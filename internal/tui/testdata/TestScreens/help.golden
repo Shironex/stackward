@@ -1,6 +1,6 @@
  stackward test · host sha256:b819aad7f7091fd8             report expected.json 
  profile paas-panel (inferred) · sandbox unavailable · root yes                 
- 112 checks, 123 results  3 fail  5 warn  87 unknown  7 info  17 pass  4 skip   
+ 112 checks, 116 results  3 fail  5 warn  79 unknown  7 info  17 pass  5 skip   
 ────────────────────────────────────────────────────────────────────────────────
  KEYS                                                                           
                                                                                 

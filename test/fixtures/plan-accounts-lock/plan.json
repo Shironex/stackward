@@ -25,10 +25,10 @@
       "summary": {
         "fail": 1,
         "warn": 7,
-        "unknown": 83,
+        "unknown": 75,
         "info": 1,
         "pass": 16,
-        "skip": 9
+        "skip": 10
       }
     }
   },
