@@ -159,10 +159,6 @@ linters:
         text: "(argument-limit|function-result-limit|file-length-limit)"
       # Known over-limit functions, tracked in follow-up issues. Delete each
       # rule when its function is split.
-      # TODO(#64): split runAudit, runPlan and runProbe.
-      - path: internal/cli/(cli|plan|probe)\.go
-        linters:
-          - funlen
       # TODO(#65): reduce the cognitive complexity of these three.
       - path: internal/(checks/dkr(_exposure)?|facts/docker[a-z_]*)\.go
         linters:
