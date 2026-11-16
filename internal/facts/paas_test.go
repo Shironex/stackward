@@ -292,8 +292,8 @@ func TestPermJSON(t *testing.T) {
 
 func TestNameClassifiers(t *testing.T) {
 	for name, want := range map[string]bool{".env": true, ".env.production": true, ".env.example": false, ".envrc": false, "env": false, ".env.": false} {
-		if isEnvFileName(name) != want {
-			t.Errorf("isEnvFileName(%q) != %v", name, want)
+		if IsEnvFileName(name) != want {
+			t.Errorf("IsEnvFileName(%q) != %v", name, want)
 		}
 	}
 	for name, want := range map[string]string{"id_rsa": "ssh", "id_ed25519.pub": "", "id_ed25519-cert.pub": "", "tls.key": "key", "ca.pem": "pem", "known_hosts": ""} {

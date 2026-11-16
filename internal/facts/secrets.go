@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -194,7 +195,7 @@ func (secretsCollector) Collect(ctx context.Context, sys System, out *Facts) err
 		envRoots = append(envRoots, rootOf{DokployApplications, PlatformDokploy}, rootOf{DokployCompose, PlatformDokploy})
 	}
 	s.PaaSEnvFiles = scanTrees(sys, envRoots, envWalkDepth, func(_ string, e fs.DirEntry) (string, bool) {
-		return "env", e.Type().IsRegular() && isEnvFileName(e.Name())
+		return "env", e.Type().IsRegular() && IsEnvFileName(e.Name())
 	}, nil)
 
 	// SEC-002: Coolify's main .env (Dokploy passes its env to the service
@@ -425,9 +426,13 @@ func parentDir(p string) string {
 	return p[:i]
 }
 
-// isEnvFileName matches ".env" and ".env.<stage>", but not templates that
+// EnvTemplateNames are the .env.<name> suffixes of templates that hold no
+// values; IsEnvFileName skips them, and so does the paas-env-perms step.
+var EnvTemplateNames = []string{"example", "sample", "template", "dist", "defaults"}
+
+// IsEnvFileName matches ".env" and ".env.<stage>", but not templates that
 // hold no values (.env.example, .env.sample, .env.template, .env.dist).
-func isEnvFileName(name string) bool {
+func IsEnvFileName(name string) bool {
 	if name == ".env" {
 		return true
 	}
@@ -435,11 +440,7 @@ func isEnvFileName(name string) bool {
 	if !ok || rest == "" {
 		return false
 	}
-	switch rest {
-	case "example", "sample", "template", "dist", "defaults":
-		return false
-	}
-	return true
+	return !slices.Contains(EnvTemplateNames, rest)
 }
 
 // privateKeyKind classifies a file name as a likely private key: OpenSSH
