@@ -211,10 +211,12 @@ func checkUnitValue(name, v string) error {
 
 // systemTrees may never hold an output directory: the unit makes its output
 // directories writable, and these hold the system, its configuration, home
-// directories, runtime sockets and state, mail and print spools, or kernel
+// directories, runtime sockets, locks and state (also by their /var
+// aliases), mail and print spools, or kernel
 // interfaces. Any /lib* directory counts too.
 var systemTrees = []string{
 	"/etc", "/usr", "/boot", "/root", "/home", "/bin", "/sbin", "/proc", "/sys", "/dev", "/run", "/var/spool",
+	"/var/run", "/var/lock", "/var/mail",
 }
 
 // sharedParents may not be an output directory themselves, only hold one:

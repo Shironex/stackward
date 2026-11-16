@@ -35,7 +35,8 @@ comment that names the file it belongs in.
 The unit makes both output directories writable, so neither may be a top
 level directory (`/var`, `/srv`) or `/var/lib` itself, nor lie in `/etc`,
 `/usr`, `/boot`, `/root`, `/home`, `/bin`, `/sbin`, any `/lib*`, `/proc`,
-`/sys`, `/dev`, `/run` or `/var/spool`.
+`/sys`, `/dev`, `/run`, `/var/run`, `/var/lock`, `/var/mail` or
+`/var/spool`.
 
 Audit flags after `--` are added to the scheduled audit:
 
