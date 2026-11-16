@@ -389,13 +389,23 @@ review says otherwise:
 7. OVH disabled with rules (attack-only mode) is `warn` in PFW-001, so the
    choice stays visible in every report.
 8. Interface addresses plus `--provider-ip` for NAT.
-9. `--dump-facts` masks the last octet of the matched address. The
-   interface addresses in `listeners.addresses` are not masked yet; a
-   dump wide decision is left to a later change.
+9. `--dump-facts` masks the last octet of the matched address and of every
+   IPv4 address in a reason, and zeroes the host bits of rule networks past
+   /24 (IPv6: /64) while keeping their prefix length. The interface
+   addresses in `listeners.addresses` are not masked yet; a dump wide
+   decision is left to a later change.
 10. OVH (when its client lands): one request per rule, at most 20, and
     only for an address that has a firewall object.
 11. The facts shape stays provider neutral; no change.
 12. Not answered here; the release is the maintainer's call.
+
+After the gate review: without `--provider`, only PFW-001 reports, with one
+`skip` row saying the module was not requested and how to enable it (the
+other PFW checks leave no row, through `checks.Check.Absent`), instead of
+eight `unknown` rows. Pending permits count as in force and pending denies
+do not, rather than every pending rule being ignored. Every "from anywhere"
+question is also asked for each source port a source-port-only permit names,
+because a stateless filter cannot tell a crafted packet from a reply.
 
 Two details differ from the table above: a firewall that is not in force
 makes PFW-002 to PFW-005 and PFW-007 `skip` with a pointer to PFW-001
