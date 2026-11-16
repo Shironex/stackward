@@ -217,7 +217,7 @@
 | [CS-006](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-006.md) | The CrowdSec local API is not on a wildcard address | `host` | not inspected: the crowdsec collector did not run |
 | [CS-007](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-007.md) | The firewall bouncer also protects Docker published ports | `host` | not inspected: the crowdsec collector did not run |
 | [CS-008](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-008.md) | The proxy bouncer refreshes decisions often | `host` | not inspected: the crowdsec collector did not run |
-| [CS-010](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-010.md) | Public SSH has brute force protection on the right port | `host` | SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo) |
+| [CS-010](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-010.md) | Public SSH has brute force protection on the right port | `host` | SSH is public; whether fail2ban or CrowdSec protects it could not be read: the CrowdSec facts are missing; the fail2ban facts are missing |
 | [CS-011](https://github.com/Shironex/stackward/blob/main/docs/checks/CS-011.md) | fail2ban ignores the tailnet range when Tailscale is used | `host` | not inspected: the fail2ban collector did not run |
 
 **UPD: Updates**

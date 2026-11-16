@@ -570,7 +570,7 @@ func checkSSHBruteForce(in Input) []Result {
 		return One(Pass, "SSH is public and the fail2ban sshd jail covers its port", ev)
 	}
 	if p.level == triUnknown {
-		return One(Unknown, "SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo)", ev)
+		return One(Unknown, "SSH is public; whether fail2ban or CrowdSec protects it could not be read: "+sshGuardGaps(f), ev)
 	}
 	return One(Fail, "SSH is public and neither a fail2ban sshd jail nor the CrowdSec sshd collection protects it", ev)
 }
@@ -617,6 +617,51 @@ func sshProtection(f *facts.Facts, ports []int) sshGuard {
 	}
 	g.level = triNo
 	return g
+}
+
+// sshGuardGaps says what kept sshProtection from an answer, in words a
+// user can act on. The sudo hint is added only when the audit did not run
+// as root: as root it would send the reader in circles.
+func sshGuardGaps(f *facts.Facts) string {
+	var gaps []string
+	switch c := f.CrowdSec; {
+	case c == nil:
+		gaps = append(gaps, "the CrowdSec facts are missing")
+	case c.Installed && !c.HubRead:
+		gaps = append(gaps, "CrowdSec is installed but its collections (cscli) could not be read")
+	}
+	f2b := f.Fail2ban
+	if _, known := f2b.JailActive("sshd"); !known {
+		gaps = append(gaps, fail2banGap(f2b, f.IsRoot()))
+	}
+	if len(gaps) == 0 {
+		gaps = append(gaps, "the fail2ban and CrowdSec facts do not say")
+	}
+	msg := strings.Join(gaps, "; ")
+	if !f.IsRoot() {
+		msg += " (run with sudo)"
+	}
+	return msg
+}
+
+// fail2banGap says why whether the fail2ban sshd jail is active is
+// unknown.
+func fail2banGap(f2b *facts.Fail2ban, root bool) string {
+	if f2b == nil {
+		return "the fail2ban facts are missing"
+	}
+	if _, known := f2b.Running(); !known {
+		status := "fail2ban-client status did not answer"
+		if !root {
+			status = "fail2ban-client status needs root"
+		}
+		unit := "systemd does not list fail2ban.service"
+		if f2b.Unit == nil {
+			unit = "systemd could not be asked about fail2ban.service"
+		}
+		return "fail2ban looks installed but whether it runs could not be read (" + status + ", and " + unit + ")"
+	}
+	return "fail2ban runs but its jail configuration (/etc/fail2ban/jail.conf, jail.local, jail.d) could not be read"
 }
 
 func triOf(v, known bool) tri {

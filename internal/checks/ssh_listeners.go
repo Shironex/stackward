@@ -282,7 +282,7 @@ func checkSSHReachableAuth(in Input) []Result {
 	case triYes:
 		return One(Pass, fmt.Sprintf("sshd is reachable from anywhere on %s, takes keys only and brute force is banned", where), ev)
 	case triUnknown:
-		return One(Unknown, fmt.Sprintf("sshd is reachable from anywhere on %s and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read (run with sudo)", where), ev)
+		return One(Unknown, fmt.Sprintf("sshd is reachable from anywhere on %s and takes keys only; whether fail2ban or CrowdSec bans brute force could not be read: %s", where, sshGuardGaps(f)), ev)
 	}
 	return One(Warn, fmt.Sprintf("sshd is reachable from anywhere on %s with keys only and no fail2ban jail or CrowdSec sshd collection bans brute force", where), ev)
 }

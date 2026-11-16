@@ -1346,7 +1346,7 @@
       "level": "unknown",
       "severity": "moderate",
       "subject": "host",
-      "message": "SSH is public; whether fail2ban or CrowdSec protects it could not be fully read (run with sudo)",
+      "message": "SSH is public; whether fail2ban or CrowdSec protects it could not be read: the CrowdSec facts are missing; the fail2ban facts are missing",
       "evidence": {
         "crowdsec_sshd": false,
         "fail2ban_sshd": "unknown",
