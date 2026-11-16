@@ -1,0 +1,12 @@
+stackward diff: 3 drift items, 0 added, 0 removed, 0 changed, 0 new findings
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+DRIFT
+  AUTHORIZED KEY  SSH-014  user:alice
+      new authorized key for alice: SHA256:YW5vdGhlciB0ZXN0IGZpbmdlcnByaW50LCBub3QgYSBr
+  AUTHORIZED KEY  SSH-014  user:bob
+      bob has 2 authorized keys, was 1 (a report has no fingerprints to compare)
+  AUTHORIZED KEY  SSH-014  user:deploy
+      new authorized key for deploy: SHA256:Zm9yIGEgZ29sZGVuIHRlc3Qgb25seSwgbm90IGEga2V5

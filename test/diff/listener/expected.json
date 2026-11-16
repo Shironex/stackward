@@ -1,0 +1,82 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 2,
+    "coverage_lost": 0,
+    "added": 1,
+    "removed": 0,
+    "changed": 1,
+    "new_findings": 2
+  },
+  "drift": [
+    {
+      "kind": "listener",
+      "check": "NET-004",
+      "subject": "port:tcp/5432",
+      "value": "tcp/5432",
+      "detail": "now listens on wildcard addresses (postgres), was loopback"
+    },
+    {
+      "kind": "listener",
+      "check": "NET-004",
+      "subject": "port:tcp/8080",
+      "value": "tcp/8080",
+      "detail": "new listener on wildcard addresses (node)"
+    }
+  ],
+  "coverage_lost": [],
+  "changes": [
+    {
+      "kind": "changed",
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "severity": "moderate",
+      "subject": "port:tcp/5432",
+      "what": [
+        "level"
+      ],
+      "old": {
+        "level": "info",
+        "message": "tcp/5432 (postgres) listens on loopback addresses"
+      },
+      "new": {
+        "level": "warn",
+        "message": "tcp/5432 (postgres) is open from anywhere"
+      },
+      "new_finding": true
+    },
+    {
+      "kind": "added",
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "severity": "moderate",
+      "subject": "port:tcp/8080",
+      "new": {
+        "level": "warn",
+        "message": "tcp/8080 (node) is open from anywhere"
+      },
+      "new_finding": true
+    }
+  ]
+}

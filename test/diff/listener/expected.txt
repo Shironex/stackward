@@ -1,0 +1,18 @@
+stackward diff: 2 drift items, 1 added, 0 removed, 1 changed, 2 new findings
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+DRIFT
+  LISTENER  NET-004  port:tcp/5432
+      now listens on wildcard addresses (postgres), was loopback
+  LISTENER  NET-004  port:tcp/8080
+      new listener on wildcard addresses (node)
+
+ADDED
+  WARN  NET-004  port:tcp/8080  [new finding]
+      new: tcp/8080 (node) is open from anywhere
+
+CHANGED
+  WARN  NET-004  port:tcp/5432  [new finding]
+      info to warn: tcp/5432 (postgres) is open from anywhere

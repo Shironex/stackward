@@ -1,0 +1,55 @@
+{
+  "schema": "stackward.diff.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "old": {
+    "generated_at": "2026-10-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "new": {
+    "generated_at": "2026-11-01T12:00:00Z",
+    "tool_version": "test",
+    "host": "sha256:0123456789abcdef",
+    "profile": "public-web",
+    "root": true
+  },
+  "same_host": true,
+  "summary": {
+    "drift": 3,
+    "coverage_lost": 0,
+    "added": 0,
+    "removed": 0,
+    "changed": 0,
+    "new_findings": 0
+  },
+  "drift": [
+    {
+      "kind": "authorized-key",
+      "check": "SSH-014",
+      "subject": "user:alice",
+      "value": "SHA256:YW5vdGhlciB0ZXN0IGZpbmdlcnByaW50LCBub3QgYSBr",
+      "detail": "new authorized key for alice"
+    },
+    {
+      "kind": "authorized-key",
+      "check": "SSH-014",
+      "subject": "user:bob",
+      "value": "",
+      "detail": "bob has 2 authorized keys, was 1 (a report has no fingerprints to compare)"
+    },
+    {
+      "kind": "authorized-key",
+      "check": "SSH-014",
+      "subject": "user:deploy",
+      "value": "SHA256:Zm9yIGEgZ29sZGVuIHRlc3Qgb25seSwgbm90IGEga2V5",
+      "detail": "new authorized key for deploy"
+    }
+  ],
+  "coverage_lost": [],
+  "changes": []
+}

@@ -1,0 +1,128 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 4,
+    "results": 4,
+    "checked": 4,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 2,
+    "unknown": 0,
+    "info": 2,
+    "pass": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/22",
+      "message": "tcp/22 (sshd) listens on wildcard addresses",
+      "fix": {
+        "hint": "see stackward explain NET-004"
+      },
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "sshd"
+        ],
+        "processes_visible": true
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/5432",
+      "message": "tcp/5432 (postgres) is open from anywhere",
+      "fix": {
+        "hint": "see stackward explain NET-004"
+      },
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "postgres"
+        ],
+        "processes_visible": true
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/8080",
+      "message": "tcp/8080 (node) is open from anywhere",
+      "fix": {
+        "hint": "see stackward explain NET-004"
+      },
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "processes": [
+          "node"
+        ],
+        "processes_visible": true
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/9000",
+      "message": "tcp/9000 (php-fpm) listens on loopback addresses",
+      "fix": {
+        "hint": "see stackward explain NET-004"
+      },
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "loopback",
+        "processes": [
+          "php-fpm"
+        ],
+        "processes_visible": true
+      }
+    }
+  ]
+}

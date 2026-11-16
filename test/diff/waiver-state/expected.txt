@@ -1,0 +1,20 @@
+stackward diff: 0 drift items, 0 added, 1 removed, 5 changed, 1 new finding
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+REMOVED
+  WARN (ACCEPTED)  USR-006  user:gone
+      no longer reported (was warn (accepted): login account gone has not logged in for 200 days)
+
+CHANGED
+  WARN (ACCEPTED)  USR-005  user:deploy
+      now accepted by a waiver until 2027-01-31, still warn: deploy is in the docker group
+  PASS  USR-006  user:legacy
+      warn to pass, fixed; no waiver matches it any more: login account legacy logged in recently
+  WARN (ACCEPTED)  USR-006  user:old
+      waiver renewed until 2027-03-31 (was 2026-12-31): login account old has not logged in for 150 days
+  PASS  NET-003  host
+      fail to pass, fixed: SSH is reachable only over the tailnet
+  FAIL  DKR-021  container:ci/runner  [new finding]
+      waiver expired after 2026-10-15, the finding counts again: runner is privileged

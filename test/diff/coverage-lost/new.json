@@ -1,0 +1,103 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 4,
+    "results": 4,
+    "checked": 4,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 1,
+    "unknown": 1,
+    "info": 0,
+    "pass": 1,
+    "skip": 1
+  },
+  "results": [
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "listeners not inspected: ss failed",
+      "fix": {
+        "hint": "see stackward explain NET-004"
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "user:deploy",
+      "message": "1 authorized keys, none weak",
+      "fix": {
+        "hint": "see stackward explain SSH-014"
+      },
+      "evidence": {
+        "keys": 1,
+        "weak": [],
+        "fingerprints": [
+          "SHA256:t7e3v4DmtoljcBouR0VN049G3GmJCSz1EC3Ht8oS5Yw"
+        ]
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "Docker is not installed",
+      "fix": {
+        "hint": "see stackward explain DKR-020"
+      }
+    },
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "warn",
+      "severity": "high",
+      "subject": "file:/etc/sudoers.d/deploy",
+      "message": "NOPASSWD sudo for deploy (line 1)",
+      "fix": {
+        "hint": "see stackward explain USR-004"
+      },
+      "evidence": {
+        "perm": "0440",
+        "uid": 0,
+        "gid": 0,
+        "nopasswd": [
+          "deploy (line 1)"
+        ]
+      }
+    }
+  ]
+}

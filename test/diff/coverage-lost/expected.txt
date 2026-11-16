@@ -1,0 +1,14 @@
+stackward diff: 0 drift items, 1 added, 0 removed, 0 changed, 0 new findings, 2 drift checks lost coverage
+Host:     sha256:0123456789abcdef
+Baseline: 2026-10-01T12:00:00Z (stackward test, profile public-web, root)
+New:      2026-11-01T12:00:00Z (stackward test, profile public-web, root)
+
+LOST COVERAGE
+  UNKNOWN  NET-004
+      NET-004 judged the baseline and is unknown now: a new listener would not show
+  SKIP  DKR-020
+      DKR-020 judged the baseline and is skip now: a new root container would not show
+
+ADDED
+  UNKNOWN  NET-004  host
+      new: listeners not inspected: ss failed

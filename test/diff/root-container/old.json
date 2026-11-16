@@ -1,0 +1,80 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-10-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 2,
+    "results": 2,
+    "checked": 2,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 1,
+    "unknown": 0,
+    "info": 0,
+    "pass": 1,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:web/app",
+      "message": "web/app runs as app",
+      "fix": {
+        "hint": "see stackward explain DKR-020"
+      },
+      "evidence": {
+        "container": "app",
+        "user": "app",
+        "root": false,
+        "privileged": false,
+        "public": false,
+        "entrypoint_drops_to": ""
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:cache/redis",
+      "message": "cache/redis runs as root",
+      "fix": {
+        "hint": "see stackward explain DKR-020"
+      },
+      "evidence": {
+        "container": "redis",
+        "user": "",
+        "root": true,
+        "privileged": false,
+        "public": false,
+        "entrypoint_drops_to": ""
+      }
+    }
+  ]
+}

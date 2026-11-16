@@ -1,0 +1,95 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:0123456789abcdef",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "6.8.0"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 3,
+    "results": 3,
+    "checked": 3,
+    "unknown": 0,
+    "skipped": 0,
+    "root": true,
+    "sandbox": {
+      "state": "landlock",
+      "abi": 4
+    },
+    "collectors": []
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "unknown": 0,
+    "info": 0,
+    "pass": 3,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "user:deploy",
+      "message": "2 authorized keys, none weak",
+      "fix": {
+        "hint": "see stackward explain SSH-014"
+      },
+      "evidence": {
+        "keys": 2,
+        "weak": [],
+        "fingerprints": [
+          "SHA256:Zm9yIGEgZ29sZGVuIHRlc3Qgb25seSwgbm90IGEga2V5",
+          "SHA256:t7e3v4DmtoljcBouR0VN049G3GmJCSz1EC3Ht8oS5Yw"
+        ]
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "user:alice",
+      "message": "1 authorized keys, none weak",
+      "fix": {
+        "hint": "see stackward explain SSH-014"
+      },
+      "evidence": {
+        "keys": 1,
+        "weak": [],
+        "fingerprints": [
+          "SHA256:YW5vdGhlciB0ZXN0IGZpbmdlcnByaW50LCBub3QgYSBr"
+        ]
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "user:bob",
+      "message": "2 authorized keys, none weak",
+      "fix": {
+        "hint": "see stackward explain SSH-014"
+      },
+      "evidence": {
+        "keys": 2,
+        "weak": []
+      }
+    }
+  ]
+}
