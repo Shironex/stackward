@@ -107,6 +107,25 @@ jobs:
           state="$(sudo jq -r '.sandbox.state' plan.json)"
           echo "plan sandbox state: $state"
           [ "$state" != "failed" ]
+      - name: apply refuses in CI without the throwaway VM flag
+        # This job does not own a throwaway VM for apply, so it never sets
+        # STACKWARD_CI_APPLY. The plan file does not exist, so even a
+        # broken gate could not change this runner: apply would stop at
+        # the plan instead, which fails this step too.
+        run: |
+          set -euo pipefail
+          bin=dist/stackward-linux-amd64
+          for run in "" sudo; do
+            set +e
+            $run "$bin" apply --all-safe --yes /nonexistent/plan.json 2> refusal.txt; code=$?
+            set -e
+            cat refusal.txt
+            echo "apply ${run:+with $run }exited $code"
+            [ "$code" -eq 2 ]
+            # sudo drops GITHUB_ACTIONS; apply finds it in the step's shell.
+            grep -q 'looks like a CI job' refusal.txt
+            grep -q 'STACKWARD_CI_APPLY=throwaway-vm' refusal.txt
+          done
       - name: collectors work under the sandbox
         # A command that needs to write (ufw status opens /run/ufw.lock)
         # dies under the Landlock sandbox and leaves its collector partial,
