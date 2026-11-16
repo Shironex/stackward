@@ -53,6 +53,9 @@ type applyEnv struct {
 	// liveFacts reads the facts the lockout guard proves from (sshd,
 	// accounts, Tailscale, listeners, firewall) from the host, read only.
 	liveFacts func(ctx context.Context) *facts.Facts
+	// ci finds a CI environment (apply.DetectCI); nil means none, which
+	// is what tests get, so go test in CI still runs the apply tests.
+	ci func() apply.CIEnv
 }
 
 func hostApplyEnv() applyEnv {
@@ -71,6 +74,7 @@ func hostApplyEnv() applyEnv {
 		exe:       os.Executable,
 		sleep:     time.Sleep,
 		liveFacts: guardFacts,
+		ci:        func() apply.CIEnv { return apply.DetectCI("/proc", os.Getpid(), os.Getenv) },
 	}
 }
 
@@ -168,6 +172,11 @@ func applySelected(env applyEnv, req applyRequest, stdout, stderr io.Writer) int
 	planFile, steps, allSafe, within, yes := req.planFile, req.steps, req.allSafe, req.within, req.yes
 	if err := apply.CheckConfirmWithin(within); err != nil {
 		return fail("%v", err)
+	}
+	if env.ci != nil {
+		if err := apply.CheckCI(env.ci()); err != nil {
+			return fail("%v; nothing was changed", err)
+		}
 	}
 	if err := needRootOnLinux(env, "apply"); err != nil {
 		return fail("%v; nothing was changed", err)
