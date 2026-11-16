@@ -124,6 +124,10 @@ func maskNetworks(ns []string) []string {
 			out[i] = unparsedNetwork
 			continue
 		}
+		if a := p.Addr(); a.Is4In6() && p.Bits() >= 96 {
+			// An IPv4-mapped prefix is masked as the IPv4 prefix it is.
+			p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
+		}
 		keep := 24
 		if p.Addr().Is6() {
 			keep = 64
