@@ -80,6 +80,19 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/apply, desc: "report must not import apply"}
             - {pkg: github.com/Shironex/stackward/internal/probe, desc: "report must not import probe"}
             - {pkg: github.com/Shironex/stackward/internal/audit, desc: "report must not import audit"}
+        diff-only-reads-reports:
+          # diff compares two report.v1 documents; it never collects,
+          # judges, plans, writes or touches the host.
+          files: ["**/internal/diff/**", "!$test"]
+          deny:
+            - {pkg: github.com/Shironex/stackward/internal/cli, desc: "diff must not import cli"}
+            - {pkg: github.com/Shironex/stackward/internal/tui, desc: "diff must not import tui"}
+            - {pkg: github.com/Shironex/stackward/internal/plan, desc: "diff must not import plan"}
+            - {pkg: github.com/Shironex/stackward/internal/apply, desc: "diff never writes"}
+            - {pkg: github.com/Shironex/stackward/internal/probe, desc: "diff must not import probe"}
+            - {pkg: github.com/Shironex/stackward/internal/audit, desc: "diff reads reports, it does not audit"}
+            - {pkg: github.com/Shironex/stackward/internal/sandbox, desc: "the CLI applies the sandbox"}
+            - {pkg: github.com/Shironex/stackward/internal/provider, desc: "diff never uses the network"}
         tui-only-reads-reports:
           # The TUI browses a report.Report and shows the step list the CLI
           # judged; it never collects, plans or writes.
@@ -120,7 +133,7 @@ linters:
             - {pkg: net/http, desc: "fleet only talks through ssh"}
         leaf-packages:
           # No imports from this module at all.
-          files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "**/internal/waiver/**", "!$test"]
+          files: ["**/internal/redact/**", "**/internal/catalog/**", "**/internal/sandbox/**", "**/internal/schemacheck/**", "**/internal/version/**", "**/internal/waiver/**", "**/schema/**", "!$test"]
           deny:
             - {pkg: github.com/Shironex/stackward/internal/, desc: "leaf packages import nothing else from this module"}
         os-exec-allowlist:
