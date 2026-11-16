@@ -2,6 +2,7 @@ package checks
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/Shironex/stackward/internal/facts"
@@ -174,12 +175,16 @@ func checkAuthorizedKeyTypes(in Input) []Result {
 			continue
 		}
 		n, weak, unread := 0, []string{}, []string{}
+		var fps []string
 		for _, kf := range u.KeyFiles {
 			if kf.Error != "" {
 				unread = append(unread, kf.Path+": "+kf.Error)
 			}
 			for _, k := range kf.Keys {
 				n++
+				if k.Fingerprint != "" {
+					fps = append(fps, k.Fingerprint)
+				}
 				switch {
 				case k.Type == "ssh-dss":
 					weak = append(weak, "ssh-dss")
@@ -189,6 +194,12 @@ func checkAuthorizedKeyTypes(in Input) []Result {
 			}
 		}
 		ev := map[string]any{"keys": n, "weak": weak}
+		if len(fps) > 0 {
+			// Fingerprints, never key material: stackward diff compares
+			// them to report a new authorized key.
+			sort.Strings(fps)
+			ev["fingerprints"] = fps
+		}
 		var warns []string
 		if len(weak) > 0 {
 			warns = append(warns, fmt.Sprintf("%s: %s", count(len(weak), "weak key"), strings.Join(weak, ", ")))
