@@ -1,0 +1,292 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:b819aad7f7091fd8",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "kernel": "6.8.0-49-generic"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "paas-panel",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 5,
+        "warn": 5,
+        "unknown": 79,
+        "info": 7,
+        "pass": 16,
+        "skip": 4
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 1,
+    "safe": 0,
+    "networking": 1,
+    "access_critical": 0,
+    "opt_in": 1,
+    "restarts": [],
+    "skipped": 13
+  },
+  "steps": [
+    {
+      "id": "paas-env-perms",
+      "title": "Keep platform .env files closed to group and others with a systemd timer (workaround)",
+      "fixes": [
+        "SEC-001",
+        "SEC-002"
+      ],
+      "risk": "networking",
+      "opt_in": true,
+      "restarts": [],
+      "touches": [
+        "file-mode:/data/coolify/applications",
+        "file-mode:/data/coolify/services",
+        "file-mode:/data/coolify/source/.env",
+        "service:stackward-paas-env-perms.service",
+        "service:stackward-paas-env-perms.timer"
+      ],
+      "edits": [
+        {
+          "path": "/etc/systemd/system/stackward-paas-env-perms.service",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n# Coolify and Dokploy write their .env files again on every deploy, often\n# readable by group and others. stackward undo --run RUN_ID removes all three\n# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n# three files, systemctl daemon-reload.\n# This service only removes group and other permission bits (chmod) of\n# those files. It never opens them, so it never reads, copies or logs a\n# value, and it never changes an owner.\n[Unit]\nDescription=stackward: close platform .env files to group and others (chmod only)\nDocumentation=https://github.com/Shironex/stackward/blob/main/docs/plan.md\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/find /data/coolify/applications -xdev -ignore_readdir_race -maxdepth 4 -type f ( -name .env -o -name .env.* ) ! -name .env.example ! -name .env.sample ! -name .env.template ! -name .env.dist ! -name .env.defaults ( -uid 0 -o -uid 9999 ) -perm /077 -exec chmod go-rwx {} +\nExecStart=/usr/bin/find /data/coolify/services -xdev -ignore_readdir_race -maxdepth 4 -type f ( -name .env -o -name .env.* ) ! -name .env.example ! -name .env.sample ! -name .env.template ! -name .env.dist ! -name .env.defaults ( -uid 0 -o -uid 9999 ) -perm /077 -exec chmod go-rwx {} +\nExecStart=/usr/bin/find /data/coolify/source/.env -maxdepth 0 -type f -uid 9999 -perm /027 -exec chmod g-w,o-rwx {} +\nNoNewPrivileges=yes\nPrivateNetwork=yes\nPrivateTmp=yes\nProtectHome=yes\nProtectSystem=strict\nReadWritePaths=-/data/coolify/applications -/data/coolify/services -/data/coolify/source/.env\nCapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_FOWNER\n",
+          "new_sha256": "06033a09cd75966027f4674edabc098984fefb86ff324fd0b5f5a692c3c2531c",
+          "diff": "--- /dev/null\n+++ b/etc/systemd/system/stackward-paas-env-perms.service\n@@ -0,0 +1,25 @@\n+# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n+# Coolify and Dokploy write their .env files again on every deploy, often\n+# readable by group and others. stackward undo --run RUN_ID removes all three\n+# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n+# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n+# three files, systemctl daemon-reload.\n+# This service only removes group and other permission bits (chmod) of\n+# those files. It never opens them, so it never reads, copies or logs a\n+# value, and it never changes an owner.\n+[Unit]\n+Description=stackward: close platform .env files to group and others (chmod only)\n+Documentation=https://github.com/Shironex/stackward/blob/main/docs/plan.md\n+\n+[Service]\n+Type=oneshot\n+ExecStart=/usr/bin/find /data/coolify/applications -xdev -ignore_readdir_race -maxdepth 4 -type f ( -name .env -o -name .env.* ) ! -name .env.example ! -name .env.sample ! -name .env.template ! -name .env.dist ! -name .env.defaults ( -uid 0 -o -uid 9999 ) -perm /077 -exec chmod go-rwx {} +\n+ExecStart=/usr/bin/find /data/coolify/services -xdev -ignore_readdir_race -maxdepth 4 -type f ( -name .env -o -name .env.* ) ! -name .env.example ! -name .env.sample ! -name .env.template ! -name .env.dist ! -name .env.defaults ( -uid 0 -o -uid 9999 ) -perm /077 -exec chmod go-rwx {} +\n+ExecStart=/usr/bin/find /data/coolify/source/.env -maxdepth 0 -type f -uid 9999 -perm /027 -exec chmod g-w,o-rwx {} +\n+NoNewPrivileges=yes\n+PrivateNetwork=yes\n+PrivateTmp=yes\n+ProtectHome=yes\n+ProtectSystem=strict\n+ReadWritePaths=-/data/coolify/applications -/data/coolify/services -/data/coolify/source/.env\n+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_FOWNER\n"
+        },
+        {
+          "path": "/etc/systemd/system/stackward-paas-env-perms.timer",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n# Coolify and Dokploy write their .env files again on every deploy, often\n# readable by group and others. stackward undo --run RUN_ID removes all three\n# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n# three files, systemctl daemon-reload.\n[Unit]\nDescription=stackward: close platform .env files every minute\nDocumentation=https://github.com/Shironex/stackward/blob/main/docs/plan.md\n\n[Timer]\nOnActiveSec=30s\nOnUnitActiveSec=1min\nAccuracySec=5s\n",
+          "new_sha256": "837e26733930ae3d6f19a1edd5f35baf5de981c492d98b5612cd2863fad87326",
+          "diff": "--- /dev/null\n+++ b/etc/systemd/system/stackward-paas-env-perms.timer\n@@ -0,0 +1,14 @@\n+# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n+# Coolify and Dokploy write their .env files again on every deploy, often\n+# readable by group and others. stackward undo --run RUN_ID removes all three\n+# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n+# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n+# three files, systemctl daemon-reload.\n+[Unit]\n+Description=stackward: close platform .env files every minute\n+Documentation=https://github.com/Shironex/stackward/blob/main/docs/plan.md\n+\n+[Timer]\n+OnActiveSec=30s\n+OnUnitActiveSec=1min\n+AccuracySec=5s\n"
+        },
+        {
+          "path": "/etc/systemd/system/timers.target.d/90-stackward-paas-env-perms.conf",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n# Coolify and Dokploy write their .env files again on every deploy, often\n# readable by group and others. stackward undo --run RUN_ID removes all three\n# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n# three files, systemctl daemon-reload.\n# Starts stackward-paas-env-perms.timer at boot.\n[Unit]\nWants=stackward-paas-env-perms.timer\n",
+          "new_sha256": "7356623f120e3af0638a68472c7fa81500abbda3d25f132e13c8140c07a55f6f",
+          "diff": "--- /dev/null\n+++ b/etc/systemd/system/timers.target.d/90-stackward-paas-env-perms.conf\n@@ -0,0 +1,9 @@\n+# Written by stackward: plan step paas-env-perms. A workaround, not a fix:\n+# Coolify and Dokploy write their .env files again on every deploy, often\n+# readable by group and others. stackward undo --run RUN_ID removes all three\n+# units (stackward-paas-env-perms.service, .timer and the timers.target.d\n+# drop-in); by hand: systemctl stop stackward-paas-env-perms.timer, remove the\n+# three files, systemctl daemon-reload.\n+# Starts stackward-paas-env-perms.timer at boot.\n+[Unit]\n+Wants=stackward-paas-env-perms.timer\n"
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "systemctl",
+            "daemon-reload"
+          ],
+          "why": "load the new units"
+        },
+        {
+          "args": [
+            "systemctl",
+            "start",
+            "stackward-paas-env-perms.service"
+          ],
+          "why": "close the open .env files once now (chmod only; a failure stops the run here)"
+        },
+        {
+          "args": [
+            "systemctl",
+            "start",
+            "stackward-paas-env-perms.timer"
+          ],
+          "why": "start the timer that repeats it every minute; the timers.target drop-in starts it at boot"
+        }
+      ],
+      "undo": {
+        "description": "Stop the timer, remove the service, the timer and the timers.target drop-in, and reload systemd. Files the timer already closed keep their modes; undo never opens them again.",
+        "commands": [
+          {
+            "args": [
+              "systemctl",
+              "stop",
+              "stackward-paas-env-perms.timer"
+            ],
+            "why": "stop the timer"
+          },
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/systemd/system/stackward-paas-env-perms.service",
+              "/etc/systemd/system/stackward-paas-env-perms.timer",
+              "/etc/systemd/system/timers.target.d/90-stackward-paas-env-perms.conf"
+            ],
+            "why": "remove the three unit files"
+          },
+          {
+            "args": [
+              "systemctl",
+              "daemon-reload"
+            ],
+            "why": "forget the removed units"
+          }
+        ]
+      },
+      "notes": [
+        "A workaround, not a fix: the platform writes its .env files again on every deploy. This installs stackward-paas-env-perms.service and .timer, which every minute and at boot remove the group and other permission bits of those files with chmod. It never reads, copies or logs their contents and never changes their owner. After a deploy a file can stay open for up to a minute.",
+        "Off by default: apply runs it only when you name it (--step paas-env-perms). Remove it with one command, stackward undo --run RUN_ID, which stops the timer and removes the three unit files.",
+        "Coolify: app and service .env files owned by root or by uid 9999 (the user Coolify's container runs as and its installer gives /data/coolify to) become owner only (chmod go-rwx); the owner keeps reading and writing them, and root reads any mode.",
+        "Coolify mounts /data/coolify/source/.env into its container, which reads it as uid 9999: the timer changes it only while uid 9999 owns it, and keeps the owner's and group's read bits (chmod g-w,o-rwx).",
+        "An app container that bind mounts its .env and reads it as another user than the file's owner loses access at its next start; apps that get their variables through compose (env_file, what both platforms generate) are not affected. Check your apps after the next deploy.",
+        "Left alone, because the platform does not write files as their owner: /data/coolify/applications/d4e5f6/.env.production (uid 1000). They stay reported; close them by hand once you know who reads them."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "unknown",
+      "reason": "LOG-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades",
+      "title": "Turn on unattended-upgrades with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-install",
+      "title": "Install unattended-upgrades and turn it on with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-031 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-reboot",
+      "title": "Let unattended-upgrades reboot at 04:00 (host time) when an update needs it",
+      "fixes": [
+        "SYS-002",
+        "SYS-003",
+        "UPD-004"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "unknown",
+      "reason": "the accounts were not audited"
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-002",
+        "SSH-003",
+        "SSH-004",
+        "SSH-005"
+      ],
+      "kind": "unknown",
+      "reason": "SSH-001 is unknown, SSH-002 is unknown, SSH-003 is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "unknown",
+      "reason": "USR-003 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "ufw-policy",
+      "title": "Turn UFW on with a default deny incoming policy",
+      "fixes": [
+        "NET-001"
+      ],
+      "kind": "passing",
+      "reason": "NET-001 already passes or does not apply"
+    },
+    {
+      "id": "ufw-docker",
+      "title": "Filter published container ports with UFW (ufw-docker rules)",
+      "fixes": [
+        "DKR-001",
+        "PAAS-002",
+        "PAAS-003"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "fail2ban-sshd",
+      "title": "Ban SSH brute force with a fail2ban sshd jail",
+      "fixes": [
+        "CS-010",
+        "SSH-011"
+      ],
+      "kind": "unknown",
+      "reason": "CS-010 is unknown; nothing to plan until the audit can inspect it"
+    }
+  ]
+}
