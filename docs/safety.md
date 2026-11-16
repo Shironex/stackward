@@ -178,7 +178,8 @@ details.
   hand edited plan cannot choose it.
 - **Pending restarts are finished first.** A step whose file was written
   but whose restart did not run or failed is marked in the journal, and the
-  next apply says so and runs the restart before anything else.
+  next apply says so and runs the restart before anything else. A step that
+  was undone or rolled back has nothing left to restart.
 - **No blind overwrites.** A file whose content no longer matches
   `old_sha256` (or that exists when the plan creates it) is not touched;
   plan again. Symlinks are never written through.
@@ -229,8 +230,9 @@ selected (or of the run you undo):
 | `usermod --unlock USER`, `usermod --shell SHELL USER` | lock-default-user | undo only: the password lock and the shell the audit saw |
 | `apt-config dump -c <staged file>` | unattended-upgrades, unattended-upgrades-install, unattended-upgrades-reboot | before the apt.conf.d drop-in is moved into place |
 | `systemctl enable apt-daily-upgrade.timer`, `systemctl start apt-daily-upgrade.timer` | unattended-upgrades, unattended-upgrades-install | only when the audit saw the timer disabled (start only when it was also stopped); undo: `systemctl stop`, `systemctl disable` |
-| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades` | unattended-upgrades-install (opt in) | when the step is not already applied; undo: the same with `purge -y` |
-| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban` | fail2ban-sshd (access-critical) when fail2ban is missing | before the configuration test; undo: the same with `purge -y` |
+| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update` | unattended-upgrades-install, fail2ban-sshd | first, only when the audit saw the package lists empty (a fresh cloud image) or older than 3 days; it refreshes the lists and upgrades nothing |
+| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades` | unattended-upgrades-install (opt in) | when the step is not already applied, before the drop-in is written; undo: the same with `purge -y`, skipped when dpkg has no record of the package |
+| `env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban` | fail2ban-sshd (access-critical) when fail2ban is missing | before the jail is written, so a failed install writes nothing; undo: the same with `purge -y`, skipped when dpkg has no record of the package |
 | `fail2ban-client -t` | fail2ban-sshd | after the jail is written, before fail2ban loads it |
 | `systemctl reload fail2ban` (`restart` right after an install) | fail2ban-sshd | after the configuration test; undo |
 | `iptables-restore --test --noflush <staged file>`, `ip6tables-restore --test --noflush <staged file>` | ufw-policy, ufw-docker | before a UFW rules file is moved into place; loads nothing |
