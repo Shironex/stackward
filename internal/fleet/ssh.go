@@ -26,8 +26,11 @@ var sshOptions = []string{
 	"-o", "ConnectTimeout=15",
 }
 
-// sshWaitDelay bounds how long ssh may linger after the context ends (a
-// variable so tests can shorten it).
+// sshWaitDelay bounds how long the pipes may stay open after ssh exits or
+// the context ends. A ControlMaster with ControlPersist started by this
+// ssh call can keep standard error open after ssh itself has exited; the
+// output is complete by then, so the pipes are closed after this delay and
+// the exit code counts (a variable so tests can shorten it).
 var sshWaitDelay = 5 * time.Second
 
 // runSSH runs `ssh <options> -- host remote` with the user's own ssh client,
@@ -45,6 +48,9 @@ func runSSH(ctx context.Context, host, remote string, stdin io.Reader, stdout, s
 	err := cmd.Run()
 	if ctx.Err() != nil {
 		return -1, ctx.Err()
+	}
+	if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil {
+		return cmd.ProcessState.ExitCode(), nil
 	}
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {

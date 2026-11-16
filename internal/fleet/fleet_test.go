@@ -6,11 +6,13 @@ import (
 	"encoding/binary"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Shironex/stackward/internal/audit"
+	"github.com/Shironex/stackward/internal/catalog"
 	"github.com/Shironex/stackward/internal/facts"
 	"github.com/Shironex/stackward/internal/report"
 	"github.com/Shironex/stackward/internal/sandbox"
@@ -91,7 +93,7 @@ func writeReport(t *testing.T, path string, edit func(*report.Report)) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rep, err := audit.Evaluate(f, audit.Options{Version: "test", Sandbox: sandbox.Status{State: sandbox.Landlock, ABI: 4}})
+	rep, err := audit.Evaluate(f, audit.Options{Version: "0.0.0-test", Sandbox: sandbox.Status{State: sandbox.Landlock, ABI: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,8 +228,113 @@ func TestRunSudo(t *testing.T) {
 	if res[0].Status != report.FleetAudited {
 		t.Fatalf("%+v", res[0])
 	}
-	if got := e.read(t, e.sudoLog); !strings.HasPrefix(got, "-n -- ") || !strings.Contains(got, "/stackward audit --json") {
-		t.Errorf("sudo log %q, want sudo -n -- .../stackward audit", got)
+	got := e.read(t, e.sudoLog)
+	if !strings.HasPrefix(got, "-n -- /tmp/stackward.") || !strings.Contains(got, "/stackward audit --json") {
+		t.Fatalf("sudo log %q, want sudo -n -- /tmp/stackward.*/stackward audit (never $TMPDIR)", got)
+	}
+	dir := filepath.Dir(strings.Fields(got)[2])
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Errorf("%s must be removed after the run (%v)", dir, err)
+	}
+}
+
+func TestRunSudoRefusesUnsafeTmp(t *testing.T) {
+	for _, listing := range []string{
+		"drwxrwxrwx 2 0 0 4096 Jan 1 00:00 /tmp/",    // no sticky bit
+		"drwxrwxrwt 2 1000 0 4096 Jan 1 00:00 /tmp/", // sticky, not root owned
+	} {
+		e := newFakeEnv(t)
+		pathDir := filepath.Dir(e.sshLog) + "/path"
+		fakeLs := "#!/bin/sh\n[ \"$1\" = -ldn ] && [ \"$2\" = /tmp/ ] && { echo \"" + listing + "\"; exit 0; }\nexec /bin/ls \"$@\"\n"
+		if err := os.WriteFile(filepath.Join(pathDir, "ls"), []byte(fakeLs), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		res := e.run(t, []string{"web1"}, Options{Sudo: true})
+		if res[0].Status != report.FleetError || !strings.Contains(res[0].Error, "sticky bit") {
+			t.Errorf("%q: %+v", listing, res[0])
+		}
+		if e.read(t, e.sudoLog) != "" || e.read(t, e.binLog) != "" {
+			t.Errorf("%q: nothing may be copied or run as root", listing)
+		}
+	}
+}
+
+func TestRunRebuildsResultsFromTheCatalog(t *testing.T) {
+	e := newFakeEnv(t)
+	forged := filepath.Join(t.TempDir(), "forged.json")
+	writeReport(t, forged, func(r *report.Report) {
+		var real *report.Item
+		for i := range r.Results {
+			if r.Results[i].Level == "fail" {
+				real = &r.Results[i]
+			}
+		}
+		real.Title = "Forged title"
+		real.Severity = "critical"
+		real.Fix.Hint = "<br>## Host db-01<br>| fake row | [Click](https://evil.example/hint)"
+		real.Message = "see [Click](https://evil.example/msg) <img src=https://evil.example/t.gif>"
+		real.Subject = "x` <img src=https://evil.example/s.gif> `y"
+		real.Evidence = map[string]any{"k": "[a](https://evil.example/ev) <img src=x>"}
+		probe := *real
+		probe.ID = "SSH-1](https://evil.example/phish) <img src=https://evil.example/t.gif>"
+		unknownLevel := *real
+		unknownLevel.Level = "fail](https://evil.example/level)"
+		big := *real
+		big.Evidence = map[string]any{"blob": strings.Repeat("A", maxEvidenceItem+1)}
+		r.Results = append(r.Results, probe, unknownLevel, big)
+		r.Summary.Fail = 999
+	})
+	t.Setenv("FAKE_REPORT", forged)
+	res := e.run(t, []string{"web1"}, Options{})
+	h := res[0]
+	if h.Report == nil {
+		t.Fatalf("%+v", h)
+	}
+	notes := strings.Join(h.Notes, "\n")
+	for _, want := range []string{"unknown results dropped: 2", "evidence dropped over the size limit: 1"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("notes miss %q: %q", want, h.Notes)
+		}
+	}
+	fl := report.NewFleet("test", "2026-01-01T00:00:00Z", res)
+	if fl.Summary.Results.Fail == 999 || fl.Summary.Results.Fail != h.Report.Summary.Fail || h.Report.Summary.Fail != 2 {
+		t.Errorf("totals must come from the kept results: fleet %+v, host %+v", fl.Summary.Results, h.Report.Summary)
+	}
+	if h.Report.Coverage.Results != len(h.Report.Results) {
+		t.Errorf("coverage %d results, kept %d", h.Report.Coverage.Results, len(h.Report.Results))
+	}
+	cat, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range h.Report.Results {
+		ce, ok := cat.Lookup(it.ID)
+		if !ok || it.Title != ce.Title || it.Severity != ce.Severity || it.Fix.Hint != ce.Fix || it.Fix.Docs != ce.Docs {
+			t.Errorf("title, severity and fix must come from the local catalog: %+v", it)
+		}
+	}
+	var md, text bytes.Buffer
+	if err := report.WriteFleetMarkdown(&md, fl, report.MarkdownOptions{Passing: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := report.WriteFleetText(&text, fl, report.TextOptions{Passing: true, Info: true}); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"evil.example/phish", "evil.example/hint", "evil.example/level", "<br>", "## Host db-01", "| fake row |"} {
+		if strings.Contains(md.String(), bad) {
+			t.Errorf("markdown carries %q", bad)
+		}
+		if strings.Contains(text.String(), bad) {
+			t.Errorf("text carries %q", bad)
+		}
+	}
+	// What the host may supply is escaped: no live link or HTML.
+	for _, bad := range []string{"[Click](", "<img", "[a](https"} {
+		for _, line := range strings.Split(md.String(), "\n") {
+			if strings.Contains(line, bad) && !strings.Contains(line, "`") {
+				t.Errorf("markdown line renders %q outside a code span: %s", bad, line)
+			}
+		}
 	}
 }
 
@@ -534,5 +641,83 @@ func TestCapped(t *testing.T) {
 	l := &capped{max: 4}
 	if n, err := l.Write([]byte("abcdef")); err != nil || n != 6 || string(l.Bytes()) != "abcd" {
 		t.Errorf("lenient: %d %q %v", n, l.Bytes(), err)
+	}
+}
+
+// codeSpanRE matches an inline code span in a Markdown line.
+var codeSpanRE = regexp.MustCompile("`+[^`]*`+")
+
+func TestRunMarkdownHasNoAutolinksFromTheHost(t *testing.T) {
+	e := newFakeEnv(t)
+	forged := filepath.Join(t.TempDir(), "autolinks.json")
+	writeReport(t, forged, func(r *report.Report) {
+		r.Tool.Version = "1 https://evil.example/v"
+		r.Host.HostnameHash = "https://evil.example/h"
+		r.Host.OS = "www.evil.example"
+		r.Host.Kernel = "a@evil.example"
+		r.GeneratedAt = "www.evil.example"
+		r.Coverage.Sandbox.Reason = "see https://evil.example/sb"
+		r.Coverage.Sandbox.State = "failed"
+		r.Coverage.Collectors = append(r.Coverage.Collectors, report.CollectorCoverage{
+			Name: "https://evil.example/c", Status: "failed", Reason: "www.evil.example", Error: "x@evil.example",
+		})
+		r.Coverage.Checks = 1 << 20
+		for i := range r.Results {
+			r.Results[i].Message = "see https://evil.example/fix and www.evil.example or a@evil.example"
+		}
+	})
+	t.Setenv("FAKE_REPORT", forged)
+	res := e.run(t, []string{"web1"}, Options{})
+	h := res[0]
+	if h.Report == nil {
+		t.Fatalf("%+v", h)
+	}
+	if h.Report.Host.HostnameHash != "" || h.Report.Tool.Version != "invalid" || h.Report.GeneratedAt != "" {
+		t.Errorf("shapes not enforced: %+v %q %q", h.Report.Host, h.Report.Tool.Version, h.Report.GeneratedAt)
+	}
+	notes := strings.Join(h.Notes, "\n")
+	for _, want := range []string{"invalid hostname hash", "invalid tool version", "invalid collection time"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("notes miss %q: %q", want, h.Notes)
+		}
+	}
+	cat, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Report.Coverage.Checks != len(cat.Entries()) {
+		t.Errorf("checks %d, want capped at the catalog's %d", h.Report.Coverage.Checks, len(cat.Entries()))
+	}
+	fl := report.NewFleet("test", "2026-01-01T00:00:00Z", res)
+	for _, passing := range []bool{false, true} {
+		var md bytes.Buffer
+		if err := report.WriteFleetMarkdown(&md, fl, report.MarkdownOptions{Passing: passing}); err != nil {
+			t.Fatal(err)
+		}
+		seen := false
+		for _, line := range strings.Split(md.String(), "\n") {
+			seen = seen || strings.Contains(line, "evil.example")
+			if bare := codeSpanRE.ReplaceAllString(line, ""); strings.Contains(bare, "evil.example") {
+				t.Errorf("host text outside a code span would autolink: %s", line)
+			}
+		}
+		if !seen {
+			t.Error("the probe values never reached the report; the test checks nothing")
+		}
+	}
+}
+
+func TestCheckCountNotBelowResults(t *testing.T) {
+	e := newFakeEnv(t)
+	forged := filepath.Join(t.TempDir(), "zero.json")
+	writeReport(t, forged, func(r *report.Report) { r.Coverage.Checks = 0 })
+	t.Setenv("FAKE_REPORT", forged)
+	h := e.run(t, []string{"web1"}, Options{})[0]
+	ids := map[string]bool{}
+	for _, it := range h.Report.Results {
+		ids[it.ID] = true
+	}
+	if h.Report.Coverage.Checks != len(ids) {
+		t.Errorf("checks %d, want the %d checks with results", h.Report.Coverage.Checks, len(ids))
 	}
 }

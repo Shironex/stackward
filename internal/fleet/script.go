@@ -13,6 +13,7 @@ import (
 
 // Exit codes of the remote script itself, beside the audit's own 0 and 2.
 const (
+	exitUnsafeTmp   = 96 // --ssh-sudo, and /tmp is not root owned and sticky
 	exitSetup       = 97 // the temporary directory or the upload failed
 	exitInterrupted = 98 // the script got HUP, INT, TERM or PIPE
 )
@@ -66,6 +67,11 @@ func (r RemoteArgs) args() ([]string, error) {
 // by any login shell (sh, bash, zsh, fish, csh).
 //
 //   - umask 077 and mktemp -d: a fresh directory only this user can enter;
+//     under $TMPDIR (default /tmp) for a run as the login user, but with
+//     sudo always under /tmp, and only when /tmp is owned by root and has the
+//     sticky bit. Otherwise another user who can write the parent could
+//     rename the directory away and plant their own binary, which root would
+//     then run. ls -ldn /tmp/ follows a /tmp symlink;
 //   - the EXIT trap removes it however the script ends, and the signal trap
 //     turns HUP, INT, TERM and PIPE (the connection went away) into an exit
 //     so the EXIT trap runs;
@@ -73,18 +79,23 @@ func (r RemoteArgs) args() ([]string, error) {
 //   - the audit is not exec'd, so the trap still runs after it.
 func remoteScript(sudo bool, args []string) string {
 	run := `"$d/stackward" ` + strings.Join(args, " ")
+	steps := []string{"umask 077"}
 	if sudo {
 		run = "sudo -n -- " + run
+		steps = append(steps,
+			`set -- $(ls -ldn /tmp/)`,
+			`case "$1:$3" in d????????[tT]*:0) ;; *) exit 96 ;; esac`,
+			`d=$(mktemp -d /tmp/stackward.XXXXXXXXXX) || exit 97`)
+	} else {
+		steps = append(steps, `d=$(mktemp -d "${TMPDIR:-/tmp}/stackward.XXXXXXXXXX") || exit 97`)
 	}
-	return strings.Join([]string{
-		"umask 077",
-		`d=$(mktemp -d "${TMPDIR:-/tmp}/stackward.XXXXXXXXXX") || exit 97`,
+	return strings.Join(append(steps,
 		`trap "rm -rf \"$d\"" EXIT`,
 		`trap "exit 98" HUP INT TERM PIPE`,
-		`echo "` + tmpMarker + `$d" >&2`,
+		`echo "`+tmpMarker+`$d" >&2`,
 		`{ chmod 700 "$d" && cat > "$d/stackward" && chmod 700 "$d/stackward"; } || exit 97`,
 		run,
-	}, "; ")
+	), "; ")
 }
 
 // remoteCommand wraps a script for the remote login shell.
