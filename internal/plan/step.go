@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shironex/stackward/internal/checks"
 	"github.com/Shironex/stackward/internal/facts"
+	"github.com/Shironex/stackward/internal/profile"
 )
 
 // Risk is how much can go wrong when a step runs.
@@ -127,6 +128,10 @@ type Input struct {
 	// valid when unknown (not over SSH, or a saved facts file). A step
 	// that bans clients (fail2ban-sshd) never bans it.
 	Source netip.Addr
+	// Profile is the ingress profile of the report the plan answers
+	// (inferred, or --profile). The firewall steps keep open only what
+	// it says must stay public; profile.Unknown keeps them from guessing.
+	Profile profile.Name
 }
 
 // Level returns the worst level among the results of check id (fail, warn,
