@@ -270,6 +270,17 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return report.ExitError
 	}
+	if err := writeAuditOutputs(w, metricFile, rep, af, textOpts); err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
+		return report.ExitError
+	}
+	return rep.ExitCode(failOn)
+}
+
+// writeAuditOutputs writes the report in the chosen format to w and, when
+// --textfile was given, the metric to metricFile.
+func writeAuditOutputs(w io.Writer, metricFile *os.File, rep *report.Report, af auditFlags, textOpts report.TextOptions) error {
+	var err error
 	switch af.format {
 	case "json":
 		err = report.WriteJSON(w, rep)
@@ -279,16 +290,14 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		err = report.WriteText(w, rep, textOpts)
 	}
 	if err != nil {
-		fmt.Fprintf(stderr, "stackward audit: writing report: %v\n", err)
-		return report.ExitError
+		return fmt.Errorf("writing report: %w", err)
 	}
 	if metricFile != nil {
 		if err := report.WriteTextfile(metricFile, rep); err != nil {
-			fmt.Fprintf(stderr, "stackward audit: writing --textfile: %v\n", err)
-			return report.ExitError
+			return fmt.Errorf("writing --textfile: %w", err)
 		}
 	}
-	return rep.ExitCode(failOn)
+	return nil
 }
 
 // hostSystem returns the System the collectors read the live host
