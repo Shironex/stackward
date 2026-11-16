@@ -1,0 +1,247 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:88fcffd365f6d89e",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "kernel": "6.8.0-48-generic"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "tailnet-only",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 3,
+        "warn": 6,
+        "unknown": 49,
+        "info": 5,
+        "pass": 39,
+        "skip": 8
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 1,
+    "safe": 0,
+    "networking": 0,
+    "access_critical": 1,
+    "opt_in": 0,
+    "restarts": [],
+    "skipped": 11
+  },
+  "steps": [
+    {
+      "id": "ufw-policy",
+      "title": "Turn UFW on with a default deny incoming policy",
+      "fixes": [
+        "NET-001"
+      ],
+      "risk": "access-critical",
+      "opt_in": false,
+      "restarts": [],
+      "touches": [
+        "firewall:ufw",
+        "file:/etc/ufw/user.rules",
+        "file:/etc/ufw/user6.rules",
+        "file:/etc/ufw/ufw.conf"
+      ],
+      "edits": [
+        {
+          "path": "/etc/ufw/user.rules",
+          "action": "replace",
+          "old": "*filter\n:ufw-user-input - [0:0]\n:ufw-user-output - [0:0]\n:ufw-user-forward - [0:0]\n:ufw-user-limit - [0:0]\n:ufw-user-limit-accept - [0:0]\n### RULES ###\n-A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw-user-limit -j REJECT\n-A ufw-user-limit-accept -j ACCEPT\nCOMMIT\n",
+          "new": "*filter\n:ufw-user-input - [0:0]\n:ufw-user-output - [0:0]\n:ufw-user-forward - [0:0]\n:ufw-before-logging-input - [0:0]\n:ufw-before-logging-output - [0:0]\n:ufw-before-logging-forward - [0:0]\n:ufw-user-logging-input - [0:0]\n:ufw-user-logging-output - [0:0]\n:ufw-user-logging-forward - [0:0]\n:ufw-after-logging-input - [0:0]\n:ufw-after-logging-output - [0:0]\n:ufw-after-logging-forward - [0:0]\n:ufw-logging-deny - [0:0]\n:ufw-logging-allow - [0:0]\n:ufw-user-limit - [0:0]\n:ufw-user-limit-accept - [0:0]\n### RULES ###\n\n### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp --dport 22 -j ACCEPT\n\n### tuple ### allow tcp 2222 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp --dport 2222 -j ACCEPT\n\n### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n-A ufw-user-input -i tailscale0 -j ACCEPT\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw-user-limit -j REJECT\n-A ufw-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+          "old_sha256": "320f53e1ee90a7fd92f17b67f50b06b51cb20998cd52f01dbcb52e24160618bf",
+          "new_sha256": "0d8de9e51bc5c147a88eb951dd7773a6ce6a7ef1b9867575c20b66c7c7cc710d",
+          "diff": "--- a/etc/ufw/user.rules\n+++ b/etc/ufw/user.rules\n@@ -2,10 +2,43 @@\n :ufw-user-input - [0:0]\n :ufw-user-output - [0:0]\n :ufw-user-forward - [0:0]\n+:ufw-before-logging-input - [0:0]\n+:ufw-before-logging-output - [0:0]\n+:ufw-before-logging-forward - [0:0]\n+:ufw-user-logging-input - [0:0]\n+:ufw-user-logging-output - [0:0]\n+:ufw-user-logging-forward - [0:0]\n+:ufw-after-logging-input - [0:0]\n+:ufw-after-logging-output - [0:0]\n+:ufw-after-logging-forward - [0:0]\n+:ufw-logging-deny - [0:0]\n+:ufw-logging-allow - [0:0]\n :ufw-user-limit - [0:0]\n :ufw-user-limit-accept - [0:0]\n ### RULES ###\n+\n+### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n+-A ufw-user-input -p tcp --dport 22 -j ACCEPT\n+\n+### tuple ### allow tcp 2222 0.0.0.0/0 any 0.0.0.0/0 in\n+-A ufw-user-input -p tcp --dport 2222 -j ACCEPT\n+\n+### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n+-A ufw-user-input -i tailscale0 -j ACCEPT\n+\n+### END RULES ###\n+\n+### LOGGING ###\n+-A ufw-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-A ufw-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n+-A ufw-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-A ufw-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n+### END LOGGING ###\n+\n+### RATE LIMITING ###\n -A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n -A ufw-user-limit -j REJECT\n -A ufw-user-limit-accept -j ACCEPT\n+### END RATE LIMITING ###\n COMMIT\n",
+          "validate": [
+            "iptables-restore",
+            "--test",
+            "--noflush"
+          ]
+        },
+        {
+          "path": "/etc/ufw/user6.rules",
+          "action": "replace",
+          "old": "*filter\n:ufw6-user-input - [0:0]\n:ufw6-user-output - [0:0]\n:ufw6-user-forward - [0:0]\n### RULES ###\nCOMMIT\n",
+          "new": "*filter\n:ufw6-user-input - [0:0]\n:ufw6-user-output - [0:0]\n:ufw6-user-forward - [0:0]\n:ufw6-before-logging-input - [0:0]\n:ufw6-before-logging-output - [0:0]\n:ufw6-before-logging-forward - [0:0]\n:ufw6-user-logging-input - [0:0]\n:ufw6-user-logging-output - [0:0]\n:ufw6-user-logging-forward - [0:0]\n:ufw6-after-logging-input - [0:0]\n:ufw6-after-logging-output - [0:0]\n:ufw6-after-logging-forward - [0:0]\n:ufw6-logging-deny - [0:0]\n:ufw6-logging-allow - [0:0]\n:ufw6-user-limit - [0:0]\n:ufw6-user-limit-accept - [0:0]\n### RULES ###\n\n### tuple ### allow tcp 22 ::/0 any ::/0 in\n-A ufw6-user-input -p tcp --dport 22 -j ACCEPT\n\n### tuple ### allow tcp 2222 ::/0 any ::/0 in\n-A ufw6-user-input -p tcp --dport 2222 -j ACCEPT\n\n### tuple ### allow any any ::/0 any ::/0 in_tailscale0\n-A ufw6-user-input -i tailscale0 -j ACCEPT\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw6-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw6-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw6-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw6-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw6-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw6-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw6-user-limit -j REJECT\n-A ufw6-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+          "old_sha256": "f6696cd7741aada36ab2055dd1a9d098e23e0290ca3a67dafbbad2920e5fdf60",
+          "new_sha256": "aeb16b3041e2a758bcc6f4cdab14cd0329e2400e935e9f636613b3a8035c6aa5",
+          "diff": "--- a/etc/ufw/user6.rules\n+++ b/etc/ufw/user6.rules\n@@ -2,5 +2,43 @@\n :ufw6-user-input - [0:0]\n :ufw6-user-output - [0:0]\n :ufw6-user-forward - [0:0]\n+:ufw6-before-logging-input - [0:0]\n+:ufw6-before-logging-output - [0:0]\n+:ufw6-before-logging-forward - [0:0]\n+:ufw6-user-logging-input - [0:0]\n+:ufw6-user-logging-output - [0:0]\n+:ufw6-user-logging-forward - [0:0]\n+:ufw6-after-logging-input - [0:0]\n+:ufw6-after-logging-output - [0:0]\n+:ufw6-after-logging-forward - [0:0]\n+:ufw6-logging-deny - [0:0]\n+:ufw6-logging-allow - [0:0]\n+:ufw6-user-limit - [0:0]\n+:ufw6-user-limit-accept - [0:0]\n ### RULES ###\n+\n+### tuple ### allow tcp 22 ::/0 any ::/0 in\n+-A ufw6-user-input -p tcp --dport 22 -j ACCEPT\n+\n+### tuple ### allow tcp 2222 ::/0 any ::/0 in\n+-A ufw6-user-input -p tcp --dport 2222 -j ACCEPT\n+\n+### tuple ### allow any any ::/0 any ::/0 in_tailscale0\n+-A ufw6-user-input -i tailscale0 -j ACCEPT\n+\n+### END RULES ###\n+\n+### LOGGING ###\n+-A ufw6-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-A ufw6-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-I ufw6-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n+-A ufw6-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n+-A ufw6-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n+### END LOGGING ###\n+\n+### RATE LIMITING ###\n+-A ufw6-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n+-A ufw6-user-limit -j REJECT\n+-A ufw6-user-limit-accept -j ACCEPT\n+### END RATE LIMITING ###\n COMMIT\n",
+          "validate": [
+            "ip6tables-restore",
+            "--test",
+            "--noflush"
+          ]
+        },
+        {
+          "path": "/etc/ufw/ufw.conf",
+          "action": "replace",
+          "old": "# /etc/ufw/ufw.conf\n#\n\n# Set to yes to start on boot. If setting this remotely, be sure to add a rule\n# to allow your remote connection before starting ufw. Eg: 'ufw allow 22/tcp'\nENABLED=no\n\n# Please use the 'ufw' command to set the loglevel. Eg: 'ufw logging medium'.\n# See 'man ufw' for details.\nLOGLEVEL=low\n",
+          "new": "# /etc/ufw/ufw.conf\n#\n\n# Set to yes to start on boot. If setting this remotely, be sure to add a rule\n# to allow your remote connection before starting ufw. Eg: 'ufw allow 22/tcp'\nENABLED=yes\n\n# Please use the 'ufw' command to set the loglevel. Eg: 'ufw logging medium'.\n# See 'man ufw' for details.\nLOGLEVEL=low\n",
+          "old_sha256": "1c75b26d27f47cb59a4383a0b07b479d4b3493d34c4eed165b1e1860fe5ccf39",
+          "new_sha256": "254cb3ad232ca318498ed64ffaee96e2659e0e67228602b644b6357cd26c7e58",
+          "diff": "--- a/etc/ufw/ufw.conf\n+++ b/etc/ufw/ufw.conf\n@@ -3,7 +3,7 @@\n \n # Set to yes to start on boot. If setting this remotely, be sure to add a rule\n # to allow your remote connection before starting ufw. Eg: 'ufw allow 22/tcp'\n-ENABLED=no\n+ENABLED=yes\n \n # Please use the 'ufw' command to set the loglevel. Eg: 'ufw logging medium'.\n # See 'man ufw' for details.\n"
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "ufw",
+            "--force",
+            "enable"
+          ],
+          "why": "turn UFW on: load the rules and the default deny together"
+        }
+      ],
+      "undo": {
+        "description": "Restore the UFW files the step changed from the backup and turn UFW off again (ufw disable), as it was before.",
+        "commands": [
+          {
+            "args": [
+              "ufw",
+              "disable"
+            ],
+            "why": "turn UFW off again, as it was"
+          }
+        ]
+      },
+      "notes": [
+        "Turns UFW on with default deny incoming. The allow rules (allow in 22/tcp from anywhere; allow in 2222/tcp from anywhere; allow in on tailscale0; allow in 22/tcp from anywhere (v6); allow in 2222/tcp from anywhere (v6); allow in on tailscale0 (v6)) are written to UFW's rules files before the policy loads, and load with it in one step.",
+        "Closes to the internet (the default deny drops new connections to them): tcp/5432 (postgres). Allow one with `ufw allow` before applying if it must stay public.",
+        "Published container ports are not affected: Docker forwards them past UFW's input rules (DKR-001). The ufw-docker step filters them.",
+        "Containers that connect to a service on the host itself (host.docker.internal, the bridge gateway) go through UFW's input rules too, and close unless a rule allows them.",
+        "Connections that are already open, this SSH session among them, stay up: UFW accepts established traffic.",
+        "UFW's forward policy, ip_forward, Docker's firewall settings and /etc/ufw/sysctl.conf are left as they are."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "unknown",
+      "reason": "LOG-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "unknown",
+      "reason": "KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades",
+      "title": "Turn on unattended-upgrades with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "unattended-upgrades-install",
+      "title": "Install unattended-upgrades and turn it on with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "unknown",
+      "reason": "UPD-001 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "passing",
+      "reason": "DKR-031 already passes or does not apply"
+    },
+    {
+      "id": "unattended-upgrades-reboot",
+      "title": "Let unattended-upgrades reboot at 04:00 (host time) when an update needs it",
+      "fixes": [
+        "SYS-002",
+        "SYS-003",
+        "UPD-004"
+      ],
+      "kind": "unknown",
+      "reason": "the updates facts are missing (planning from a report alone, or the updates collector did not run)"
+    },
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "an admin account besides root and the cloud default exists (alice)"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "unknown",
+      "reason": "the platform facts are missing (the paas collector did not run)"
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-002",
+        "SSH-003",
+        "SSH-004",
+        "SSH-005"
+      ],
+      "kind": "passing",
+      "reason": "SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "USR-003 already passes or does not apply"
+    },
+    {
+      "id": "fail2ban-sshd",
+      "title": "Ban SSH brute force with a fail2ban sshd jail",
+      "fixes": [
+        "CS-010",
+        "SSH-011"
+      ],
+      "kind": "unknown",
+      "reason": "CS-010 is unknown; nothing to plan until the audit can inspect it"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+stackward plan: nothing on this host was changed
+host:      sha256:88fcffd365f6d89e  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     1 planned (0 safe, 0 networking, 1 access-critical), 0 opt in, 11 not planned
+
+1. ufw-policy  [access-critical]  fixes NET-001
+   Turn UFW on with a default deny incoming policy
+   replace  /etc/ufw/user.rules
+            checked first with: iptables-restore --test --noflush <new file>
+            --- a/etc/ufw/user.rules
+            +++ b/etc/ufw/user.rules
+            @@ -2,10 +2,43 @@
+             :ufw-user-input - [0:0]
+             :ufw-user-output - [0:0]
+             :ufw-user-forward - [0:0]
+            +:ufw-before-logging-input - [0:0]
+            +:ufw-before-logging-output - [0:0]
+            +:ufw-before-logging-forward - [0:0]
+            +:ufw-user-logging-input - [0:0]
+            +:ufw-user-logging-output - [0:0]
+            +:ufw-user-logging-forward - [0:0]
+            +:ufw-after-logging-input - [0:0]
+            +:ufw-after-logging-output - [0:0]
+            +:ufw-after-logging-forward - [0:0]
+            +:ufw-logging-deny - [0:0]
+            +:ufw-logging-allow - [0:0]
+             :ufw-user-limit - [0:0]
+             :ufw-user-limit-accept - [0:0]
+             ### RULES ###
+            +
+            +### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in
+            +-A ufw-user-input -p tcp --dport 22 -j ACCEPT
+            +
+            +### tuple ### allow tcp 2222 0.0.0.0/0 any 0.0.0.0/0 in
+            +-A ufw-user-input -p tcp --dport 2222 -j ACCEPT
+            +
+            +### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0
+            +-A ufw-user-input -i tailscale0 -j ACCEPT
+            +
+            +### END RULES ###
+            +
+            +### LOGGING ###
+            +-A ufw-after-logging-input -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-A ufw-after-logging-forward -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10
+            +-A ufw-logging-deny -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-A ufw-logging-allow -j LOG --log-prefix "[UFW ALLOW] " -m limit --limit 3/min --limit-burst 10
+            +### END LOGGING ###
+            +
+            +### RATE LIMITING ###
+             -A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix "[UFW LIMIT BLOCK] "
+             -A ufw-user-limit -j REJECT
+             -A ufw-user-limit-accept -j ACCEPT
+            +### END RATE LIMITING ###
+             COMMIT
+   replace  /etc/ufw/user6.rules
+            checked first with: ip6tables-restore --test --noflush <new file>
+            --- a/etc/ufw/user6.rules
+            +++ b/etc/ufw/user6.rules
+            @@ -2,5 +2,43 @@
+             :ufw6-user-input - [0:0]
+             :ufw6-user-output - [0:0]
+             :ufw6-user-forward - [0:0]
+            +:ufw6-before-logging-input - [0:0]
+            +:ufw6-before-logging-output - [0:0]
+            +:ufw6-before-logging-forward - [0:0]
+            +:ufw6-user-logging-input - [0:0]
+            +:ufw6-user-logging-output - [0:0]
+            +:ufw6-user-logging-forward - [0:0]
+            +:ufw6-after-logging-input - [0:0]
+            +:ufw6-after-logging-output - [0:0]
+            +:ufw6-after-logging-forward - [0:0]
+            +:ufw6-logging-deny - [0:0]
+            +:ufw6-logging-allow - [0:0]
+            +:ufw6-user-limit - [0:0]
+            +:ufw6-user-limit-accept - [0:0]
+             ### RULES ###
+            +
+            +### tuple ### allow tcp 22 ::/0 any ::/0 in
+            +-A ufw6-user-input -p tcp --dport 22 -j ACCEPT
+            +
+            +### tuple ### allow tcp 2222 ::/0 any ::/0 in
+            +-A ufw6-user-input -p tcp --dport 2222 -j ACCEPT
+            +
+            +### tuple ### allow any any ::/0 any ::/0 in_tailscale0
+            +-A ufw6-user-input -i tailscale0 -j ACCEPT
+            +
+            +### END RULES ###
+            +
+            +### LOGGING ###
+            +-A ufw6-after-logging-input -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-A ufw6-after-logging-forward -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-I ufw6-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10
+            +-A ufw6-logging-deny -j LOG --log-prefix "[UFW BLOCK] " -m limit --limit 3/min --limit-burst 10
+            +-A ufw6-logging-allow -j LOG --log-prefix "[UFW ALLOW] " -m limit --limit 3/min --limit-burst 10
+            +### END LOGGING ###
+            +
+            +### RATE LIMITING ###
+            +-A ufw6-user-limit -m limit --limit 3/minute -j LOG --log-prefix "[UFW LIMIT BLOCK] "
+            +-A ufw6-user-limit -j REJECT
+            +-A ufw6-user-limit-accept -j ACCEPT
+            +### END RATE LIMITING ###
+             COMMIT
+   replace  /etc/ufw/ufw.conf
+            --- a/etc/ufw/ufw.conf
+            +++ b/etc/ufw/ufw.conf
+            @@ -3,7 +3,7 @@
+             
+             # Set to yes to start on boot. If setting this remotely, be sure to add a rule
+             # to allow your remote connection before starting ufw. Eg: 'ufw allow 22/tcp'
+            -ENABLED=no
+            +ENABLED=yes
+             
+             # Please use the 'ufw' command to set the loglevel. Eg: 'ufw logging medium'.
+             # See 'man ufw' for details.
+   run      ufw --force enable
+            # turn UFW on: load the rules and the default deny together
+   note     Turns UFW on with default deny incoming. The allow rules (allow in 22/tcp from anywhere; allow in 2222/tcp from anywhere; allow in on tailscale0; allow in 22/tcp from anywhere (v6); allow in 2222/tcp from anywhere (v6); allow in on tailscale0 (v6)) are written to UFW's rules files before the policy loads, and load with it in one step.
+   note     Closes to the internet (the default deny drops new connections to them): tcp/5432 (postgres). Allow one with `ufw allow` before applying if it must stay public.
+   note     Published container ports are not affected: Docker forwards them past UFW's input rules (DKR-001). The ufw-docker step filters them.
+   note     Containers that connect to a service on the host itself (host.docker.internal, the bridge gateway) go through UFW's input rules too, and close unless a rule allows them.
+   note     Connections that are already open, this SSH session among them, stay up: UFW accepts established traffic.
+   note     UFW's forward policy, ip_forward, Docker's firewall settings and /etc/ufw/sysctl.conf are left as they are.
+   undo     Restore the UFW files the step changed from the backup and turn UFW off again (ufw disable), as it was before.
+            ufw disable
+
+Not planned:
+  journald-cap         unknown  LOG-001 is unknown; nothing to plan until the audit can inspect it
+  sysctl-hardening     unknown  KRN-002 is unknown, KRN-003 is unknown and KRN-004 is unknown; nothing to plan until the audit can inspect it
+  unattended-upgrades  unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
+  unattended-upgrades-install unknown  UPD-001 is unknown; nothing to plan until the audit can inspect it
+  docker-log-rotation  passing  DKR-031 already passes or does not apply
+  unattended-upgrades-reboot unknown  the updates facts are missing (planning from a report alone, or the updates collector did not run)
+  admin-user           passing  an admin account besides root and the cloud default exists (alice)
+  paas-user            unknown  the platform facts are missing (the paas collector did not run)
+  sshd-hardening       passing  SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply
+  lock-default-user    passing  USR-003 already passes or does not apply
+  fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

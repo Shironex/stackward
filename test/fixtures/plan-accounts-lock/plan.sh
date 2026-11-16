@@ -86,6 +86,8 @@ step_lock_default_user() {
 # exists (ops)
 # paas-user (passing): no platform (Coolify, Dokploy) was found; a PaaS
 # account is only for one
+# ufw-policy (unknown): NET-001 is unknown; nothing to plan until the audit
+# can inspect it
 # fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 

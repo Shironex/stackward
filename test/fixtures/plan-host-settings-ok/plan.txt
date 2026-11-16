@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:ce3272f20761ac2e  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     0 planned (0 safe, 0 networking, 0 access-critical), 0 opt in, 11 not planned
+steps:     0 planned (0 safe, 0 networking, 0 access-critical), 0 opt in, 12 not planned
 
 Not planned:
   journald-cap         passing  LOG-001 already passes or does not apply
@@ -15,6 +15,7 @@ Not planned:
   paas-user            unknown  the accounts were not audited
   sshd-hardening       unknown  SSH-001 is unknown, SSH-002 is unknown, SSH-003 is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan until the audit can inspect it
   lock-default-user    unknown  USR-003 is unknown; nothing to plan until the audit can inspect it
+  ufw-policy           unknown  NET-001 is unknown; nothing to plan until the audit can inspect it
   fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
 
 Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

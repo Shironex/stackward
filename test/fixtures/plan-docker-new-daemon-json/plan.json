@@ -45,7 +45,7 @@
     "restarts": [
       "docker"
     ],
-    "skipped": 10
+    "skipped": 11
   },
   "steps": [
     {
@@ -208,6 +208,15 @@
       ],
       "kind": "unknown",
       "reason": "USR-003 is unknown; nothing to plan until the audit can inspect it"
+    },
+    {
+      "id": "ufw-policy",
+      "title": "Turn UFW on with a default deny incoming policy",
+      "fixes": [
+        "NET-001"
+      ],
+      "kind": "unknown",
+      "reason": "NET-001 is unknown; nothing to plan until the audit can inspect it"
     },
     {
       "id": "fail2ban-sshd",

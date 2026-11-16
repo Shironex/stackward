@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:82c1a34869ebe223  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 9 not planned
+steps:     2 planned (0 safe, 0 networking, 2 access-critical), 0 opt in, 10 not planned
 restarts:  ssh
 
 1. admin-user  [access-critical]  fixes SSH-003, USR-003
@@ -61,6 +61,7 @@ Not planned:
   unattended-upgrades-reboot unknown  SYS-002 is unknown, SYS-003 is unknown and UPD-004 is unknown; nothing to plan until the audit can inspect it
   paas-user            passing  no platform (Coolify, Dokploy) was found; a PaaS account is only for one
   lock-default-user    passing  USR-003 already passes or does not apply
+  ufw-policy           unknown  NET-001 is unknown; nothing to plan until the audit can inspect it
   fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
 
 Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

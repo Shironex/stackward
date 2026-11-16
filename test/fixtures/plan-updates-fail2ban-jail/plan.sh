@@ -150,6 +150,7 @@ STACKWARD_EOF
 # until the audit can inspect it
 # lock-default-user (unknown): USR-003 is unknown; nothing to plan until the
 # audit can inspect it
+# ufw-policy (passing): NET-001 already passes or does not apply
 
 step_unattended_upgrades
 # step_unattended_upgrades_reboot  # opt in: networking, restarts nothing
