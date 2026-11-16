@@ -38,7 +38,7 @@ func TestAuditTextfile(t *testing.T) {
 	}
 }
 
-func TestAuditTextfileRefusals(t *testing.T) {
+func TestAuditTextfileRefusalsAndSymlink(t *testing.T) {
 	dir := t.TempDir()
 	code, _, errs := run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--dump-facts", "--textfile", filepath.Join(dir, "x.prom"))
 	if code != report.ExitError || !strings.Contains(errs, "--dump-facts") {
@@ -56,9 +56,13 @@ func TestAuditTextfileRefusals(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
-	code, _, _ = run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--textfile", link)
-	if code != report.ExitError {
-		t.Errorf("--textfile through a symlink: exit %d, want %d", code, report.ExitError)
+	// A planted symlink is unlinked and replaced, never followed.
+	code, _, errs = run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--textfile", link)
+	if code != report.ExitOK {
+		t.Errorf("--textfile over a symlink: exit %d, want %d; stderr %s", code, report.ExitOK, errs)
+	}
+	if fi, err := os.Lstat(link); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf("symlink not replaced by a regular file: %v", err)
 	}
 	if b, _ := os.ReadFile(target); string(b) != "keep" {
 		t.Errorf("symlink target overwritten: %q", b)
