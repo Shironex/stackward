@@ -4,7 +4,7 @@
 was made for, with backups and a run journal. `stackward undo` reverses a
 run from its journal. Access-critical steps run inside a
 [transaction](#the-access-critical-transaction) that `stackward confirm`
-keeps. All three are part of 0.2, released as a pre-release (v0.2.0-rc.1) for testing.
+keeps. All three are part of 0.2.
 They are the only commands that change a system: `audit`, `probe`, `tui`
 and `plan` stay read only. The [step list](#the-step-list) of
 `stackward tui --plan` is a front end to apply: it changes nothing itself,

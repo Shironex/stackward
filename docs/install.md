@@ -5,7 +5,7 @@ this page shows how to check what you downloaded before you run it. The
 install script and the `.deb` need root to install; the download and verify
 steps do not, and nothing here runs the audit for you.
 
-The newest release is `v0.1.2`, and `releases/latest` points at it. The
+The newest release is `v0.2.0`, and `releases/latest` points at it. The
 commands below name the tag so that what you verify is exactly what you run.
 The release notes are the matching section of `CHANGELOG.md` in the
 repository.
@@ -97,7 +97,7 @@ alone, and install refuses to overwrite it.
 ## Download, verify, run
 
 ```sh
-VERSION=v0.1.2
+VERSION=v0.2.0
 ARCH=amd64       # or arm64 (uname -m: x86_64 or aarch64)
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
@@ -155,7 +155,7 @@ Download the package for your CPU, check it against `checksums.txt`, then
 install it with apt:
 
 ```sh
-VERSION=v0.1.2
+VERSION=v0.2.0
 ARCH=amd64       # or arm64 (dpkg --print-architecture)
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 cd "$(mktemp -d)" && chmod 755 .   # apt's _apt user must be able to read the file
