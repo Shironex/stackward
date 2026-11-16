@@ -9,7 +9,7 @@ import (
 
 // openWaivers opens the waivers file; outside Unix there is no owner or
 // mode to check, only the file type.
-func openWaivers(path string, _ bool) (*os.File, error) {
+func openWaivers(path string) (*os.File, error) {
 	fh, err := os.Open(path)
 	if err != nil {
 		return nil, err
