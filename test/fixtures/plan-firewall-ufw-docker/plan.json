@@ -1,0 +1,318 @@
+{
+  "schema": "stackward.plan.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:207e1223ba6275be",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "kernel": "6.8.0-48-generic"
+  },
+  "source": {
+    "kind": "facts",
+    "facts": true,
+    "report": {
+      "schema": "stackward.report.v1",
+      "tool_version": "test",
+      "generated_at": "2026-03-01T12:00:00Z",
+      "profile": {
+        "name": "paas-panel",
+        "source": "inferred"
+      },
+      "summary": {
+        "fail": 10,
+        "warn": 14,
+        "unknown": 3,
+        "info": 20,
+        "pass": 169,
+        "skip": 11
+      }
+    }
+  },
+  "sandbox": {
+    "state": "unavailable",
+    "reason": "golden test"
+  },
+  "summary": {
+    "steps": 2,
+    "safe": 0,
+    "networking": 1,
+    "access_critical": 1,
+    "opt_in": 2,
+    "restarts": [],
+    "skipped": 11
+  },
+  "steps": [
+    {
+      "id": "unattended-upgrades-reboot",
+      "title": "Let unattended-upgrades reboot at 04:00 (host time) when an update needs it",
+      "fixes": [
+        "SYS-003"
+      ],
+      "risk": "networking",
+      "opt_in": true,
+      "restarts": [],
+      "touches": [
+        "file:/etc/apt/apt.conf.d/91stackward-automatic-reboot"
+      ],
+      "edits": [
+        {
+          "path": "/etc/apt/apt.conf.d/91stackward-automatic-reboot",
+          "action": "create",
+          "mode": "0644",
+          "old": "",
+          "new": "// Written by stackward: plan step unattended-upgrades-reboot.\n// Lets unattended-upgrades reboot the host at 04:00 (host time)\n// when an update needs a reboot. Remove this file to undo.\nUnattended-Upgrade::Automatic-Reboot \"true\";\nUnattended-Upgrade::Automatic-Reboot-Time \"04:00\";\n",
+          "new_sha256": "3fd38426b998c14c84217ce009c6fb3727704b87a24f28bc557ca6778a06735e",
+          "diff": "--- /dev/null\n+++ b/etc/apt/apt.conf.d/91stackward-automatic-reboot\n@@ -0,0 +1,5 @@\n+// Written by stackward: plan step unattended-upgrades-reboot.\n+// Lets unattended-upgrades reboot the host at 04:00 (host time)\n+// when an update needs a reboot. Remove this file to undo.\n+Unattended-Upgrade::Automatic-Reboot \"true\";\n+Unattended-Upgrade::Automatic-Reboot-Time \"04:00\";\n",
+          "validate": [
+            "apt-config",
+            "dump",
+            "-c"
+          ]
+        }
+      ],
+      "commands": [],
+      "undo": {
+        "description": "Remove the drop-in; automatic reboot is off again and reboots wait for you.",
+        "commands": [
+          {
+            "args": [
+              "rm",
+              "-f",
+              "/etc/apt/apt.conf.d/91stackward-automatic-reboot"
+            ],
+            "why": "remove the drop-in"
+          }
+        ]
+      },
+      "notes": [
+        "This is the reboot decision. stackward apply never reboots the host: this step only writes a setting. With it, unattended-upgrades reboots the host at 04:00 host time after a run that leaves /var/run/reboot-required. Without it, automatic reboot stays off and reboots wait for you.",
+        "Logged in users do not hold the reboot back (Unattended-Upgrade::Automatic-Reboot-WithUsers is true unless set otherwise).",
+        "The running kernel is older than the newest installed one (SYS-003), but no reboot is marked pending, so unattended-upgrades will not reboot for it; reboot by hand once."
+      ]
+    },
+    {
+      "id": "ufw-docker",
+      "title": "Filter published container ports with UFW (ufw-docker rules)",
+      "fixes": [
+        "DKR-001"
+      ],
+      "risk": "access-critical",
+      "opt_in": true,
+      "restarts": [],
+      "touches": [
+        "firewall:ufw",
+        "firewall:DOCKER-USER",
+        "file:/etc/ufw/user.rules",
+        "file:/etc/ufw/after.rules"
+      ],
+      "edits": [
+        {
+          "path": "/etc/ufw/user.rules",
+          "action": "replace",
+          "old": "*filter\n:ufw-user-input - [0:0]\n:ufw-user-output - [0:0]\n:ufw-user-forward - [0:0]\n:ufw-before-logging-input - [0:0]\n:ufw-before-logging-output - [0:0]\n:ufw-before-logging-forward - [0:0]\n:ufw-user-logging-input - [0:0]\n:ufw-user-logging-output - [0:0]\n:ufw-user-logging-forward - [0:0]\n:ufw-after-logging-input - [0:0]\n:ufw-after-logging-output - [0:0]\n:ufw-after-logging-forward - [0:0]\n:ufw-logging-deny - [0:0]\n:ufw-logging-allow - [0:0]\n:ufw-user-limit - [0:0]\n:ufw-user-limit-accept - [0:0]\n### RULES ###\n\n### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp --dport 22 -j ACCEPT\n\n### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n-A ufw-user-input -i tailscale0 -j ACCEPT\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw-user-limit -j REJECT\n-A ufw-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+          "new": "*filter\n:ufw-user-input - [0:0]\n:ufw-user-output - [0:0]\n:ufw-user-forward - [0:0]\n:ufw-before-logging-input - [0:0]\n:ufw-before-logging-output - [0:0]\n:ufw-before-logging-forward - [0:0]\n:ufw-user-logging-input - [0:0]\n:ufw-user-logging-output - [0:0]\n:ufw-user-logging-forward - [0:0]\n:ufw-after-logging-input - [0:0]\n:ufw-after-logging-output - [0:0]\n:ufw-after-logging-forward - [0:0]\n:ufw-logging-deny - [0:0]\n:ufw-logging-allow - [0:0]\n:ufw-user-limit - [0:0]\n:ufw-user-limit-accept - [0:0]\n### RULES ###\n\n### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp --dport 22 -j ACCEPT\n\n### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n-A ufw-user-input -i tailscale0 -j ACCEPT\n\n### tuple ### route:allow tcp 8080 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-forward -p tcp --dport 8080 -j ACCEPT\n\n### tuple ### route:allow tcp 80 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-forward -p tcp --dport 80 -j ACCEPT\n\n### tuple ### route:allow tcp 443 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-forward -p tcp --dport 443 -j ACCEPT\n\n### tuple ### route:allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n-A ufw-user-forward -i tailscale0 -j ACCEPT\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw-user-limit -j REJECT\n-A ufw-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+          "old_sha256": "64d55d19ffb2207201a55d6f0f6c7558153a7b72a253836492b3290f08c3a98f",
+          "new_sha256": "1f8b3af870f900396cdc7243020137776f30f0bc11bffa2638bf6d3bcc576e91",
+          "diff": "--- a/etc/ufw/user.rules\n+++ b/etc/ufw/user.rules\n@@ -23,6 +23,18 @@\n ### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n -A ufw-user-input -i tailscale0 -j ACCEPT\n \n+### tuple ### route:allow tcp 8080 0.0.0.0/0 any 0.0.0.0/0 in\n+-A ufw-user-forward -p tcp --dport 8080 -j ACCEPT\n+\n+### tuple ### route:allow tcp 80 0.0.0.0/0 any 0.0.0.0/0 in\n+-A ufw-user-forward -p tcp --dport 80 -j ACCEPT\n+\n+### tuple ### route:allow tcp 443 0.0.0.0/0 any 0.0.0.0/0 in\n+-A ufw-user-forward -p tcp --dport 443 -j ACCEPT\n+\n+### tuple ### route:allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n+-A ufw-user-forward -i tailscale0 -j ACCEPT\n+\n ### END RULES ###\n \n ### LOGGING ###\n",
+          "validate": [
+            "iptables-restore",
+            "--test",
+            "--noflush"
+          ]
+        },
+        {
+          "path": "/etc/ufw/after.rules",
+          "action": "replace",
+          "old": "#\n# rules.input-after\n#\n# Rules that should be run after the ufw command line added rules. Custom\n# rules should be added to one of these chains:\n#   ufw-after-input\n#   ufw-after-output\n#   ufw-after-forward\n#\n\n# Don't delete these required lines, otherwise there will be errors\n*filter\n:ufw-after-input - [0:0]\n:ufw-after-output - [0:0]\n:ufw-after-forward - [0:0]\n# End required lines\n\n# don't log noisy services by default\n-A ufw-after-input -p udp --dport 137 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 138 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 139 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 445 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 67 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 68 -j ufw-skip-to-policy-input\n\n# don't log noisy broadcast\n-A ufw-after-input -m addrtype --dst-type BROADCAST -j ufw-skip-to-policy-input\n\n# don't delete the 'COMMIT' line or these rules won't be processed\nCOMMIT\n",
+          "new": "#\n# rules.input-after\n#\n# Rules that should be run after the ufw command line added rules. Custom\n# rules should be added to one of these chains:\n#   ufw-after-input\n#   ufw-after-output\n#   ufw-after-forward\n#\n\n# Don't delete these required lines, otherwise there will be errors\n*filter\n:ufw-after-input - [0:0]\n:ufw-after-output - [0:0]\n:ufw-after-forward - [0:0]\n# End required lines\n\n# don't log noisy services by default\n-A ufw-after-input -p udp --dport 137 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 138 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 139 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 445 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 67 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 68 -j ufw-skip-to-policy-input\n\n# don't log noisy broadcast\n-A ufw-after-input -m addrtype --dst-type BROADCAST -j ufw-skip-to-policy-input\n\n# don't delete the 'COMMIT' line or these rules won't be processed\nCOMMIT\n\n# BEGIN UFW AND DOCKER\n*filter\n:ufw-user-forward - [0:0]\n:ufw-docker-logging-deny - [0:0]\n:DOCKER-USER - [0:0]\n-A DOCKER-USER -j ufw-user-forward\n\n-A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN\n-A DOCKER-USER -m conntrack --ctstate INVALID -j DROP\n-A DOCKER-USER -i docker0 -o docker0 -j ACCEPT\n\n-A DOCKER-USER -j RETURN -s 10.0.0.0/8\n-A DOCKER-USER -j RETURN -s 172.16.0.0/12\n-A DOCKER-USER -j RETURN -s 192.168.0.0/16\n\n-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 10.0.0.0/8\n-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 172.16.0.0/12\n-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 192.168.0.0/16\n\n-A DOCKER-USER -j RETURN\n\n-A ufw-docker-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix \"[UFW DOCKER BLOCK] \"\n-A ufw-docker-logging-deny -j DROP\n\nCOMMIT\n# END UFW AND DOCKER\n",
+          "old_sha256": "c1be61c17e850ea16dc5a02be22e0ec79b631904c2383353da360bce2dfc6b64",
+          "new_sha256": "77292caa4dbfbff34ee213d5b57ff9a8855bd13f5e1eecbcc8d72c8f80ac03c1",
+          "diff": "--- a/etc/ufw/after.rules\n+++ b/etc/ufw/after.rules\n@@ -28,3 +28,30 @@\n \n # don't delete the 'COMMIT' line or these rules won't be processed\n COMMIT\n+\n+# BEGIN UFW AND DOCKER\n+*filter\n+:ufw-user-forward - [0:0]\n+:ufw-docker-logging-deny - [0:0]\n+:DOCKER-USER - [0:0]\n+-A DOCKER-USER -j ufw-user-forward\n+\n+-A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN\n+-A DOCKER-USER -m conntrack --ctstate INVALID -j DROP\n+-A DOCKER-USER -i docker0 -o docker0 -j ACCEPT\n+\n+-A DOCKER-USER -j RETURN -s 10.0.0.0/8\n+-A DOCKER-USER -j RETURN -s 172.16.0.0/12\n+-A DOCKER-USER -j RETURN -s 192.168.0.0/16\n+\n+-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 10.0.0.0/8\n+-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 172.16.0.0/12\n+-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 192.168.0.0/16\n+\n+-A DOCKER-USER -j RETURN\n+\n+-A ufw-docker-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix \"[UFW DOCKER BLOCK] \"\n+-A ufw-docker-logging-deny -j DROP\n+\n+COMMIT\n+# END UFW AND DOCKER\n",
+          "validate": [
+            "iptables-restore",
+            "--test",
+            "--noflush"
+          ]
+        }
+      ],
+      "commands": [
+        {
+          "args": [
+            "ufw",
+            "reload"
+          ],
+          "why": "load after.rules with the ufw-docker block and the route rules"
+        }
+      ],
+      "undo": {
+        "description": "Restore after.rules and the UFW rules from the backup, empty DOCKER-USER back to what Docker put there, reload UFW and delete ufw-docker's logging chain: published ports are reachable as before.",
+        "commands": [
+          {
+            "args": [
+              "iptables",
+              "-F",
+              "DOCKER-USER"
+            ],
+            "why": "empty DOCKER-USER, which the ufw-docker block filled"
+          },
+          {
+            "args": [
+              "iptables",
+              "-A",
+              "DOCKER-USER",
+              "-j",
+              "RETURN"
+            ],
+            "why": "put back Docker's own RETURN rule"
+          },
+          {
+            "args": [
+              "ufw",
+              "reload"
+            ],
+            "why": "load UFW's restored files"
+          },
+          {
+            "args": [
+              "iptables",
+              "-F",
+              "ufw-docker-logging-deny"
+            ],
+            "why": "empty ufw-docker's logging chain"
+          },
+          {
+            "args": [
+              "iptables",
+              "-X",
+              "ufw-docker-logging-deny"
+            ],
+            "why": "delete ufw-docker's logging chain"
+          }
+        ]
+      },
+      "notes": [
+        "Published container ports become filtered: new connections from outside the private ranges to any container are dropped unless a UFW route rule (ufw route allow) allows the container port. Containers you publish later are closed too until you add a route rule.",
+        "Closes to the internet: 0.0.0.0:5432-\u003e5432/tcp (shared-db).",
+        "Stays reachable: 0.0.0.0:8000-\u003e8080/tcp (coolify) from anywhere (route allow 8080/tcp from anywhere), 0.0.0.0:80-\u003e80/tcp (coolify-proxy) from anywhere (route allow 80/tcp from anywhere), 0.0.0.0:443-\u003e443/tcp (coolify-proxy) from anywhere (route allow 443/tcp from anywhere); every published port from the tailnet (route allow on tailscale0); every published port from the private ranges 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 (the ufw-docker rules let them through, so a provider's private network keeps access); ports published on 127.0.0.1 and connections made on this host.",
+        "The PaaS panel ports stay public because the paas-panel profile does not move the panel behind a tunnel or the tailnet; PAAS-003 still warns. Plan with --profile tunnel or tailnet-only to close them.",
+        "Route rules match the container port (after Docker's DNAT), so a rule for 443 opens 443 of every container that publishes it.",
+        "The rules are the published ufw-docker block for /etc/ufw/after.rules, written by stackward and test loaded with iptables-restore --test before UFW reloads; no script or package is downloaded. They cover IPv4 only; after6.rules is not changed.",
+        "ip_forward and Docker's firewall settings are left alone. Docker keeps DOCKER-USER across restarts, and UFW loads the block at boot before Docker starts."
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": "journald-cap",
+      "title": "Cap the persistent journal at 1G with a journald drop-in",
+      "fixes": [
+        "LOG-001"
+      ],
+      "kind": "passing",
+      "reason": "LOG-001 already passes or does not apply"
+    },
+    {
+      "id": "sysctl-hardening",
+      "title": "Set the kernel hardening values with a sysctl drop-in",
+      "fixes": [
+        "KRN-002",
+        "KRN-003",
+        "KRN-004"
+      ],
+      "kind": "passing",
+      "reason": "KRN-002, KRN-003 and KRN-004 already pass or do not apply"
+    },
+    {
+      "id": "unattended-upgrades",
+      "title": "Turn on unattended-upgrades with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "passing",
+      "reason": "UPD-001 already passes or does not apply"
+    },
+    {
+      "id": "unattended-upgrades-install",
+      "title": "Install unattended-upgrades and turn it on with an apt.conf.d drop-in",
+      "fixes": [
+        "UPD-001"
+      ],
+      "kind": "passing",
+      "reason": "UPD-001 already passes or does not apply"
+    },
+    {
+      "id": "docker-log-rotation",
+      "title": "Rotate json-file container logs (max-size 10m, max-file 3) in daemon.json",
+      "fixes": [
+        "DKR-031"
+      ],
+      "kind": "passing",
+      "reason": "DKR-031 already passes or does not apply"
+    },
+    {
+      "id": "admin-user",
+      "title": "Create an admin account with sudo and the keys of an existing account",
+      "fixes": [
+        "SSH-003",
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "an admin account besides root and the cloud default exists (alice)"
+    },
+    {
+      "id": "paas-user",
+      "title": "Create a separate account for the platform to log in as instead of root",
+      "fixes": [
+        "SSH-003"
+      ],
+      "kind": "manual",
+      "reason": "the platform logs in as root unless it has its own account; name one with stackward plan --paas-user NAME"
+    },
+    {
+      "id": "sshd-hardening",
+      "title": "Allow key logins only, refuse root and limit auth tries with an early sshd drop-in",
+      "fixes": [
+        "SSH-001",
+        "SSH-002",
+        "SSH-003",
+        "SSH-004",
+        "SSH-005"
+      ],
+      "kind": "passing",
+      "reason": "SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply"
+    },
+    {
+      "id": "lock-default-user",
+      "title": "Lock the cloud image's default account once another admin account is proven",
+      "fixes": [
+        "USR-003"
+      ],
+      "kind": "passing",
+      "reason": "USR-003 already passes or does not apply"
+    },
+    {
+      "id": "ufw-policy",
+      "title": "Turn UFW on with a default deny incoming policy",
+      "fixes": [
+        "NET-001"
+      ],
+      "kind": "passing",
+      "reason": "NET-001 already passes or does not apply"
+    },
+    {
+      "id": "fail2ban-sshd",
+      "title": "Ban SSH brute force with a fail2ban sshd jail",
+      "fixes": [
+        "CS-010",
+        "SSH-011"
+      ],
+      "kind": "passing",
+      "reason": "CS-010 already passes or does not apply"
+    }
+  ]
+}

@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:88fcffd365f6d89e  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     1 planned (0 safe, 0 networking, 1 access-critical), 0 opt in, 11 not planned
+steps:     1 planned (0 safe, 0 networking, 1 access-critical), 0 opt in, 12 not planned
 
 1. ufw-policy  [access-critical]  fixes NET-001
    Turn UFW on with a default deny incoming policy
@@ -136,6 +136,7 @@ Not planned:
   paas-user            unknown  the platform facts are missing (the paas collector did not run)
   sshd-hardening       passing  SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply
   lock-default-user    passing  USR-003 already passes or does not apply
+  ufw-docker           manual   UFW must be on with a deny default first: apply ufw-policy, then plan again
   fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
 
 Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.

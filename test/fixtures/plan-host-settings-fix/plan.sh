@@ -137,6 +137,7 @@ STACKWARD_EOF
 # audit can inspect it
 # ufw-policy (unknown): NET-001 is unknown; nothing to plan until the audit
 # can inspect it
+# ufw-docker (passing): DKR-001 already passes or does not apply
 # fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 

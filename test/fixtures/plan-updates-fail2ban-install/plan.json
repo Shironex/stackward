@@ -46,7 +46,7 @@
     "restarts": [
       "fail2ban"
     ],
-    "skipped": 9
+    "skipped": 10
   },
   "steps": [
     {
@@ -351,6 +351,17 @@
       ],
       "kind": "passing",
       "reason": "NET-001 already passes or does not apply"
+    },
+    {
+      "id": "ufw-docker",
+      "title": "Filter published container ports with UFW (ufw-docker rules)",
+      "fixes": [
+        "DKR-001",
+        "PAAS-002",
+        "PAAS-003"
+      ],
+      "kind": "unknown",
+      "reason": "DKR-001 is unknown; nothing to plan until the audit can inspect it"
     }
   ]
 }

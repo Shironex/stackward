@@ -109,6 +109,8 @@ STACKWARD_EOF
 # lock-default-user (passing): USR-003 already passes or does not apply
 # ufw-policy (unknown): NET-001 is unknown; nothing to plan until the audit
 # can inspect it
+# ufw-docker (unknown): DKR-001 is unknown; nothing to plan until the audit
+# can inspect it
 # fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 

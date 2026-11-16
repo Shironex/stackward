@@ -1,0 +1,4537 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:207e1223ba6275be",
+    "os": "Ubuntu 24.04.1 LTS",
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "kernel": "6.8.0-48-generic"
+  },
+  "profile": {
+    "name": "paas-panel",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 104,
+    "results": 227,
+    "checked": 213,
+    "unknown": 3,
+    "skipped": 11,
+    "root": true,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "clock",
+        "status": "ok"
+      },
+      {
+        "name": "cloudflared",
+        "status": "ok"
+      },
+      {
+        "name": "crowdsec",
+        "status": "ok"
+      },
+      {
+        "name": "disk",
+        "status": "ok"
+      },
+      {
+        "name": "docker",
+        "status": "ok"
+      },
+      {
+        "name": "fail2ban",
+        "status": "ok"
+      },
+      {
+        "name": "firewall",
+        "status": "ok"
+      },
+      {
+        "name": "journal",
+        "status": "ok"
+      },
+      {
+        "name": "listeners",
+        "status": "ok"
+      },
+      {
+        "name": "os",
+        "status": "ok"
+      },
+      {
+        "name": "paas",
+        "status": "ok"
+      },
+      {
+        "name": "secrets",
+        "status": "ok"
+      },
+      {
+        "name": "ssh",
+        "status": "ok"
+      },
+      {
+        "name": "sysctl",
+        "status": "ok"
+      },
+      {
+        "name": "tailscale",
+        "status": "ok"
+      },
+      {
+        "name": "updates",
+        "status": "ok"
+      },
+      {
+        "name": "users",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 10,
+    "warn": 14,
+    "unknown": 3,
+    "info": 20,
+    "pass": 169,
+    "skip": 11
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "pass",
+      "severity": "info",
+      "subject": "host",
+      "message": "ubuntu 24.04 is a tested release",
+      "evidence": {
+        "id": "ubuntu",
+        "pretty_name": "Ubuntu 24.04.1 LTS",
+        "tested": [
+          "ubuntu 22.04",
+          "ubuntu 24.04",
+          "ubuntu 26.04",
+          "debian 12",
+          "debian 13"
+        ],
+        "version_id": "24.04"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no reboot pending",
+      "evidence": {
+        "required": false
+      },
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "running kernel 6.8.0-48-generic is older than installed 6.8.0-51-generic",
+      "evidence": {
+        "installed": [
+          "6.8.0-48-generic",
+          "6.8.0-51-generic"
+        ],
+        "newest": "6.8.0-51-generic",
+        "running": "6.8.0-48-generic"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    },
+    {
+      "id": "SYS-004",
+      "group": "SYS",
+      "title": "Clock is synchronized",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "the clock is synchronized",
+      "evidence": {
+        "can_ntp": true,
+        "ntp_enabled": true,
+        "ntp_synchronized": true
+      },
+      "fix": {
+        "hint": "Enable systemd-timesyncd (`timedatectl set-ntp true`) or install chrony."
+      }
+    },
+    {
+      "id": "SYS-005",
+      "group": "SYS",
+      "title": "Disks have free space",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "mount:/",
+      "message": "/ is 42% full (holds [/ /var])",
+      "evidence": {
+        "paths": [
+          "/",
+          "/var"
+        ],
+        "total_kb": 20000000,
+        "used_kb": 8400000,
+        "used_percent": 42
+      },
+      "fix": {
+        "hint": "Prune images and build cache (`docker system prune`), cap logs (LOG-001 to LOG-003) and remove what is not needed."
+      }
+    },
+    {
+      "id": "SSH-001",
+      "group": "SSH",
+      "title": "Password authentication is off",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "password authentication is off",
+      "evidence": {
+        "authenticationmethods": "any",
+        "match_all": [],
+        "match_some": [],
+        "passwordauthentication": "no",
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Add a drop-in with PasswordAuthentication no, named to sort before cloud-init's (for example /etc/ssh/sshd_config.d/00-hardening.conf), then check with sudo sshd -t and reload ssh."
+      }
+    },
+    {
+      "id": "SSH-002",
+      "group": "SSH",
+      "title": "Keyboard-interactive authentication is off",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "keyboard-interactive authentication is off",
+      "evidence": {
+        "authenticationmethods": "any",
+        "kbdinteractiveauthentication": "no",
+        "match_all": [],
+        "match_some": [],
+        "pam_2fa": [],
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Set KbdInteractiveAuthentication no (ChallengeResponseAuthentication on older releases) in the same early drop-in."
+      }
+    },
+    {
+      "id": "SSH-003",
+      "group": "SSH",
+      "title": "Root cannot log in over SSH",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "root login is off",
+      "evidence": {
+        "match_all": [],
+        "match_some": [],
+        "permitrootlogin": "no",
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Log in as a sudo user (a dedicated non root user for the PaaS too), then set PermitRootLogin no."
+      }
+    },
+    {
+      "id": "SSH-004",
+      "group": "SSH",
+      "title": "Empty passwords are refused",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "empty passwords are refused",
+      "evidence": {
+        "match_all": [],
+        "match_some": [],
+        "permitemptypasswords": "no",
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Set PermitEmptyPasswords no (the default) and lock accounts with empty passwords (passwd -l)."
+      }
+    },
+    {
+      "id": "SSH-005",
+      "group": "SSH",
+      "title": "MaxAuthTries is low",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "MaxAuthTries is 3",
+      "evidence": {
+        "match_some": [],
+        "maxauthtries": 3,
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Set MaxAuthTries 3."
+      }
+    },
+    {
+      "id": "SSH-006",
+      "group": "SSH",
+      "title": "Logins are limited with AllowUsers or AllowGroups",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "logins limited to 1 user and 0 groups",
+      "evidence": {
+        "allowgroups": [],
+        "allowusers": [
+          "alice"
+        ],
+        "source": "sshd -T"
+      },
+      "fix": {
+        "hint": "Add AllowUsers with the accounts that log in (or AllowGroups with a group such as sshusers)."
+      }
+    },
+    {
+      "id": "SSH-007",
+      "group": "SSH",
+      "title": "X11 and agent forwarding are off",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "X11 and agent forwarding are off",
+      "evidence": {
+        "allowagentforwarding": "no",
+        "match_some": [],
+        "source": "sshd -T",
+        "x11forwarding": "no"
+      },
+      "fix": {
+        "hint": "Set X11Forwarding no and AllowAgentForwarding no; use ProxyJump instead of agent forwarding."
+      }
+    },
+    {
+      "id": "SSH-008",
+      "group": "SSH",
+      "title": "No early drop-in shadows a later hardening setting",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no insecure value shadows a later setting in 3 files",
+      "evidence": {
+        "files": 3
+      },
+      "fix": {
+        "hint": "Rename the hardening drop-in to sort first (00-hardening.conf), or fix the earlier file, then confirm with sudo sshd -T."
+      }
+    },
+    {
+      "id": "SSH-009",
+      "group": "SSH",
+      "title": "Effective SSH configuration fully confirmed",
+      "level": "skip",
+      "severity": "info",
+      "subject": "host",
+      "message": "effective configuration read with sshd -T",
+      "evidence": {
+        "match_blocks": 0,
+        "source": "sshd -T",
+        "unreadable": []
+      },
+      "fix": {
+        "hint": "Rerun with sudo for full coverage."
+      }
+    },
+    {
+      "id": "SSH-010",
+      "group": "SSH",
+      "title": "sshd listens where it is configured to",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "sshd listens on every configured address: [::]:22, 0.0.0.0:22",
+      "evidence": {
+        "configured": [
+          "[::]:22",
+          "0.0.0.0:22"
+        ],
+        "listening": [
+          "*:22"
+        ],
+        "missing": [],
+        "socket_active": false,
+        "socket_listen": [],
+        "socket_unit": ""
+      },
+      "fix": {
+        "hint": "systemctl daemon-reload \u0026\u0026 systemctl restart ssh.socket (or restart ssh.service without socket activation), then compare ss -tln with sshd -T again."
+      }
+    },
+    {
+      "id": "SSH-011",
+      "group": "SSH",
+      "title": "sshd reachable from anywhere takes keys only and bans brute force",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "sshd is reachable from anywhere on tcp/22, takes keys only and brute force is banned",
+      "evidence": {
+        "brute_force_guard": "yes",
+        "open_from_anywhere": "yes",
+        "password_login": "no",
+        "ssh_ports": [
+          22
+        ]
+      },
+      "fix": {
+        "hint": "Best: allow SSH only on tailscale0 or from one known source and close the public rule. Otherwise turn off PasswordAuthentication and KbdInteractiveAuthentication and enable an sshd jail on the real sshd port, or install the crowdsecurity/sshd collection with a firewall bouncer."
+      }
+    },
+    {
+      "id": "SSH-012",
+      "group": "SSH",
+      "title": "Host keys are strong and private",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "file:/etc/ssh/ssh_host_ed25519_key",
+      "message": "ssh-ed25519 host key is fine",
+      "evidence": {
+        "bits": 256,
+        "configured": true,
+        "mode": "0600",
+        "type": "ssh-ed25519",
+        "uid": 0
+      },
+      "fix": {
+        "hint": "chmod 600 the private keys and chown them to root; remove DSA keys and regenerate a small RSA key with ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key."
+      }
+    },
+    {
+      "id": "SSH-012",
+      "group": "SSH",
+      "title": "Host keys are strong and private",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "file:/etc/ssh/ssh_host_rsa_key",
+      "message": "ssh-rsa host key is fine",
+      "evidence": {
+        "bits": 3072,
+        "configured": true,
+        "mode": "0600",
+        "type": "ssh-rsa",
+        "uid": 0
+      },
+      "fix": {
+        "hint": "chmod 600 the private keys and chown them to root; remove DSA keys and regenerate a small RSA key with ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key."
+      }
+    },
+    {
+      "id": "SSH-013",
+      "group": "SSH",
+      "title": "Home, ~/.ssh and authorized_keys are not writable by others",
+      "level": "pass",
+      "severity": "high",
+      "subject": "user:alice",
+      "message": "home, ~/.ssh and authorized keys are private",
+      "evidence": {
+        "home_mode": "0750",
+        "key_files": {
+          "/home/alice/.ssh/authorized_keys": "0600"
+        },
+        "ssh_dir_mode": "0700"
+      },
+      "fix": {
+        "hint": "chmod go-w ~USER; chmod 700 ~USER/.ssh; chmod 600 ~USER/.ssh/authorized_keys; chown the files to the user."
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "user:alice",
+      "message": "1 authorized key, none weak",
+      "evidence": {
+        "keys": 1,
+        "weak": []
+      },
+      "fix": {
+        "hint": "Replace weak keys with ed25519 (ssh-keygen -t ed25519) and remove root's authorized keys once nothing logs in as root."
+      }
+    },
+    {
+      "id": "SSH-015",
+      "group": "SSH",
+      "title": "No weak key exchange, cipher or MAC algorithms",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "no weak key exchange, cipher or MAC algorithms enabled",
+      "evidence": {
+        "source": "sshd -T",
+        "unknown": [],
+        "weak": {
+          "ciphers": [],
+          "kexalgorithms": [],
+          "macs": []
+        }
+      },
+      "fix": {
+        "hint": "Follow the ssh-audit hardening guide for the distribution: a drop-in with explicit KexAlgorithms, Ciphers and MACs lists.",
+        "docs": "https://www.ssh-audit.com/hardening_guides.html"
+      }
+    },
+    {
+      "id": "SSH-016",
+      "group": "SSH",
+      "title": "Tailscale SSH and OpenSSH are not both serving",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "Tailscale SSH is off; OpenSSH is the only SSH server",
+      "evidence": {
+        "backend_state": "Running",
+        "openssh": "unknown",
+        "tailscale_ssh": "off"
+      },
+      "fix": {
+        "hint": "Pick one. If OpenSSH is the path, turn Tailscale SSH off with tailscale set and its ssh option set to false; if Tailscale SSH is the path, stop and disable the OpenSSH server once a Tailscale SSH login works.",
+        "docs": "https://tailscale.com/kb/1193/tailscale-ssh"
+      }
+    },
+    {
+      "id": "USR-001",
+      "group": "USR",
+      "title": "Only root has uid 0",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "root is the only account with uid 0",
+      "evidence": {
+        "accounts": 3
+      },
+      "fix": {
+        "hint": "Remove the account, or give it a normal uid with `usermod -u` after checking what it owns."
+      }
+    },
+    {
+      "id": "USR-002",
+      "group": "USR",
+      "title": "No login account has an empty password",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "no login account has an empty password",
+      "evidence": {
+        "checked": true
+      },
+      "fix": {
+        "hint": "Lock the account with `passwd -l \u003cuser\u003e` or set a password."
+      }
+    },
+    {
+      "id": "USR-003",
+      "group": "USR",
+      "title": "Cloud default account is locked down",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no default cloud account (ubuntu, debian, admin, ec2-user) exists",
+      "evidence": {
+        "default_users": []
+      },
+      "fix": {
+        "hint": "Lock it: `passwd -l \u003cuser\u003e`, set its shell to nologin, move its authorized_keys aside and drop its NOPASSWD line. Keep your own admin account working first."
+      }
+    },
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "sudoers files are root owned and not writable by others; no NOPASSWD entries",
+      "evidence": {
+        "files": 1,
+        "unreadable": 0
+      },
+      "fix": {
+        "hint": "Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf \u003cfile\u003e`, and keep NOPASSWD to the PaaS account."
+      }
+    },
+    {
+      "id": "USR-005",
+      "group": "USR",
+      "title": "Docker group has no extra members",
+      "level": "skip",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no docker group on this host",
+      "evidence": {
+        "group": "docker"
+      },
+      "fix": {
+        "hint": "Remove users who do not need it: `gpasswd -d \u003cuser\u003e docker`."
+      }
+    },
+    {
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "every login account was seen in the last 90 days",
+      "evidence": {
+        "accounts": 1
+      },
+      "fix": {
+        "hint": "Lock unused accounts with `passwd -l \u003cuser\u003e` or remove them."
+      }
+    },
+    {
+      "id": "USR-007",
+      "group": "USR",
+      "title": "Root recovery path is known",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "root password is locked: recovery is the provider console or rescue mode; note where that path is stored",
+      "evidence": {
+        "status": "L"
+      },
+      "fix": {
+        "hint": "Store the console or rescue procedure and any root password in a password manager."
+      }
+    },
+    {
+      "id": "NET-001",
+      "group": "NET",
+      "title": "A host firewall is active and denies incoming traffic by default",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "UFW is active with default incoming deny",
+      "evidence": {
+        "denies_incoming": "yes",
+        "iptables_backend": "nf_tables",
+        "iptables_input_policy": "DROP",
+        "mechanism": "ufw",
+        "nft_listed": true,
+        "ufw_default_incoming": "deny",
+        "ufw_source": "live",
+        "ufw_status": "active"
+      },
+      "fix": {
+        "hint": "Allow SSH first (ufw allow in on tailscale0 to any port 22, or from one source), then: ufw default deny incoming; ufw enable"
+      }
+    },
+    {
+      "id": "NET-002",
+      "group": "NET",
+      "title": "UFW filters IPv6 when the host has a global IPv6 address",
+      "level": "fail",
+      "severity": "high",
+      "subject": "host",
+      "message": "UFW has IPV6=no while the host has a global IPv6 address: IPv6 traffic is not filtered",
+      "evidence": {
+        "global_ipv6": true,
+        "ipv6": "no"
+      },
+      "fix": {
+        "hint": "Set IPV6=yes in /etc/default/ufw, then ufw reload"
+      }
+    },
+    {
+      "id": "NET-003",
+      "group": "NET",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "level": "fail",
+      "severity": "high",
+      "subject": "host",
+      "message": "SSH is open to anywhere on tcp/22 although Tailscale is running and offers a private path",
+      "evidence": {
+        "open_from_anywhere": "yes",
+        "ssh_ports": [
+          22
+        ],
+        "tailnet": "running"
+      },
+      "fix": {
+        "hint": "Allow SSH on tailscale0 and from one explicit source, prove a login over the tailnet from a new session, then delete the public SSH rule"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/20241",
+      "message": "tcp/20241 (cloudflared) listens on loopback addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "class": "loopback",
+        "processes": [
+          "cloudflared"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/20242",
+      "message": "tcp/20242 (cloudflared) listens on loopback addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "class": "loopback",
+        "processes": [
+          "cloudflared"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/22",
+      "message": "tcp/22 (sshd) is public by design: UFW allows tcp/22 from anywhere (allow in 22/tcp from anywhere)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0",
+          "::"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "sshd"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/443",
+      "message": "tcp/443 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0",
+          "::"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/5432",
+      "message": "tcp/5432 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/6001",
+      "message": "tcp/6001 (docker-proxy) listens on loopback addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "class": "loopback",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/6002",
+      "message": "tcp/6002 (docker-proxy) listens on loopback addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "class": "loopback",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/80",
+      "message": "tcp/80 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0",
+          "::"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "port:tcp/8000",
+      "message": "tcp/8000 is a published container port on wildcard and nothing filters it: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports (see DKR-001)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "docker-proxy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/8080",
+      "message": "tcp/8080 (crowdsec) listens on private addresses only",
+      "evidence": {
+        "binds": [
+          "172.17.0.1"
+        ],
+        "class": "private",
+        "processes": [
+          "crowdsec"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:udp/41641",
+      "message": "udp/41641 (tailscaled) listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": [
+          "tailscaled"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-005",
+      "group": "NET",
+      "title": "No public 80/443 rule on a tunnel or tailnet only host",
+      "level": "skip",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "80/443 may be public on the paas-panel profile",
+      "evidence": {
+        "profile": "paas-panel"
+      },
+      "fix": {
+        "hint": "Delete the rule (ufw delete \u003cnumber\u003e); ingress is the tunnel"
+      }
+    },
+    {
+      "id": "NET-006",
+      "group": "NET",
+      "title": "DOCKER-USER chain state",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "DOCKER-USER exists with no filtering rules: published ports are not filtered by the host firewall",
+      "evidence": {
+        "docker_backend": "iptables",
+        "docker_user": "default"
+      },
+      "fix": {
+        "hint": "No direct fix: filter published ports in DOCKER-USER (ufw-docker does this) or publish them on 127.0.0.1 only."
+      }
+    },
+    {
+      "id": "NET-007",
+      "group": "NET",
+      "title": "ufw-docker is loaded and lets tailnet traffic reach published ports",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "ufw-docker is not installed",
+      "evidence": {
+        "in_files": "absent",
+        "loaded": "no"
+      },
+      "fix": {
+        "hint": "ufw reload; then ufw route allow in on tailscale0 proto tcp to any port \u003ccontainer-port\u003e"
+      }
+    },
+    {
+      "id": "NET-008",
+      "group": "NET",
+      "title": "ufw-docker is not paired with Docker's nftables backend",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "ufw-docker is not installed",
+      "evidence": {
+        "docker_backend": "iptables"
+      },
+      "fix": {
+        "hint": "Use Docker's iptables backend with ufw-docker, or filter published ports directly in nftables"
+      }
+    },
+    {
+      "id": "NET-009",
+      "group": "NET",
+      "title": "Provider firewall (outside view)",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable",
+      "evidence": {
+        "visible_from_host": false
+      },
+      "fix": {
+        "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:alloy",
+      "message": "alloy publishes no port",
+      "evidence": {
+        "container": "alloy",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy publishes 0.0.0.0:80-\u003e80/tcp, 0.0.0.0:443-\u003e443/tcp from anywhere, as the paas-panel profile expects",
+      "evidence": {
+        "container": "coolify-proxy",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "profile": "paas-panel",
+        "published": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages publishes no port",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel publishes no port",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "container:coolify/coolify",
+      "message": "coolify is reachable from anywhere past the host firewall: 0.0.0.0:8000-\u003e8080/tcp: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports",
+      "evidence": {
+        "container": "coolify",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [
+          "0.0.0.0:8000-\u003e8080/tcp"
+        ],
+        "profile": "paas-panel",
+        "published": [
+          "0.0.0.0:8000-\u003e8080/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db publishes no port",
+      "evidence": {
+        "container": "coolify-db",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis publishes no port",
+      "evidence": {
+        "container": "coolify-redis",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime publishes on loopback, tailnet or private addresses only",
+      "evidence": {
+        "container": "coolify-realtime",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [
+          "127.0.0.1:6001-\u003e6001/tcp",
+          "127.0.0.1:6002-\u003e6002/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "container:shared-db",
+      "message": "shared-db is reachable from anywhere past the host firewall: 0.0.0.0:5432-\u003e5432/tcp: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports",
+      "evidence": {
+        "container": "shared-db",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [
+          "0.0.0.0:5432-\u003e5432/tcp"
+        ],
+        "profile": "paas-panel",
+        "published": [
+          "0.0.0.0:5432-\u003e5432/tcp"
+        ],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 publishes no port",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init publishes no port",
+      "evidence": {
+        "container": "storage-init",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 publishes no port",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 publishes no port (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "docker_user": "default",
+        "filtered": [],
+        "open": [],
+        "profile": "paas-panel",
+        "published": [],
+        "unknown": []
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-002",
+      "group": "DKR",
+      "title": "Docker API is not on TCP without TLS",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "Docker API listens only on the Unix socket",
+      "evidence": {
+        "listeners": [],
+        "published_by": [],
+        "tcp_hosts": [],
+        "tlsverify": false
+      },
+      "fix": {
+        "hint": "Remove -H tcp:// from the unit and \"hosts\" from daemon.json. For remote access use DOCKER_HOST=ssh://user@host, or a socket proxy that allows only the GET endpoints needed. If TCP is truly needed, use 2376 with tlsverify and client certificates.",
+        "docs": "https://docs.docker.com/engine/security/protect-access/"
+      }
+    },
+    {
+      "id": "DKR-003",
+      "group": "DKR",
+      "title": "Docker socket is not world writable",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "/var/run/docker.sock is not world writable (0660)",
+      "evidence": {
+        "gid": 998,
+        "group": "docker",
+        "path": "/var/run/docker.sock",
+        "perm": "0660",
+        "uid": 0
+      },
+      "fix": {
+        "hint": "Restore the default: chown root:docker /var/run/docker.sock \u0026\u0026 chmod 660 /var/run/docker.sock, then find what changed it (often a chmod 666 in a setup script or a unit override) and remove that."
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "container:alloy",
+      "message": "alloy mounts / (read only), which includes the Docker socket: the container controls the host; a read only mount does not stop connecting to a socket",
+      "evidence": {
+        "container": "alloy",
+        "image": "grafana/alloy:v1.5.0",
+        "managed_by": "",
+        "role": "",
+        "running": true,
+        "socket_mounts": [
+          "/:/host/root:ro"
+        ]
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "warn",
+      "severity": "critical",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a proxy, but it is root on the host if compromised; a read only mount does not stop connecting to a socket; managed by Coolify as its proxy: expected, a platform default the panel does not let you change",
+      "evidence": {
+        "container": "coolify-proxy",
+        "image": "traefik:v3.1.4",
+        "managed_by": "coolify",
+        "role": "proxy",
+        "running": true,
+        "socket_mounts": [
+          "/var/run/docker.sock:/var/run/docker.sock:ro"
+        ]
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages does not mount the Docker socket",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "image": "ghcr.io/coollabsio/coolify-helper:1.0.4",
+        "managed_by": "coolify",
+        "role": "paas",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "warn",
+      "severity": "critical",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel mounts the Docker socket (/var/run/docker.sock:/var/run/docker.sock:ro); expected for a paas, but it is root on the host if compromised; a read only mount does not stop connecting to a socket; managed by Coolify as its sentinel (metrics agent): expected, a platform default the panel does not let you change",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "image": "ghcr.io/coollabsio/sentinel:0.0.15",
+        "managed_by": "coolify",
+        "role": "paas",
+        "running": true,
+        "socket_mounts": [
+          "/var/run/docker.sock:/var/run/docker.sock:ro"
+        ]
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/coolify",
+      "message": "coolify does not mount the Docker socket",
+      "evidence": {
+        "container": "coolify",
+        "image": "ghcr.io/coollabsio/coolify:4.0.0-beta.420",
+        "managed_by": "coolify",
+        "role": "paas",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db does not mount the Docker socket",
+      "evidence": {
+        "container": "coolify-db",
+        "image": "postgres:15-alpine",
+        "managed_by": "coolify",
+        "role": "database",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis does not mount the Docker socket",
+      "evidence": {
+        "container": "coolify-redis",
+        "image": "redis:7-alpine",
+        "managed_by": "coolify",
+        "role": "database",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime does not mount the Docker socket",
+      "evidence": {
+        "container": "coolify-realtime",
+        "image": "ghcr.io/coollabsio/coolify-realtime:1.0.6",
+        "managed_by": "coolify",
+        "role": "paas",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shared-db",
+      "message": "shared-db does not mount the Docker socket",
+      "evidence": {
+        "container": "shared-db",
+        "image": "postgres:16",
+        "managed_by": "",
+        "role": "database",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 does not mount the Docker socket",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "image": "postgres:17.2",
+        "managed_by": "",
+        "role": "database",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init does not mount the Docker socket",
+      "evidence": {
+        "container": "storage-init",
+        "image": "busybox:1.36",
+        "managed_by": "",
+        "role": "",
+        "running": false,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 does not mount the Docker socket",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "image": "ghcr.io/example/shop:2.4.1",
+        "managed_by": "",
+        "role": "",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 does not mount the Docker socket (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "managed_by": "",
+        "role": "tunnel",
+        "running": true,
+        "socket_mounts": null
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-011",
+      "group": "DKR",
+      "title": "Socket proxies do not allow writes",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "no Docker socket proxy container found",
+      "evidence": {
+        "socket_proxies": 0
+      },
+      "fix": {
+        "hint": "Set POST=0 and EXEC=0, and enable only the read sections the client needs (for example CONTAINERS=1, NETWORKS=1). If a client truly needs writes, give it its own proxy with the narrowest flags and keep it off shared networks."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:alloy",
+      "message": "alloy mounts host /:/host/root:ro read only",
+      "evidence": {
+        "container": "alloy",
+        "managed_by": "",
+        "read_only": [
+          "/:/host/root:ro"
+        ],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-proxy",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/coolify",
+      "message": "coolify mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-db",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-redis",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime mounts no sensitive host path",
+      "evidence": {
+        "container": "coolify-realtime",
+        "managed_by": "coolify",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shared-db",
+      "message": "shared-db mounts no sensitive host path",
+      "evidence": {
+        "container": "shared-db",
+        "managed_by": "",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 mounts no sensitive host path",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "managed_by": "",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init mounts no sensitive host path",
+      "evidence": {
+        "container": "storage-init",
+        "managed_by": "",
+        "read_only": [],
+        "running": false,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 mounts no sensitive host path",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "managed_by": "",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 mounts no sensitive host path (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "managed_by": "",
+        "read_only": [],
+        "running": true,
+        "writable": []
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:alloy",
+      "message": "alloy runs as root",
+      "evidence": {
+        "container": "alloy",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
+        "privileged": false,
+        "public": false,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy runs as root and is reachable from outside; managed by Coolify as its proxy: expected, a platform default the panel does not let you change",
+      "evidence": {
+        "container": "coolify-proxy",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": true,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages runs as \"10001\"",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": false,
+        "root": false,
+        "running": true,
+        "user": "10001"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel runs as root; managed by Coolify as its sentinel (metrics agent): expected, a platform default the panel does not let you change",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": false,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/coolify",
+      "message": "coolify runs as \"9999\"",
+      "evidence": {
+        "container": "coolify",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": true,
+        "root": false,
+        "running": true,
+        "user": "9999"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "info",
+      "severity": "high",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db starts as root, and the postgres image entrypoint drops to the postgres user; set user: to make it explicit",
+      "evidence": {
+        "container": "coolify-db",
+        "entrypoint_drops_to": "postgres",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": false,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis runs as \"redis\"",
+      "evidence": {
+        "container": "coolify-redis",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": false,
+        "root": false,
+        "running": true,
+        "user": "redis"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime runs as \"9999\"",
+      "evidence": {
+        "container": "coolify-realtime",
+        "entrypoint_drops_to": "",
+        "managed_by": "coolify",
+        "privileged": false,
+        "public": false,
+        "root": false,
+        "running": true,
+        "user": "9999"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "fail",
+      "severity": "high",
+      "subject": "container:shared-db",
+      "message": "shared-db runs as root and is reachable from outside",
+      "evidence": {
+        "container": "shared-db",
+        "entrypoint_drops_to": "postgres",
+        "managed_by": "",
+        "privileged": false,
+        "public": true,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "info",
+      "severity": "high",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 starts as root, and the postgres image entrypoint drops to the postgres user; set user: to make it explicit",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "entrypoint_drops_to": "postgres",
+        "managed_by": "",
+        "privileged": false,
+        "public": false,
+        "root": true,
+        "running": true,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "info",
+      "severity": "high",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init runs as root (stopped); this applies only when it starts (a one shot or stopped container)",
+      "evidence": {
+        "container": "storage-init",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
+        "privileged": false,
+        "public": false,
+        "root": true,
+        "running": false,
+        "user": ""
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 runs as \"10001:10001\"",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
+        "privileged": false,
+        "public": true,
+        "root": false,
+        "running": true,
+        "user": "10001:10001"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 runs as \"nonroot\" (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "entrypoint_drops_to": "",
+        "managed_by": "",
+        "privileged": false,
+        "public": false,
+        "root": false,
+        "running": true,
+        "user": "nonroot"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:alloy",
+      "message": "alloy is not privileged",
+      "evidence": {
+        "container": "alloy",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy is not privileged",
+      "evidence": {
+        "container": "coolify-proxy",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages is not privileged",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel is not privileged",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/coolify",
+      "message": "coolify is not privileged",
+      "evidence": {
+        "container": "coolify",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db is not privileged",
+      "evidence": {
+        "container": "coolify-db",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis is not privileged",
+      "evidence": {
+        "container": "coolify-redis",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime is not privileged",
+      "evidence": {
+        "container": "coolify-realtime",
+        "managed_by": "coolify",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shared-db",
+      "message": "shared-db is not privileged",
+      "evidence": {
+        "container": "shared-db",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 is not privileged",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init is not privileged",
+      "evidence": {
+        "container": "storage-init",
+        "managed_by": "",
+        "privileged": false,
+        "running": false
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 is not privileged",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 is not privileged (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "managed_by": "",
+        "privileged": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:alloy",
+      "message": "alloy adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "alloy",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-proxy",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-proxy-error-pages",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-sentinel",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/coolify",
+      "message": "coolify adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-db",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-redis",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "coolify-realtime",
+        "dangerous": [],
+        "managed_by": "coolify",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shared-db",
+      "message": "shared-db adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "shared-db",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "shop-db-k4s9d2",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "storage-init",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": false
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 adds no dangerous capability",
+      "evidence": {
+        "cap_add": [],
+        "container": "shop-web-k4s9d2",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 adds no dangerous capability (worst of 2 replicas)",
+      "evidence": {
+        "cap_add": [],
+        "container": "tunnel-1",
+        "dangerous": [],
+        "managed_by": "",
+        "risky": [],
+        "running": true
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "fail",
+      "severity": "high",
+      "subject": "container:alloy",
+      "message": "alloy uses the host PID namespace, host network as root",
+      "evidence": {
+        "container": "alloy",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "host",
+        "pid_mode": "host",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify-proxy",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "",
+        "pid_mode": "",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel uses the host PID namespace; managed by Coolify as its sentinel (metrics agent): expected, a platform default the panel does not let you change",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "",
+        "pid_mode": "host",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/coolify",
+      "message": "coolify uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "coolify",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify-db",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "coolify",
+        "pid_mode": "",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify-redis",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "coolify",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "coolify-realtime",
+        "ipc_mode": "",
+        "managed_by": "coolify",
+        "network_mode": "coolify",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shared-db",
+      "message": "shared-db uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "shared-db",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "",
+        "pid_mode": "",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "k4s9d2",
+        "pid_mode": "",
+        "root": true,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "storage-init",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "",
+        "pid_mode": "",
+        "root": true,
+        "running": false
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 uses its own network, PID and IPC namespaces",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "k4s9d2",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "warn",
+      "severity": "high",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 uses the host network (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "ipc_mode": "",
+        "managed_by": "",
+        "network_mode": "host",
+        "pid_mode": "",
+        "root": false,
+        "running": true
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:alloy",
+      "message": "alloy keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "alloy",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-proxy",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": true,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-proxy-error-pages",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-sentinel",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify/coolify",
+      "message": "coolify keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": true,
+        "running": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-db",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-redis",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "coolify-realtime",
+        "managed_by": "coolify",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:shared-db",
+      "message": "shared-db keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "shared-db",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": true,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "shop-db-k4s9d2",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "storage-init",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": false,
+        "running": false,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 keeps the default seccomp and AppArmor confinement",
+      "evidence": {
+        "container": "shop-web-k4s9d2",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": true,
+        "running": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 keeps the default seccomp and AppArmor confinement (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "managed_by": "",
+        "no_new_privileges": true,
+        "public": false,
+        "running": true,
+        "security_opt": [],
+        "unconfined": []
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "skip",
+      "severity": "high",
+      "subject": "container:alloy",
+      "message": "alloy uses the host network (see DKR-023)",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "skip",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy is a reverse proxy; it joins project networks by design",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-proxy-error-pages",
+      "message": "coolify-proxy-error-pages shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify-sentinel",
+      "message": "coolify-sentinel shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/coolify",
+      "message": "coolify shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "coolify"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/postgres",
+      "message": "coolify-db shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "coolify"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/redis",
+      "message": "coolify-redis shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "coolify"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:coolify/soketi",
+      "message": "coolify-realtime shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "coolify"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shared-db",
+      "message": "shared-db shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": ""
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/db",
+      "message": "shop-db-k4s9d2 shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "shop"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/storage-init",
+      "message": "storage-init shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "shop"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "pass",
+      "severity": "high",
+      "subject": "container:shop/web",
+      "message": "shop-web-k4s9d2 shares no network with another project",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "shop"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "skip",
+      "severity": "high",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 uses the host network (see DKR-023) (worst of 2 replicas)",
+      "evidence": {
+        "database_peers": [],
+        "networks": [],
+        "peers": [],
+        "project": "tunnel"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-031",
+      "group": "DKR",
+      "title": "Container logs rotate",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "json-file container logs rotate at 10m",
+      "evidence": {
+        "config_found": true,
+        "driver": "json-file",
+        "max_file": "3",
+        "max_size": "10m"
+      },
+      "fix": {
+        "hint": "Set {\"log-driver\":\"json-file\",\"log-opts\":{\"max-size\":\"10m\",\"max-file\":\"3\"}} in /etc/docker/daemon.json (or use the local driver) and restart Docker. Existing containers keep their old settings until they are recreated."
+      }
+    },
+    {
+      "id": "DKR-032",
+      "group": "DKR",
+      "title": "Infrastructure containers run pinned images",
+      "level": "pass",
+      "severity": "low",
+      "subject": "container:coolify-proxy",
+      "message": "coolify-proxy runs a pinned tag (v3.1.4)",
+      "evidence": {
+        "container": "coolify-proxy",
+        "digest": false,
+        "image": "traefik:v3.1.4",
+        "role": "proxy",
+        "tag": "v3.1.4"
+      },
+      "fix": {
+        "hint": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out."
+      }
+    },
+    {
+      "id": "DKR-032",
+      "group": "DKR",
+      "title": "Infrastructure containers run pinned images",
+      "level": "pass",
+      "severity": "low",
+      "subject": "container:tunnel/cloudflared",
+      "message": "tunnel-1 runs a pinned tag (2026.10.0) (worst of 2 replicas)",
+      "evidence": {
+        "container": "tunnel-1",
+        "digest": false,
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "role": "tunnel",
+        "tag": "2026.10.0"
+      },
+      "fix": {
+        "hint": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out."
+      }
+    },
+    {
+      "id": "DKR-033",
+      "group": "DKR",
+      "title": "Docker manages the firewall",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "Docker manages the firewall rules for its networks",
+      "evidence": {
+        "config_found": true,
+        "iptables": true
+      },
+      "fix": {
+        "hint": "Know why it was set. Usually remove \"iptables\": false and filter published ports in the DOCKER-USER chain or with ufw-docker instead."
+      }
+    },
+    {
+      "id": "DKR-034",
+      "group": "DKR",
+      "title": "Docker Engine is supported upstream",
+      "level": "warn",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "Docker Engine 27 left upstream support on 2025-05-03",
+      "evidence": {
+        "cycle": "27",
+        "eol": "2025-05-03",
+        "table_as_of": "2026-11-15",
+        "version": "27.5.1"
+      },
+      "fix": {
+        "hint": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
+        "docs": "https://endoflife.date/docker-engine"
+      }
+    },
+    {
+      "id": "TS-001",
+      "group": "TS",
+      "title": "Tailscale is logged in and Running when installed",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "Tailscale is logged in and Running",
+      "evidence": {
+        "state": "Running",
+        "unit": "active"
+      },
+      "fix": {
+        "hint": "tailscale up (log the node in again), then prove SSH over the tailnet from a new session before relying on any tailnet only rule",
+        "docs": "https://tailscale.com/kb/1080/cli"
+      }
+    },
+    {
+      "id": "TS-002",
+      "group": "TS",
+      "title": "Node key expiry is disabled on server nodes",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "node key expiry is disabled",
+      "evidence": {
+        "key_expiry": "disabled"
+      },
+      "fix": {
+        "hint": "Disable key expiry for this machine in the Tailscale admin console (Machines, the node, Disable key expiry)",
+        "docs": "https://tailscale.com/kb/1028/key-expiry"
+      }
+    },
+    {
+      "id": "TS-003",
+      "group": "TS",
+      "title": "Tailscale Funnel and Serve expose only what is intended",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "no Tailscale Serve or Funnel configuration",
+      "evidence": {
+        "funnel_ports": [],
+        "serve_ports": []
+      },
+      "fix": {
+        "hint": "tailscale funnel reset (and tailscale serve reset) if the exposure is not intended",
+        "docs": "https://tailscale.com/kb/1223/funnel"
+      }
+    },
+    {
+      "id": "TS-004",
+      "group": "TS",
+      "title": "Firewall rules that mention tailscale0 have a running tailnet behind them",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "1 UFW rule(s) name tailscale0 and Tailscale is Running",
+      "evidence": {
+        "tailscale": "running",
+        "tailscale0_rules": 1
+      },
+      "fix": {
+        "hint": "Install and log in Tailscale, or remove the tailscale0 rules and keep a path you actually have"
+      }
+    },
+    {
+      "id": "TS-005",
+      "group": "TS",
+      "title": "Tailnet Lock state",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "Tailnet Lock is off",
+      "evidence": {
+        "lock": "off"
+      },
+      "fix": {
+        "hint": "Consider Tailnet Lock for tailnets that reach servers (tailscale lock init)",
+        "docs": "https://tailscale.com/kb/1226/tailnet-lock"
+      }
+    },
+    {
+      "id": "CF-001",
+      "group": "CF",
+      "title": "Cloudflare Tunnel presence",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "a Cloudflare Tunnel is present: 2 connector(s), 2 in a container",
+      "evidence": {
+        "connectors": 2,
+        "docker_containers": 2,
+        "in_container": 2,
+        "tunnel": "present",
+        "unit": "unknown"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the tunnel for profile inference"
+      }
+    },
+    {
+      "id": "CF-002",
+      "group": "CF",
+      "title": "The tunnel runs more than one connector",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "2 cloudflared connectors run",
+      "evidence": {
+        "connectors": 2,
+        "docker_containers": 2,
+        "in_container": 2,
+        "profile": "paas-panel",
+        "unit": "unknown"
+      },
+      "fix": {
+        "hint": "Run a second replica of the same tunnel (a second container or service with the same token or credentials)",
+        "docs": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/tunnel-availability/"
+      }
+    },
+    {
+      "id": "CF-003",
+      "group": "CF",
+      "title": "The proxy is not reachable on a public address while ingress is the tunnel",
+      "level": "fail",
+      "severity": "high",
+      "subject": "host",
+      "message": "the tunnel is the ingress, but the origin is reachable from anywhere on tcp/80, tcp/443: it bypasses Cloudflare (tcp/80: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports; tcp/443: DOCKER-USER has no filtering rules, and UFW's input rules do not apply to published ports)",
+      "evidence": {
+        "exposed": [
+          "tcp/80",
+          "tcp/443"
+        ],
+        "open_from_anywhere": "yes",
+        "tunnel": "present"
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (127.0.0.1:443:443) and let cloudflared reach it locally or over a Docker network"
+      }
+    },
+    {
+      "id": "CF-004",
+      "group": "CF",
+      "title": "The tunnel token is not a command line argument",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no connector takes the token as a command line argument",
+      "evidence": {
+        "connectors": 2,
+        "token_in_args": false,
+        "unit": "unknown"
+      },
+      "fix": {
+        "hint": "Pass the token as TUNNEL_TOKEN from a root only env file (or a credentials file with a config.yml), and never print docker inspect without a format filter"
+      }
+    },
+    {
+      "id": "CF-005",
+      "group": "CF",
+      "title": "The origin IP does not answer on 80/443 from outside (probe)",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "only an outside view proves the origin does not answer; run `stackward probe` against the origin address from another machine",
+      "evidence": {
+        "tunnel": "present"
+      },
+      "fix": {
+        "hint": "See CF-003: bind the proxy to loopback and close 80/443 in the provider firewall"
+      }
+    },
+    {
+      "id": "CS-001",
+      "group": "CS",
+      "title": "CrowdSec runs when installed",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "the CrowdSec engine is running",
+      "evidence": {
+        "engine_processes": 1,
+        "in_container": 0,
+        "unit": "active",
+        "version": "v1.6.4"
+      },
+      "fix": {
+        "hint": "Enable and start the service: systemctl enable crowdsec, then systemctl start crowdsec",
+        "docs": "https://docs.crowdsec.net/"
+      }
+    },
+    {
+      "id": "CS-002",
+      "group": "CS",
+      "title": "A bouncer is registered and pulling decisions",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "1 bouncer(s) registered and pulling decisions",
+      "evidence": {
+        "bouncers": [
+          "traefik-bouncer"
+        ],
+        "stale": []
+      },
+      "fix": {
+        "hint": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API. Never delete a stale base bouncer whose name@IP rows still pull: they share its API key.",
+        "docs": "https://docs.crowdsec.net/u/bouncers/intro"
+      }
+    },
+    {
+      "id": "CS-003",
+      "group": "CS",
+      "title": "Behind a tunnel, an L7 bouncer enforces bans",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "an L7 (proxy or Cloudflare) bouncer enforces bans behind the tunnel",
+      "evidence": {
+        "kinds": {
+          "proxy": 1
+        },
+        "tunnel": "present"
+      },
+      "fix": {
+        "hint": "Use the proxy bouncer (or the Cloudflare bouncer) together with a parser that reads the real client address"
+      }
+    },
+    {
+      "id": "CS-004",
+      "group": "CS",
+      "title": "Private range whitelists do not swallow tunnel traffic",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "a parser takes the real client address from a header for local sources",
+      "evidence": {
+        "keyed_to": [],
+        "local_whitelists": [
+          "/etc/crowdsec/parsers/s02-enrich/whitelists.yaml"
+        ],
+        "real_ip_parsers": [
+          "/etc/crowdsec/parsers/s02-enrich/cf-real-ip.yaml"
+        ],
+        "tunnel": "present"
+      },
+      "fix": {
+        "hint": "Add an s02-enrich parser that sets source_ip from Cf-Connecting-Ip when the logged source is in any of 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (use IpInRange, not one literal address)",
+        "docs": "https://docs.crowdsec.net/docs/whitelist/intro"
+      }
+    },
+    {
+      "id": "CS-005",
+      "group": "CS",
+      "title": "The proxy access log is acquired",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "a reverse proxy access log is acquired (its format is not checked)",
+      "evidence": {
+        "types": [
+          "syslog",
+          "traefik"
+        ],
+        "web_proxy": true
+      },
+      "fix": {
+        "hint": "Enable the proxy access log (JSON for Traefik) and add an acquisition entry with labels type set to the proxy (traefik, caddy, nginx)"
+      }
+    },
+    {
+      "id": "CS-006",
+      "group": "CS",
+      "title": "The CrowdSec local API is not on a wildcard address",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "the local API listens on 172.17.0.1:8080 (private)",
+      "evidence": {
+        "class": "private",
+        "listen": "172.17.0.1:8080",
+        "source": "config"
+      },
+      "fix": {
+        "hint": "Set api.server.listen_uri to 127.0.0.1:8080 (or the Docker bridge address) and allow that port from Docker ranges only"
+      }
+    },
+    {
+      "id": "CS-007",
+      "group": "CS",
+      "title": "The firewall bouncer also protects Docker published ports",
+      "level": "skip",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "behind a tunnel a firewall bouncer is the wrong tool (see CS-003)",
+      "evidence": {
+        "tunnel": "present"
+      },
+      "fix": {
+        "hint": "Add DOCKER-USER to iptables_chains (or forward to nftables_hooks) in the firewall bouncer config, then restart the bouncer"
+      }
+    },
+    {
+      "id": "CS-008",
+      "group": "CS",
+      "title": "The proxy bouncer refreshes decisions often",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "proxy bouncers pulled within the last 60 s; the interval itself is in the bouncer config, which holds the API key and is not read",
+      "evidence": {
+        "proxy_bouncers": [
+          "traefik-bouncer"
+        ],
+        "slow": []
+      },
+      "fix": {
+        "hint": "Use stream mode with an update interval of 10 to 15 seconds"
+      }
+    },
+    {
+      "id": "CS-010",
+      "group": "CS",
+      "title": "Public SSH has brute force protection on the right port",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "SSH is public and the CrowdSec sshd collection watches it",
+      "evidence": {
+        "crowdsec_sshd": true,
+        "ssh_ports": [
+          22
+        ],
+        "ssh_public": "yes"
+      },
+      "fix": {
+        "hint": "Enable an sshd jail with port set to the real sshd port, or install the crowdsecurity/sshd collection"
+      }
+    },
+    {
+      "id": "CS-011",
+      "group": "CS",
+      "title": "fail2ban ignores the tailnet range when Tailscale is used",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "every enabled jail ignores the tailnet range 100.64.0.0/10",
+      "evidence": {
+        "jails": [
+          "sshd"
+        ],
+        "missing": [],
+        "tailscale": true
+      },
+      "fix": {
+        "hint": "Add 100.64.0.0/10 (and fd7a:115c:a1e0::/48) to ignoreip in jail.local [DEFAULT]"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "group": "UPD",
+      "title": "Automatic security updates are enabled",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "unattended-upgrades is installed and enabled",
+      "evidence": {
+        "installed": true,
+        "periodic": "1",
+        "timer_enabled": true
+      },
+      "fix": {
+        "hint": "apt install unattended-upgrades; dpkg-reconfigure -plow unattended-upgrades"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "group": "UPD",
+      "title": "Unattended upgrades ran recently",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "unattended-upgrades ran 1 days ago",
+      "evidence": {
+        "days": 1,
+        "last_run": "2026-02-28T06:10:00Z"
+      },
+      "fix": {
+        "hint": "Check the timer (`systemctl list-timers apt-daily-upgrade`) and /var/log/unattended-upgrades/."
+      }
+    },
+    {
+      "id": "UPD-003",
+      "group": "UPD",
+      "title": "Unattended upgrades include the security pocket",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "the security pocket is in the allowed origins",
+      "evidence": {
+        "origins": [
+          "${distro_id}:${distro_codename}",
+          "${distro_id}:${distro_codename}-security"
+        ]
+      },
+      "fix": {
+        "hint": "Include `${distro_id}:${distro_codename}-security` (Debian: `origin=Debian,codename=${distro_codename}-security`) in Unattended-Upgrade::Allowed-Origins."
+      }
+    },
+    {
+      "id": "UPD-004",
+      "group": "UPD",
+      "title": "Reboot policy is a decision",
+      "level": "info",
+      "severity": "low",
+      "subject": "host",
+      "message": "automatic reboot is off",
+      "evidence": {
+        "automatic_reboot": false,
+        "days": null,
+        "reboot_required": false
+      },
+      "fix": {
+        "hint": "Decide: set Unattended-Upgrade::Automatic-Reboot and a time, or schedule a manual reboot routine."
+      }
+    },
+    {
+      "id": "UPD-005",
+      "group": "UPD",
+      "title": "Release is within standard support",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "ubuntu 24.04 is supported until 2029-05-31",
+      "evidence": {
+        "days_left": 1186,
+        "end_of_support": "2029-05-31",
+        "id": "ubuntu",
+        "version_id": "24.04"
+      },
+      "fix": {
+        "hint": "Upgrade to a supported release (do-release-upgrade on Ubuntu, the Debian release notes upgrade procedure)."
+      }
+    },
+    {
+      "id": "UPD-006",
+      "group": "UPD",
+      "title": "No pending security updates",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "no pending security updates",
+      "evidence": {
+        "lists_updated": "2026-02-28T06:05:00Z",
+        "packages": [],
+        "pending_security": 0,
+        "pending_total": 2
+      },
+      "fix": {
+        "hint": "apt update \u0026\u0026 apt upgrade"
+      }
+    },
+    {
+      "id": "KRN-001",
+      "group": "KRN",
+      "title": "IPv4 forwarding is on where Docker runs",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "net.ipv4.ip_forward is on, as Docker needs",
+      "evidence": {
+        "configured_file": "",
+        "configured_value": "",
+        "docker": true,
+        "value": 1
+      },
+      "fix": {
+        "hint": "Set net.ipv4.ip_forward=1 in a sysctl drop-in and never let a hardening profile own it."
+      }
+    },
+    {
+      "id": "KRN-002",
+      "group": "KRN",
+      "title": "Reverse path filter is loose where Docker or Tailscale run",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "rp_filter is not strict",
+      "evidence": {
+        "all": 2,
+        "default": 2,
+        "docker": true,
+        "tailscale": true
+      },
+      "fix": {
+        "hint": "Set net.ipv4.conf.all.rp_filter=2 and net.ipv4.conf.default.rp_filter=2 (loose) in a drop-in."
+      }
+    },
+    {
+      "id": "KRN-003",
+      "group": "KRN",
+      "title": "Network sysctls match the hardening baseline",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "network sysctls match the baseline",
+      "evidence": {
+        "judged": 11,
+        "off_baseline": [],
+        "ufw_overrides": [],
+        "unavailable": []
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in and make /etc/ufw/sysctl.conf agree."
+      }
+    },
+    {
+      "id": "KRN-004",
+      "group": "KRN",
+      "title": "Kernel hardening sysctls match the baseline",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "kernel hardening sysctls match the baseline",
+      "evidence": {
+        "judged": 8,
+        "off_baseline": [],
+        "unavailable": []
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in."
+      }
+    },
+    {
+      "id": "KRN-005",
+      "group": "KRN",
+      "title": "IPv6 router advertisements are not switched off by a profile",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "accept_ra is not switched off in a way that breaks IPv6 here",
+      "evidence": {
+        "configured_file": "",
+        "global_ipv6_dynamic": false,
+        "value": 1
+      },
+      "fix": {
+        "hint": "Leave net.ipv6.conf.all.accept_ra at its default where the provider uses router advertisements, or configure the address statically."
+      }
+    },
+    {
+      "id": "LOG-001",
+      "group": "LOG",
+      "title": "journald has a size cap",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "journald SystemMaxUse is capped at 1G",
+      "evidence": {
+        "storage": "auto",
+        "system_max_use": "1G"
+      },
+      "fix": {
+        "hint": "Add a drop-in /etc/systemd/journald.conf.d/size.conf with `[Journal]` and `SystemMaxUse=1G`, then restart systemd-journald."
+      }
+    },
+    {
+      "id": "LOG-002",
+      "group": "LOG",
+      "title": "Proxy access logs are rotated",
+      "level": "pass",
+      "severity": "low",
+      "subject": "host",
+      "message": "no proxy log over 1 GiB without a logrotate rule",
+      "evidence": {
+        "logs": 1
+      },
+      "fix": {
+        "hint": "Add a logrotate rule (use copytruncate when the proxy cannot reopen its log)."
+      }
+    },
+    {
+      "id": "LOG-003",
+      "group": "LOG",
+      "title": "Journal disk use",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "the journal uses 300.0 MiB",
+      "evidence": {
+        "bytes": 314572800
+      },
+      "fix": {
+        "hint": "None; informational."
+      }
+    },
+    {
+      "id": "LOG-004",
+      "group": "LOG",
+      "title": "A metrics agent is present",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "metrics agent found: alloy (container alloy), node_exporter",
+      "evidence": {
+        "agents": [
+          "alloy",
+          "node_exporter"
+        ]
+      },
+      "fix": {
+        "hint": "Add monitoring with an alert for disk usage and SSH logins."
+      }
+    },
+    {
+      "id": "LOG-005",
+      "group": "LOG",
+      "title": "The journal survives a reboot",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "the journal is persistent across reboots",
+      "evidence": {
+        "persistent_dir": true,
+        "storage": "auto"
+      },
+      "fix": {
+        "hint": "Create /var/log/journal (or set Storage=persistent in a drop-in) and restart systemd-journald."
+      }
+    },
+    {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "3 app .env files are readable by the owner only",
+      "evidence": {
+        "passed": 3,
+        "roots": [
+          "/data/coolify/applications",
+          "/data/coolify/services"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-002",
+      "group": "SEC",
+      "title": "Platform main .env is not world readable",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "platform main .env is not world readable",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/data/coolify/source/.env"
+        ]
+      },
+      "fix": {
+        "hint": "chmod o-rwx /data/coolify/source/.env and keep the owner and group the installer set (the documented install uses 9999:root and chmod 700).",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "SEC-003",
+      "group": "SEC",
+      "title": "Platform SSH key folder is closed to other users",
+      "level": "fail",
+      "severity": "critical",
+      "subject": "file:/data/coolify/ssh/keys",
+      "message": "SSH key folder is open to group or others (mode 0755, want 0700)",
+      "evidence": {
+        "gid": 0,
+        "kind": "dir",
+        "mode": "0755",
+        "path": "/data/coolify/ssh/keys",
+        "platform": "coolify",
+        "uid": 9999
+      },
+      "fix": {
+        "hint": "chmod 700 the folder and chmod 600 every key in it."
+      }
+    },
+    {
+      "id": "SEC-003",
+      "group": "SEC",
+      "title": "Platform SSH key folder is closed to other users",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "1 SSH key path is closed to other users",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/data/coolify/ssh/keys"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 700 the folder and chmod 600 every key in it."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "2 files in the proxy dynamic folder are not a backup or editor copy",
+      "evidence": {
+        "passed": 2,
+        "roots": [
+          "/data/coolify/proxy/dynamic",
+          "/data/coolify/proxy/caddy/dynamic"
+        ]
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-005",
+      "group": "SEC",
+      "title": "Private keys are readable by their owner only",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "1 private key file is readable by the owner only",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/root",
+          "/home/deploy"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the key files (and 700 their folder)."
+      }
+    },
+    {
+      "id": "SEC-006",
+      "group": "SEC",
+      "title": "Docker client config is readable by its owner only",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "1 Docker client config is readable by the owner only",
+      "evidence": {
+        "passed": 1,
+        "roots": [
+          "/root",
+          "/home/deploy"
+        ]
+      },
+      "fix": {
+        "hint": "chmod 600 the file, and configure a credential helper so passwords are not stored in it.",
+        "docs": "https://docs.docker.com/reference/cli/docker/login/#credential-stores"
+      }
+    },
+    {
+      "id": "SEC-007",
+      "group": "SEC",
+      "title": "No world writable folders under the platform data root",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "no world writable folders under the platform data root",
+      "evidence": {
+        "passed": 0,
+        "roots": [
+          "/data/coolify"
+        ]
+      },
+      "fix": {
+        "hint": "chmod o-w the folders."
+      }
+    },
+    {
+      "id": "PAAS-001",
+      "group": "PAAS",
+      "title": "Self hosted platform detected",
+      "level": "info",
+      "severity": "info",
+      "subject": "file:/data/coolify",
+      "message": "coolify detected, role panel, version 4.0.0-beta.420",
+      "evidence": {
+        "containers_read": true,
+        "denied": [],
+        "evidence": [
+          "path:/data/coolify",
+          "path:/data/coolify/source/docker-compose.yml"
+        ],
+        "platform": "coolify",
+        "role": "panel",
+        "sources": [
+          "disk",
+          "containers"
+        ],
+        "version": "4.0.0-beta.420"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the platform for the other checks.",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "PAAS-002",
+      "group": "PAAS",
+      "title": "Platform proxy is not published on all interfaces behind a tunnel",
+      "level": "info",
+      "severity": "high",
+      "subject": "container:coolify-proxy",
+      "message": "proxy publishes only 80 and 443 (0.0.0.0:80-\u003e80/tcp, 0.0.0.0:443-\u003e443/tcp), as a panel host does; a tunnel runs as well, so if the tunnel is meant to be the only way in, publish the proxy on 127.0.0.1 and pass --profile tunnel",
+      "evidence": {
+        "exposed": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ],
+        "profile": "paas-panel",
+        "published": [
+          "0.0.0.0:80-\u003e80/tcp",
+          "0.0.0.0:443-\u003e443/tcp"
+        ]
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure."
+      }
+    },
+    {
+      "id": "PAAS-003",
+      "group": "PAAS",
+      "title": "Platform panel ports are not open to the world",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/6001",
+      "message": "coolify panel port 6001 listens on loopback, tailnet or private addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "exposed": [],
+        "filter": "none"
+      },
+      "fix": {
+        "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+        "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+      }
+    },
+    {
+      "id": "PAAS-003",
+      "group": "PAAS",
+      "title": "Platform panel ports are not open to the world",
+      "level": "pass",
+      "severity": "high",
+      "subject": "port:tcp/6002",
+      "message": "coolify panel port 6002 listens on loopback, tailnet or private addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "exposed": [],
+        "filter": "none"
+      },
+      "fix": {
+        "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+        "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+      }
+    },
+    {
+      "id": "PAAS-003",
+      "group": "PAAS",
+      "title": "Platform panel ports are not open to the world",
+      "level": "fail",
+      "severity": "high",
+      "subject": "port:tcp/8000",
+      "message": "coolify panel port 8000 listens on all interfaces and the firewall does not filter it",
+      "evidence": {
+        "binds": [
+          "0.0.0.0"
+        ],
+        "exposed": [
+          "0.0.0.0"
+        ],
+        "filter": "none"
+      },
+      "fix": {
+        "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+        "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+      }
+    },
+    {
+      "id": "PAAS-004",
+      "group": "PAAS",
+      "title": "No platform database is published publicly",
+      "level": "pass",
+      "severity": "critical",
+      "subject": "host",
+      "message": "no platform database publishes a port publicly (1 checked)",
+      "evidence": {
+        "checked": 1
+      },
+      "fix": {
+        "hint": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PAAS-005",
+      "group": "PAAS",
+      "title": "Projects do not share the platform default network",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "coolify network coolify holds apps of 0 project(s)",
+      "evidence": {
+        "networks": [
+          "coolify"
+        ],
+        "projects": []
+      },
+      "fix": {
+        "hint": "Give each project its own destination (Coolify: a new destination network per project; Dokploy: an isolated network per compose project) and attach the platform proxy to each."
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "Dokploy not found; Swarm ports are only judged on Dokploy hosts",
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "BAK-001",
+      "group": "BAK",
+      "title": "Platform database backups on the host",
+      "level": "info",
+      "severity": "info",
+      "subject": "file:/data/coolify",
+      "message": "4 files in the platform backup folder, newest 2 days old; keep a copy off the server",
+      "evidence": {
+        "days": 2,
+        "dir": "/data/coolify/backups",
+        "files": 4,
+        "newest": "2026-02-27T03:00:00Z",
+        "platform": "coolify"
+      },
+      "fix": {
+        "hint": "Schedule backups of the platform database to off site storage and test a restore; store the app key outside the server."
+      }
+    },
+    {
+      "id": "BAK-002",
+      "group": "BAK",
+      "title": "Backup tools present",
+      "level": "info",
+      "severity": "info",
+      "subject": "host",
+      "message": "no restic, borg, borgmatic, kopia or rclone found",
+      "evidence": {
+        "configs": [],
+        "denied": [],
+        "tools": []
+      },
+      "fix": {
+        "hint": "Run a restore test into a scratch folder and write down how long it took."
+      }
+    }
+  ]
+}

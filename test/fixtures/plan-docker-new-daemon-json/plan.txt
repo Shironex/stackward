@@ -2,7 +2,7 @@ stackward plan: nothing on this host was changed
 host:      sha256:cc24e0cbf4b08870  Ubuntu 24.04.1 LTS
 source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
 sandbox:   unavailable
-steps:     1 planned (0 safe, 1 networking, 0 access-critical), 1 opt in, 11 not planned
+steps:     1 planned (0 safe, 1 networking, 0 access-critical), 1 opt in, 12 not planned
 restarts:  docker
 
 1. docker-log-rotation  [networking]  fixes DKR-031
@@ -40,6 +40,7 @@ Not planned:
   sshd-hardening       unknown  SSH-001 is unknown, SSH-002 is unknown, SSH-003 is unknown, SSH-004 is unknown and SSH-005 is unknown; nothing to plan until the audit can inspect it
   lock-default-user    unknown  USR-003 is unknown; nothing to plan until the audit can inspect it
   ufw-policy           unknown  NET-001 is unknown; nothing to plan until the audit can inspect it
+  ufw-docker           passing  DKR-001 already passes or does not apply
   fail2ban-sshd        unknown  CS-010 is unknown; nothing to plan until the audit can inspect it
 
 Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.
