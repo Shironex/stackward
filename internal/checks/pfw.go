@@ -38,15 +38,21 @@ type packet struct {
 	src   int // anySrcPort: matches no source port rule
 	// established is true for a TCP packet with ACK set (a reply).
 	established bool
+	// blockIsFinding is set by the checks whose finding is a packet being
+	// dropped (the reply checks); it swaps the source predicates.
+	blockIsFinding bool
 }
 
-// The two source predicates err in opposite directions on purpose, so a
-// doubtful source always leans toward a finding: a permit is assumed to
-// reach anywhere, a deny is assumed to block nothing.
+// Sources are read with two predicates that err in opposite directions, so
+// a doubtful source leans toward a finding in every check. Where a packet
+// getting in is the finding (PFW-002 to PFW-005), a permit counts with
+// looseWorld and a deny with exactWorld. Where a packet being dropped is the
+// finding (the reply checks in PFW-007), the two swap: a deny counts with
+// looseWorld and a permit with exactWorld.
 
-// permitFromWorld reports whether a permit's sources let a sender anywhere
-// in: no source, a source of /8 or wider, or a source that does not parse.
-func permitFromWorld(sources []string) bool {
+// looseWorld reports whether sources may cover a sender anywhere: no
+// source, a source of /8 or wider, or a source that does not parse.
+func looseWorld(sources []string) bool {
 	if len(sources) == 0 {
 		return true
 	}
@@ -59,15 +65,16 @@ func permitFromWorld(sources []string) bool {
 	return false
 }
 
-// denyFromWorld reports whether a deny's sources cover every sender: no
-// source, or a true /0 (0.0.0.0/0, ::/0, ::ffff:0.0.0.0/96). A narrower or
-// unparsable source never makes a deny match a sender anywhere.
-func denyFromWorld(sources []string) bool {
+// exactWorld reports whether sources surely cover every IPv4 sender (the
+// packets the checks simulate are IPv4): no source, or 0.0.0.0/0 or
+// ::ffff:0.0.0.0/96. A narrower, IPv6 only or unparsable source never
+// counts.
+func exactWorld(sources []string) bool {
 	if len(sources) == 0 {
 		return true
 	}
 	for _, s := range sources {
-		if p, err := parseSource(s); err == nil && p.Bits() == 0 {
+		if p, err := parseSource(s); err == nil && p.Addr().Is4() && p.Bits() == 0 {
 			return true
 		}
 	}
@@ -87,12 +94,13 @@ func parseSource(s string) (netip.Prefix, error) {
 	return p, nil
 }
 
-// fromWorld picks the predicate for r's action.
-func fromWorld(r facts.ProviderRule) bool {
-	if r.Action == "permit" {
-		return permitFromWorld(r.Sources)
+// fromWorld picks the predicate for r's action and what p's check counts
+// as a finding.
+func fromWorld(r facts.ProviderRule, p packet) bool {
+	if (r.Action == "permit") != p.blockIsFinding {
+		return looseWorld(r.Sources)
 	}
-	return denyFromWorld(r.Sources)
+	return exactWorld(r.Sources)
 }
 
 func portsMatch(ranges []facts.PortRange, port int) bool {
@@ -120,7 +128,7 @@ func inForce(r facts.ProviderRule) bool {
 
 // matches reports whether r matches p from a sender anywhere.
 func matches(r facts.ProviderRule, p packet) bool {
-	if !inForce(r) || r.Fragments || !fromWorld(r) {
+	if !inForce(r) || r.Fragments || !fromWorld(r, p) {
 		return false
 	}
 	if r.Protocol != "ipv4" && r.Protocol != p.proto {
