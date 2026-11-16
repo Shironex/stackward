@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shironex/stackward/blob/main/schema/diff.v1.json",
+  "title": "stackward diff v1",
+  "description": "Output of `stackward diff OLD NEW --json` and `stackward audit --baseline OLD --json`: what changed between two report.v1 documents of one host. Adding an optional field is not a breaking change; removing or renaming a field, or changing a meaning, needs diff.v2. Every string comes from the two reports, cleaned of control characters and redacted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tool", "old", "new", "same_host", "summary", "drift", "coverage_lost", "changes"],
+  "properties": {
+    "schema": { "const": "stackward.diff.v1" },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "stackward" },
+        "version": { "type": "string" }
+      }
+    },
+    "old": { "description": "The baseline report.", "$ref": "#/$defs/side" },
+    "new": { "description": "The report compared with the baseline.", "$ref": "#/$defs/side" },
+    "same_host": { "description": "Both reports carry the same hostname hash. False only when --force-host compared two hosts or a report without a host.", "type": "boolean" },
+    "notes": { "description": "Caveats of this comparison (root on one side only, another profile, another stackward version). Absent when none.", "type": "array", "items": { "type": "string" } },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drift", "coverage_lost", "added", "removed", "changed", "new_findings"],
+      "properties": {
+        "drift": { "type": "integer", "minimum": 0 },
+        "coverage_lost": { "type": "integer", "minimum": 0 },
+        "added": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 },
+        "changed": { "type": "integer", "minimum": 0 },
+        "new_findings": { "description": "Changes with new_finding true.", "type": "integer", "minimum": 0 }
+      }
+    },
+    "drift": { "description": "Changes on the host that matter whatever their level, ordered by kind, subject and value. A waiver does not silence drift.", "type": "array", "items": { "$ref": "#/$defs/drift" } },
+    "coverage_lost": { "description": "Drift checks the baseline could judge (a pass, info, warn or fail result) whose results are now all unknown or skip, or missing: drift of that kind would go unseen. Each trips --fail-on-drift any, fail and drift.", "type": "array", "items": { "$ref": "#/$defs/coverage_lost" } },
+    "changes": { "description": "Results added, removed or changed, ordered by group (catalog order), check id and subject. A result appearing or disappearing is listed only when it is a fail, warn or unknown or a waiver matched it.", "type": "array", "items": { "$ref": "#/$defs/change" } }
+  },
+  "$defs": {
+    "side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated_at", "tool_version", "host", "profile", "root"],
+      "properties": {
+        "generated_at": { "description": "generated_at of the report.", "type": "string" },
+        "tool_version": { "description": "tool.version of the report.", "type": "string" },
+        "host": { "description": "The hostname hash; a report with a plain hostname is hashed, so a diff never prints one. Empty when the report names no host.", "type": "string", "pattern": "^(sha256:[0-9a-f]{16})?$" },
+        "profile": { "type": "string" },
+        "root": { "description": "coverage.root of the report.", "type": "boolean" }
+      }
+    },
+    "drift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "check", "subject", "value", "detail"],
+      "properties": {
+        "kind": { "description": "listener: a NET-004 port that is new, or now listens on a wildcard or public address. authorized-key: an SSH-014 fingerprint the user did not have (or a key count that grew when a report has no fingerprints). sudoer: a USR-004 NOPASSWD principal no baseline sudoers file had. root-container: a DKR-020 container that runs as root and did not, or is new.", "enum": ["listener", "authorized-key", "sudoer", "root-container"] },
+        "check": { "enum": ["NET-004", "SSH-014", "USR-004", "DKR-020"] },
+        "subject": { "type": "string" },
+        "value": { "description": "What is new: the port, the key fingerprint (never key material), the sudoers principal or the container. Empty for a key count.", "type": "string" },
+        "detail": { "type": "string" }
+      }
+    },
+    "coverage_lost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "kind", "now", "detail"],
+      "properties": {
+        "check": { "enum": ["NET-004", "SSH-014", "USR-004", "DKR-020"] },
+        "kind": { "enum": ["listener", "authorized-key", "sudoer", "root-container"] },
+        "now": { "enum": ["unknown", "skip", "missing"] },
+        "detail": { "type": "string" }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "group", "title", "severity", "subject", "new_finding"],
+      "properties": {
+        "kind": { "enum": ["added", "removed", "changed"] },
+        "id": { "type": "string", "pattern": "^[A-Z]{2,4}-[0-9]{3}$" },
+        "group": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
+        "title": { "type": "string" },
+        "severity": { "enum": ["critical", "high", "moderate", "low", "info"] },
+        "subject": { "type": "string" },
+        "what": { "description": "For changed only: level, waiver or both.", "type": "array", "items": { "enum": ["level", "waiver"] } },
+        "old": { "description": "The result in the baseline; absent for added.", "$ref": "#/$defs/state" },
+        "new": { "description": "The result in the new report; absent for removed.", "$ref": "#/$defs/state" },
+        "new_finding": { "description": "The result is an open fail or warn now (no waiver accepts it) and was not open in the baseline, or was open at a milder level. A finding a waiver accepts is never new, and is never shown as fixed.", "type": "boolean" }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "message"],
+      "properties": {
+        "level": { "description": "The real level; a waiver never changes it.", "enum": ["pass", "warn", "fail", "unknown", "skip", "info"] },
+        "waiver": { "description": "The result's waiver status; absent when no waiver matched it. Only accepted keeps it from counting.", "enum": ["accepted", "expired", "level-exceeded"] },
+        "expires": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
