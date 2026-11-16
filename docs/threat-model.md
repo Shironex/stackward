@@ -57,8 +57,10 @@ In version 0.1 stackward:
   `--textfile`;
 - **makes no network calls during `audit`.** No telemetry, no update check,
   no lookups, no uploads. Only `probe`, which you run from another machine,
-  touches the network (see below), and the provider firewall fetch when you
-  opt in with `--provider` (see [below](#the-provider-firewall-fetch));
+  touches the network (see below), the provider firewall fetch when you
+  opt in with `--provider` (see [below](#the-provider-firewall-fetch)),
+  and `audit --ssh`, which runs the audit on hosts you name through your own
+  ssh client (see [below](#auditing-other-hosts-over-ssh));
 - **never sends a non-GET request to Docker.** It cannot start, stop, create
   or remove anything;
 - **never runs a command that changes state;**
@@ -180,6 +182,64 @@ processes' memory through `/proc/<pid>/mem` and their files through
 `/proc/<pid>/root`. [schedule.md](schedule.md#what-a-compromised-root-run-can-do)
 spells this out; running the audit as an account is the way to avoid it. The rename of each output into place is done by `mv` in the
 unit, so the audit process keeps its Landlock sandbox unchanged.
+
+## Auditing other hosts over ssh
+
+`stackward audit --ssh HOST...` (or `--ssh-hosts FILE`) runs the same read
+only audit on other machines and prints one fleet report. It is the only
+part of `audit` that starts another program on the machine you run it from,
+and the only time stackward writes to an audited host.
+
+- **Your ssh, your config.** stackward starts the `ssh` on your `PATH`
+  without a shell. It embeds no SSH library and never sees a key, a
+  passphrase or a password: your ssh config, agent and known hosts decide how
+  to log in. ssh runs with `BatchMode=yes`, so it never prompts, and an
+  unknown host key fails instead of being accepted. It also runs with `-T -a
+  -x` and `ClearAllForwardings=yes`: no TTY, no agent or X11 forwarding and
+  no port forwards, whatever the config says, so the audited host gets
+  nothing back from your machine.
+- **Host names cannot become options or code.** A host is a name from your
+  ssh config, `user@name` or an address: letters, digits, `.`, `-`, `_` and
+  `:`, never starting with `-`, at most 256 per run. It is passed after `--`.
+  Anything else is refused before ssh starts. Every remote command is a fixed
+  string of this program; the only flags passed on are `--profile` (checked
+  against the known names), `--timeout` and `--show-hostname`. `--provider`
+  is refused with `--ssh`, so no credential ever goes to a host.
+- **The one write.** Per host, a first connection runs `uname -m`. When the
+  binary to copy (this one, or one given with `--ssh-binary`, checked from its
+  ELF header) does not match, nothing is copied and the error names the
+  release archive to download. Otherwise a second connection runs a one line
+  POSIX `sh` script: `umask 077`, `mktemp -d` (a new directory only your
+  user can enter, mode 700), an `EXIT` trap that removes it however the
+  script ends, the binary streamed in on standard input (the only file
+  written), then `stackward audit --json` from there, under `sudo -n` only
+  with `--ssh-sudo`. The remote audit applies its own Landlock sandbox, as
+  any audit does. If the run fails before the trap could run (a broken
+  connection, a timeout, a killed process), a third connection removes the
+  directory the script announced, after checking it has the expected
+  `.../stackward.XXXXXXXXXX` form; when that cannot be confirmed the report
+  says so and names the path.
+- **What comes back is not trusted.** The report is read from standard
+  output with a 32 MiB cap and must be a `stackward.report.v1` document.
+  Control characters and bidirectional overrides in every string are
+  replaced before rendering, so a compromised host cannot send escape
+  sequences to your terminal or forge lines in the report. Error output is
+  capped, cleaned and redacted.
+- **No local trace.** Host names appear only in the report you asked for
+  (stdout or `--out`); nothing else is written on your machine by stackward
+  (ssh keeps its own files, such as known hosts, as usual).
+- **One host never stops the others.** Hosts run in parallel
+  (`--ssh-parallel`, default 4, at most 32), each with its own time limit
+  (`--ssh-timeout`, default 10 minutes). A host that fails is listed with its
+  error and the run exits 2.
+
+**The local side is not sandboxed.** Landlock would forbid ssh its network
+connection and its own files (known hosts, control sockets), so the fleet
+run applies no sandbox on your machine. It collects nothing there either:
+it only starts ssh, reads the binary and writes `--out`. `stackward-guard`
+allows starting a program in one file of one package for this
+(`internal/fleet/ssh.go`), and the `os/exec` import rule lists the same
+file.
 
 ## What is out of scope
 
