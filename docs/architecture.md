@@ -196,7 +196,8 @@ Waivers ([waivers.md](waivers.md)) only add optional fields: a `waiver`
 object on each fail or warn result one matches, `summary.accepted` and
 `coverage.accepted` (results counted as accepted instead of fail or warn,
 and still as checked) and the top level `waivers` list with each entry's
-state. A waiver never changes a result's level or evidence.
+state. Waivers match the raw subject, which `Item` keeps unexported beside
+the redacted one and no renderer prints. A waiver never changes a result's level or evidence.
 
 ## Plan steps
 
