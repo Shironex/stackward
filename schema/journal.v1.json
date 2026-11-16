@@ -331,7 +331,7 @@
       ],
       "properties": {
         "kind": {
-          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). before: a step command before the edits (a package install, after apt-get update when the lists were stale). command: a step command after the edits. undo: run by stackward undo. check: a transaction check after the steps ran (sshd -t, sshd -T, ss).",
+          "description": "validate: checks a staged file before it is moved into place (the staged path is the last argument). before: a step command before the edits (a package install, after apt-get update when the lists were stale). command: a step command after the edits. undo: run by stackward undo (or skipped, see skipped). check: a transaction check after the steps ran (sshd -t, sshd -T, ss).",
           "enum": [
             "validate",
             "before",
@@ -360,6 +360,10 @@
           "type": "string"
         },
         "error": {
+          "type": "string"
+        },
+        "skipped": {
+          "description": "Optional, undo commands only: why the command did not run, because what it undoes was never done (a purge of a package whose install failed before dpkg unpacked it, a userdel of an account useradd never created). exit_code is then 0 and nothing ran.",
           "type": "string"
         }
       }

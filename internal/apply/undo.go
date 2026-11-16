@@ -22,6 +22,18 @@ func touched(js JournalStep) bool {
 		slices.ContainsFunc(js.Commands, func(c JournalCommand) bool { return c.Kind == KindCommand || c.Kind == KindBefore })
 }
 
+// ran are the step commands a journal step started, before and after its
+// edits, whatever their exit.
+func ran(js JournalStep) [][]string {
+	var out [][]string
+	for _, c := range js.Commands {
+		if c.Kind == KindCommand || c.Kind == KindBefore {
+			out = append(out, c.Args)
+		}
+	}
+	return out
+}
+
 // undoCommands are the step's own undo commands that undo runs after the
 // files are restored. File removals are left out: undo restores and
 // removes files itself, from the journal, and only the ones this run
@@ -182,7 +194,20 @@ func Undo(ctx context.Context, j *Journal, o UndoOptions) (changed bool, err err
 		if err := r.save(); err != nil {
 			return changed, err
 		}
+		done := ran(*js)
 		for _, args := range undoCommands(js.Step) {
+			skip, err := plan.UndoSkip(h, args, done)
+			if err != nil {
+				return changed, fmt.Errorf("step %s: %w", js.ID, err)
+			}
+			if skip != "" {
+				o.Progress("%s: skipping %s: %s", js.ID, strings.Join(args, " "), skip)
+				js.Commands = append(js.Commands, JournalCommand{Kind: KindUndo, Args: redactAll(args), Skipped: skip})
+				if err := r.save(); err != nil {
+					return changed, err
+				}
+				continue
+			}
 			changed = true
 			if err := r.command(ctx, js, KindUndo, args); err != nil {
 				return changed, fmt.Errorf("step %s: %w", js.ID, err)
