@@ -159,11 +159,6 @@ linters:
         text: "(argument-limit|function-result-limit|file-length-limit)"
       # Known over-limit functions, tracked in follow-up issues. Delete each
       # rule when its function is split.
-      # TODO(#66): apply and undo, after the access transaction work lands.
-      - path: internal/(cli/apply|apply/undo)\.go
-        linters:
-          - funlen
-          - gocognit
       # Tests plant fake secrets and write temp files on purpose.
       - path: _test\.go
         linters:

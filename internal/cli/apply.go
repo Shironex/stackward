@@ -313,6 +313,16 @@ func runUndoEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 	case runID == "":
 		return fail("give the run to undo with --run RUN_ID (apply prints it)")
 	}
+	return undoRun(env, runID, yes, stdout, stderr)
+}
+
+// undoRun reverses the apply run runID from its journal, after the lock,
+// the host check and the confirmation.
+func undoRun(env applyEnv, runID string, yes bool, stdout, stderr io.Writer) int {
+	fail := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "stackward undo: "+format+"\n", a...)
+		return report.ExitError
+	}
 	if err := needRootOnLinux(env, "undo"); err != nil {
 		return fail("%v; nothing was changed", err)
 	}
