@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Shironex/stackward/internal/catalog"
 	"github.com/Shironex/stackward/internal/redact"
 	"github.com/Shironex/stackward/internal/report"
 )
@@ -23,8 +24,10 @@ const (
 	MaxParallel = 32
 	// DefaultHostTimeout bounds everything done for one host.
 	DefaultHostTimeout = 10 * time.Minute
-	// maxReport caps the JSON read from one host.
-	maxReport = 32 << 20
+	// maxReport caps the JSON read from one host. At most MaxParallel
+	// buffers exist at once; what is kept after parsing is bounded again by
+	// validateReport.
+	maxReport = 8 << 20
 	// maxStderr caps the standard error kept from one host.
 	maxStderr = 64 << 10
 	// cleanupTimeout bounds the extra connection that removes a leftover
@@ -60,6 +63,10 @@ func Run(ctx context.Context, hosts []string, o Options) ([]report.FleetHost, er
 	if len(o.Binaries) == 0 {
 		return nil, errors.New("no binary to copy")
 	}
+	cat, err := catalog.Default()
+	if err != nil {
+		return nil, err
+	}
 	n := o.Parallel
 	if n < 1 {
 		n = 1
@@ -80,7 +87,7 @@ func Run(ctx context.Context, hosts []string, o Options) ([]report.FleetHost, er
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			out[i] = auditHost(ctx, h, script, o)
+			out[i] = auditHost(ctx, h, script, cat, o)
 		}()
 	}
 	wg.Wait()
@@ -89,7 +96,7 @@ func Run(ctx context.Context, hosts []string, o Options) ([]report.FleetHost, er
 
 // auditHost does everything for one host: architecture, upload and run,
 // report, cleanup on failure.
-func auditHost(ctx context.Context, host, script string, o Options) report.FleetHost {
+func auditHost(ctx context.Context, host, script string, cat *catalog.Catalog, o Options) report.FleetHost {
 	res := report.FleetHost{Host: host, Status: report.FleetError}
 	if ctx.Err() != nil {
 		res.Error = "not started: the run was interrupted"
@@ -124,12 +131,12 @@ func auditHost(ctx context.Context, host, script string, o Options) report.Fleet
 		res.Cleanup = cleanupAfterFailure(ctx, host, stderr.Bytes())
 		return res
 	}
-	rep, err := parseReport(stdout.Bytes())
+	rep, notes, err := parseReport(stdout.Bytes(), cat)
 	if err != nil {
 		res.Error = err.Error()
 		return res
 	}
-	res.Status, res.Report = report.FleetAudited, rep
+	res.Status, res.Report, res.Notes = report.FleetAudited, rep, notes
 	return res
 }
 
@@ -164,6 +171,8 @@ func runFailure(code int, err error, stderr []byte, overflow bool) string {
 		return "ssh: " + err.Error()
 	case code == 255:
 		return "ssh failed (exit 255): " + msg
+	case code == exitUnsafeTmp:
+		return "refused to run with --ssh-sudo: /tmp on the host is not owned by root with the sticky bit, so the copied binary could be swapped before root runs it"
 	case code == exitSetup:
 		return "could not create the private temporary directory or copy the binary: " + msg
 	case code == exitInterrupted:
@@ -199,20 +208,21 @@ func cleanupAfterFailure(ctx context.Context, host string, stderr []byte) string
 	return ""
 }
 
-// parseReport decodes and cleans the report a host sent.
-func parseReport(b []byte) (*report.Report, error) {
+// parseReport decodes the report a host sent and rebuilds it against the
+// local catalog (validateReport).
+func parseReport(b []byte, cat *catalog.Catalog) (*report.Report, []string, error) {
 	var r report.Report
 	if err := json.Unmarshal(b, &r); err != nil {
-		return nil, fmt.Errorf("the host did not send a report.v1 JSON document: %w", err)
+		return nil, nil, fmt.Errorf("the host did not send a report.v1 JSON document: %w", err)
 	}
 	if r.Schema != report.SchemaID {
-		return nil, fmt.Errorf("the host sent schema %q, want %q", cleanText(r.Schema), report.SchemaID)
+		return nil, nil, fmt.Errorf("the host sent schema %q, want %q", truncate(cleanText(r.Schema), maxShortText), report.SchemaID)
 	}
 	if r.Probe != nil {
-		return nil, errors.New("the host sent a probe report, not an audit")
+		return nil, nil, errors.New("the host sent a probe report, not an audit")
 	}
-	cleanReport(&r)
-	return &r, nil
+	notes := validateReport(&r, cat)
+	return &r, notes, nil
 }
 
 // tail returns the last line of stderr worth showing, cleaned and

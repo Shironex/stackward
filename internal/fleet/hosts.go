@@ -21,8 +21,9 @@ import (
 const MaxHosts = 256
 
 // hostPattern is what a host may look like: an optional user@ prefix and a
-// name, an alias from the ssh config, an IPv4 address or a bare IPv6
-// address. No shell or ssh token characters (space, quote, ';', '%', '$',
+// name, an alias from the ssh config, an IPv4 address or an IPv6 address
+// that starts with a hex digit (2001:db8::1). An address that starts with a
+// colon (::1) is refused; give it an alias in the ssh config. No shell or ssh token characters (space, quote, ';', '%', '$',
 // '/'), and the first character is never '-', so a host can never be read
 // as an ssh option or expand in a ProxyCommand.
 var hostPattern = regexp.MustCompile(`^([A-Za-z0-9_][A-Za-z0-9._-]{0,63}@)?[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$`)
