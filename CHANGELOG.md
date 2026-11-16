@@ -5,6 +5,78 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.2.1 (2026-11-16)
+
+A patch release: stackward can now read your cloud provider's firewall, which
+the host cannot see. Everything is opt in. Without `--provider` stackward
+sends no network request, and the audit judges the host exactly as in 0.2.0.
+`install.sh` now installs 0.2.1.
+
+### Added
+
+- `--provider hetzner|ovh|auto` on `audit` (and so on `plan`, which audits
+  first): reads the provider's firewall over its API and judges it next to
+  the host firewall. `--provider-ip ADDR` names the public address when it is
+  not on one of the host's interfaces (NAT). Hetzner Cloud Firewall (stateful,
+  IPv4 and IPv6) and the OVHcloud Edge Network Firewall (stateless, ordered,
+  IPv4 only) are supported. `auto` picks the provider whose credentials are
+  set and refuses when both are; it never probes the network.
+- The PFW checks (provider firewall group, 8 checks) judge what the provider
+  firewall lets in before traffic reaches the host and Docker:
+  - PFW-001: a provider firewall is attached and in force. Without
+    `--provider` it is one `skip` row saying the provider firewall was not
+    checked, and the other PFW checks leave no row.
+  - PFW-002: inbound traffic is denied by default at the provider.
+  - PFW-003: no provider rule allows all UDP from anywhere.
+  - PFW-004: every port the provider allows has a service behind it.
+  - PFW-005: SSH is not open to anywhere at the provider.
+  - PFW-006: IPv6 is covered by the provider or the host firewall.
+  - PFW-007: a stateless provider firewall lets return traffic in.
+  - PFW-008: what the provider firewall allows, as info.
+  Anything the API could not answer is `unknown` with the reason, never a
+  pass.
+- The facts model gains `provider_firewall` (normalised rules only: no names,
+  labels, server, firewall, project or account ids). `--dump-facts` masks the
+  matched address to its first three octets, every IPv4 address in a reason
+  and every rule network, and the redaction pass masks a registered token as
+  a literal value wherever it could appear.
+- [docs/provider-firewall.md](docs/provider-firewall.md): the guide, with the
+  exact requests sent, and a design note in `docs/design/`.
+
+### Security and privacy
+
+- `--provider` makes outbound HTTPS calls to the provider API only when you
+  ask for it. Hetzner requests go to `api.hetzner.cloud`; OVH requests go to
+  the regional host (`eu.api.ovh.com`, `ca.api.ovh.com` or
+  `api.us.ovhcloud.com`). Nothing else is contacted.
+- The client can only build GET requests, refuses any other host, never
+  follows a redirect, ignores proxy variables, caps every answer at 1 MiB and
+  gives the whole fetch 10 seconds. A slow or failing API never fails the
+  audit; the checks say `unknown`.
+- Credentials come from the environment or a file only, never from the
+  command line (there is no `--token` flag, because argv shows in `ps` and in
+  shell history). Hetzner: `STACKWARD_HETZNER_TOKEN` or
+  `STACKWARD_HETZNER_TOKEN_FILE`. OVH: `STACKWARD_OVH_APPLICATION_KEY`,
+  `STACKWARD_OVH_APPLICATION_SECRET`, `STACKWARD_OVH_CONSUMER_KEY` and
+  `STACKWARD_OVH_ENDPOINT`, or `STACKWARD_OVH_CREDENTIALS_FILE`. A credential
+  file must be a regular file (a symlink is refused), owned by the user
+  running the audit, mode 0600 or stricter, and is capped at 4 KiB.
+- Credentials are never stored: not in the facts, the report, `--dump-facts`
+  or any log. Create the Hetzner token with permission Read and limit the OVH
+  consumer key to `GET /ip` and `GET /ip/*`. stackward only sends GET
+  requests.
+- The fetch runs before the Landlock sandbox, which denies TCP connect and
+  cannot be loosened afterwards, so it is the only code that touches the
+  network. The sandbox is unchanged. See
+  [docs/threat-model.md](docs/threat-model.md#the-provider-firewall-fetch).
+
+### Changed
+
+- The install guide in `docs/install.md` is a step by step guide, and the
+  README install section points at it.
+- Internal: long functions in the CLI, facts and checks packages were split
+  under the funlen and gocognit limits, with no change in behaviour.
+
 ## 0.2.0 (2026-11-16)
 
 stackward can now fix what it finds. 0.1.2 only reported; 0.2 adds a plan you
