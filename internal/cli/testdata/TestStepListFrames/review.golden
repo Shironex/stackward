@@ -1,0 +1,24 @@
+ stackward test · step list · host sha256:ce44d5e688c44d5d       plan plan.json 
+ 7 steps: 2 safe, 1 networking, 4 access-critical, 1 opt in                     
+ 1 selected · access-critical: runs alone, in a rollback transaction            
+────────────────────────────────────────────────────────────────────────────────
+ REVIEW  access-critical transaction                                48-64 of 64 
+    after the steps: sshd -t, the effective sshd -T values, and sshd still      
+       listening on the ports it listens on now                                 
+    a failed check rolls back at once                                           
+    confirm with stackward confirm from a NEW SSH session (this one is refused) 
+                                                                                
+ After apply, transaction 20260301T120000Z-c11c11 is OPEN until its deadline:   
+    keep this session open, and from a NEW SSH session to this host run         
+       sudo stackward confirm 20260301T120000Z-c11c11                           
+    if the new session cannot log in, do nothing: the change rolls back at the  
+       deadline                                                                 
+    from the provider console instead:                                          
+       sudo stackward confirm --console 20260301T120000Z-c11c11                 
+    to roll back now:                                                           
+       sudo stackward undo --transaction 20260301T120000Z-c11c11                
+                                                                                
+ On y the step list closes and stackward apply runs these steps, checking every 
+    one again first, and prints what it does.                                   
+────────────────────────────────────────────────────────────────────────────────
+ y apply in a transaction  esc back  ↑↓ scroll  q quit                          

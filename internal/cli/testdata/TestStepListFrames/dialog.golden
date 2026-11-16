@@ -1,0 +1,24 @@
+ stackward test · step list · host sha256:ce44d5e688c44d5d       plan plan.json 
+ 7 steps: 2 safe, 1 networking, 4 access-critical, 1 opt in                     
+ 2 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+ SELECT txn-test-keys-only?                                                     
+                                                                                
+  Test only: turn SSH password authentication off                               
+                                                                                
+  Access-critical: it changes SSH, the firewall or accounts. It runs alone,     
+  inside a rollback transaction: unless you confirm from a new SSH session      
+  within 5m0s, a timer undoes it. Make sure you can log in to the provider      
+  console first.                                                                
+                                                                                
+  Apply would refuse it beside the steps already selected: access-critical      
+  steps (txn-test-keys-only) run inside the rollback transaction, in a run of   
+  their own; apply journald-cap, sysctl-hardening in a separate run first       
+                                                                                
+  y selects txn-test-keys-only alone and clears the other selected steps.       
+                                                                                
+  Selecting changes nothing. Apply runs only after the review screen and your   
+  y there.                                                                      
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ y select  n cancel                                                             

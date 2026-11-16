@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Shironex/stackward/internal/apply"
 	"github.com/Shironex/stackward/internal/audit"
 	"github.com/Shironex/stackward/internal/facts"
 	"github.com/Shironex/stackward/internal/profile"
@@ -29,6 +30,10 @@ type tuiFlags struct {
 	timeout      time.Duration
 	showHostname bool
 	noSandbox    bool
+	// The step list: a saved plan, the transaction deadline and --plain.
+	planFile string
+	within   time.Duration
+	plain    bool
 }
 
 // tuiSession is what the browser needs, gathered before it starts.
@@ -42,7 +47,20 @@ type tuiSession struct {
 // runTUI audits the host (or loads saved facts or a saved report) with the
 // same pipeline and sandbox as audit, then opens the findings browser.
 func runTUI(args []string, stdout, stderr io.Writer) int {
-	s, code := prepareTUI(args, stdout, stderr)
+	return runTUIEnv(args, stdout, stderr, hostApplyEnv())
+}
+
+// runTUIEnv opens the findings browser, or with --plan the guided step
+// list, which applies through env like stackward apply.
+func runTUIEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
+	tf, ok, code := parseTUIFlags(args, stderr)
+	if !ok {
+		return code
+	}
+	if tf.planFile != "" {
+		return runSteps(tf, env, stdout, stderr)
+	}
+	s, code := prepareTUI(tf, stdout, stderr)
 	if s == nil {
 		return code
 	}
@@ -54,10 +72,9 @@ func runTUI(args []string, stdout, stderr io.Writer) int {
 	return report.ExitOK
 }
 
-// prepareTUI parses flags, opens every file and the terminal, applies the
-// sandbox and builds the report. A nil session means stop with code.
-func prepareTUI(args []string, stdout, stderr io.Writer) (*tuiSession, int) {
-	var tf tuiFlags
+// parseTUIFlags parses the flags of tui. ok is false when tui must stop
+// with code.
+func parseTUIFlags(args []string, stderr io.Writer) (tf tuiFlags, ok bool, code int) {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&tf.reportFile, "report", "", "browse a saved report.v1 JSON file instead of auditing this host")
@@ -66,22 +83,56 @@ func prepareTUI(args []string, stdout, stderr io.Writer) (*tuiSession, int) {
 	fs.DurationVar(&tf.timeout, "timeout", facts.DefaultTimeout, "time limit for each collector")
 	fs.BoolVar(&tf.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&tf.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
+	fs.StringVar(&tf.planFile, "plan", "", "open the guided step list over this plan file (stackward plan --out writes one); applies only what you confirm (root)")
+	fs.DurationVar(&tf.within, "confirm-within", apply.DefaultConfirmWithin, fmt.Sprintf("with --plan, access-critical steps: roll back unless confirmed within this time (%s to %s)", apply.MinConfirmWithin, apply.MaxConfirmWithin))
+	fs.BoolVar(&tf.plain, "plain", false, "with --plan: print the plan as text instead of opening the list, as without a terminal")
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: stackward tui [flags]\n\nBrowse the findings of an audit in the terminal. It only reads: no file\nis written and nothing on the host changes.\n\nFlags:\n")
+		fmt.Fprintf(stderr, "Usage: stackward tui [flags]\n       stackward tui --plan PLAN.json [--confirm-within 5m] [--plain]\n\nBrowse the findings of an audit in the terminal. It only reads: no file\nis written and nothing on the host changes.\n\nWith --plan, choose plan steps in a guided list instead: each step shows\nwhat it changes, why, its diff and its undo. Nothing changes until you\nconfirm the review screen; then the steps run with the same code as\nstackward apply, with backups and a journal. Needs root. Without a\nterminal it prints the plan as text.\n\nFlags:\n")
 		fs.PrintDefaults()
 	}
+	stop := func(c int) (tuiFlags, bool, int) { return tf, false, c }
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return nil, report.ExitOK
+			return stop(report.ExitOK)
 		}
-		return nil, report.ExitError
+		return stop(report.ExitError)
 	}
+	if err := checkTUIFlags(fs, tf); err != nil {
+		fmt.Fprintf(stderr, "stackward tui: %v\n", err)
+		return stop(report.ExitError)
+	}
+	return tf, true, report.ExitOK
+}
+
+// checkTUIFlags refuses stray arguments and flags that do not go together.
+func checkTUIFlags(fs *flag.FlagSet, tf tuiFlags) error {
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
+	set := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	if tf.planFile != "" {
+		for _, n := range []string{"report", "facts", "profile", "timeout", "show-hostname", "no-sandbox"} {
+			if set[n] {
+				return fmt.Errorf("--%s does not go with --plan: the step list reads a saved plan; give it to stackward plan instead", n)
+			}
+		}
+		return nil
+	}
+	for _, n := range []string{"confirm-within", "plain"} {
+		if set[n] {
+			return fmt.Errorf("--%s goes with --plan (the step list); the findings browser needs a terminal, stackward audit --plain prints the findings", n)
+		}
+	}
+	return nil
+}
+
+// prepareTUI opens every file and the terminal, applies the sandbox and
+// builds the report. A nil session means stop with code.
+func prepareTUI(tf tuiFlags, stdout, stderr io.Writer) (*tuiSession, int) {
 	fail := func(format string, a ...any) (*tuiSession, int) {
 		fmt.Fprintf(stderr, "stackward tui: "+format+"\n", a...)
 		return nil, report.ExitError
-	}
-	if fs.NArg() > 0 {
-		return fail("unexpected argument %q", fs.Arg(0))
 	}
 	if tf.reportFile != "" && tf.factsFile != "" {
 		return fail("give --report or --facts, not both")
