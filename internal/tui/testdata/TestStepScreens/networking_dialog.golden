@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+ SELECT docker-log-rotation?                                                    
+                                                                                
+  Rotate Docker container logs                                                  
+                                                                                
+  Networking: it restarts docker, which can interrupt traffic (running          
+  containers stop and start).                                                   
+                                                                                
+  Selecting changes nothing. Apply runs only after the review screen and your   
+  y there.                                                                      
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ y select  n cancel                                                             

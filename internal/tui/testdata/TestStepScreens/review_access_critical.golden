@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected · access-critical: runs alone, in a rollback transaction            
+────────────────────────────────────────────────────────────────────────────────
+ REVIEW  access-critical transaction                                            
+ stackward apply: this changes the host                                         
+ plan:      plan.json                                                           
+                                                                                
+ Will apply:                                                                    
+ 1. sshd-hardening                                                              
+                                                                                
+ transaction: the steps run inside a rollback transaction                       
+    a systemd timer (stackward-rollback-20260301T120000Z-c11c11.timer) rolls    
+       them back after 5m0s unless confirmed;                                   
+    confirm with stackward confirm from a NEW SSH session (this one is refused) 
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ y apply in a transaction  esc back  ↑↓ scroll  q quit                          

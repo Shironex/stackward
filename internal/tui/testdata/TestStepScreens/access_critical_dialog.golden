@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+ SELECT sshd-hardening?                                                         
+                                                                                
+  Harden the SSH server settings                                                
+                                                                                
+  Access-critical: it changes SSH, the firewall or accounts. It runs alone,     
+  inside a rollback transaction: unless you confirm from a new SSH session      
+  within 5m0s, a timer undoes it. Make sure you can log in to the provider      
+  console first.                                                                
+                                                                                
+  Apply would refuse it beside the steps already selected: access-critical      
+  steps run inside the rollback transaction, in a run of their own              
+                                                                                
+  y selects sshd-hardening alone and clears the other selected steps.           
+                                                                                
+  Selecting changes nothing. Apply runs only after the review screen and your   
+  y there.                                                                      
+                                                                                
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ y select  n cancel                                                             

@@ -80,7 +80,8 @@ linters:
             - {pkg: github.com/Shironex/stackward/internal/probe, desc: "report must not import probe"}
             - {pkg: github.com/Shironex/stackward/internal/audit, desc: "report must not import audit"}
         tui-only-reads-reports:
-          # The TUI browses a report.Report; it never collects or writes.
+          # The TUI browses a report.Report and shows the step list the CLI
+          # judged; it never collects, plans or writes.
           files: ["**/internal/tui/**", "!$test"]
           deny:
             - {pkg: github.com/Shironex/stackward/internal/cli, desc: "tui must not import cli"}
