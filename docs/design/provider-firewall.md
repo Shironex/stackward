@@ -411,7 +411,10 @@ After the second gate review: permits and denies read sources in opposite
 directions (a permit from /8 or wider or from an unparsable source reaches
 anywhere; a deny only blocks anywhere from an empty source or a true /0),
 and crafted source ports are tried at both edges of every source port range,
-not only at its first port.
+not only at its first port. After the third: the reply checks of PFW-007,
+whose finding is a dropped packet, swap the two readings (a deny from a wide
+or unparsable source counts, a permit only from an empty or true /0 source),
+and only an IPv4 /0 (or `::ffff:0.0.0.0/96`) counts as every IPv4 sender.
 
 Two details differ from the table above: a firewall that is not in force
 makes PFW-002 to PFW-005 and PFW-007 `skip` with a pointer to PFW-001
