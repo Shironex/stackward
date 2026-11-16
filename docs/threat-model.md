@@ -162,14 +162,19 @@ was rejected. If this trade is not acceptable to you, do not pass
 writes, enables and contacts nothing, so a bug in it can at worst print a
 wrong unit, which you read before you install it. The risk it guards against
 is a unit that does more than you asked: every value that reaches a unit is
-refused when it holds a newline, a control character or a `%` (a systemd
-specifier), paths are limited to a small character set, and audit flags are
-parsed like audit's own, then quoted with `%` and `$` escaped. The printed
-service drops every capability a root audit does not use to read, makes the
-file system read only except the two output directories and blocks IP
-traffic. The rename of each output into place is done by `mv` in the unit,
-so the audit process keeps its Landlock sandbox unchanged. Details:
-[schedule.md](schedule.md).
+refused when it holds a newline, a control character, a `%` (a systemd
+specifier) or a backslash, paths are limited to a small character set and
+may not be a system directory, and audit flags are parsed like audit's own,
+then quoted with `$` escaped. The printed service makes the file system read
+only except the two output directories, blocks IP traffic, filters mount,
+module, reboot, clock, raw I/O and ptrace system calls, and keeps only
+`CAP_DAC_READ_SEARCH`, `CAP_NET_ADMIN`, `CAP_NET_RAW` and `CAP_SYS_PTRACE`.
+Those are not harmless: `CAP_NET_ADMIN` can change the firewall as well as
+read it, uid 0 can signal other root processes, and without Landlock
+`CAP_SYS_PTRACE` reaches other processes' files through `/proc/<pid>/root`.
+[schedule.md](schedule.md#the-account) says what each one is for and what
+it allows. The rename of each output into place is done by `mv` in the
+unit, so the audit process keeps its Landlock sandbox unchanged.
 
 ## What is out of scope
 
