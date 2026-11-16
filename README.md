@@ -329,7 +329,8 @@ was available and whether the sandbox was applied. Fix the highest severity
 A finding you accept on purpose (a port that is public by design, a known
 sudoer) goes in a waivers file, `.stackward.yml` in the working directory or
 `--waivers FILE`, with the check id, the exact subject, a reason and an
-expiry date:
+expiry date (and `level: fail` if a fail is accepted too; by default a
+waiver accepts warnings only):
 
 ```yaml
 version: 1
@@ -342,8 +343,9 @@ waivers:
 
 The finding is then shown as accepted, with its reason and expiry, and no
 longer trips `--fail-on`; it is never hidden and its evidence never changes.
-When the date passes it comes back at its real level, and expired, stale and
-unknown waivers are listed for review. Why waivers must expire and how the
+When the date passes it comes back at its real level, and waivers that
+expired, no longer match, are too narrow for the result or run more than a
+year are listed for review. Why waivers must expire and how the
 file is checked: [docs/waivers.md](docs/waivers.md).
 
 ## Coverage and limits
