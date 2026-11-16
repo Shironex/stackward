@@ -124,7 +124,7 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	fs.BoolVar(&af.jsonOut, "json", false, "shorthand for --format json")
 	fs.BoolVar(&af.mdOut, "md", false, "shorthand for --format md (Markdown for issues and handover notes)")
 	fs.StringVar(&af.out, "out", "", "write the report to this file (with --textfile, the only files stackward writes)")
-	fs.StringVar(&af.textfile, "textfile", "", "also write a Prometheus textfile metric (counts only) to this file, for node_exporter")
+	fs.StringVar(&af.textfile, "textfile", "", "also write a Prometheus textfile metric (counts only) to FILE.prom.tmp; rename it to FILE.prom after a successful run")
 	fs.StringVar(&af.failOn, "fail-on", "fail", "exit 1 when a result is at or above: fail, warn or never")
 	fs.BoolVar(&af.dumpFacts, "dump-facts", false, "print the collected facts as redacted JSON instead of a report (for bug reports)")
 	fs.StringVar(&af.factsFile, "facts", "", "evaluate checks over a saved facts file instead of this host")
@@ -166,6 +166,10 @@ func parseAuditArgs(args []string, stderr io.Writer) (af auditFlags, failOn repo
 	}
 	if af.textfile != "" && af.dumpFacts {
 		fmt.Fprintln(stderr, "stackward audit: --textfile needs a report; it cannot be used with --dump-facts")
+		return af, "", report.ExitError, true
+	}
+	if err := checkTextfileName(af.textfile); err != nil {
+		fmt.Fprintf(stderr, "stackward audit: %v\n", err)
 		return af, "", report.ExitError, true
 	}
 	if err := af.prov.check(af.factsFile != ""); err != nil {

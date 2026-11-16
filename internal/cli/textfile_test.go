@@ -40,11 +40,11 @@ func TestAuditTextfile(t *testing.T) {
 
 func TestAuditTextfileRefusalsAndSymlink(t *testing.T) {
 	dir := t.TempDir()
-	code, _, errs := run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--dump-facts", "--textfile", filepath.Join(dir, "x.prom"))
+	code, _, errs := run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--dump-facts", "--textfile", filepath.Join(dir, "x.prom.tmp"))
 	if code != report.ExitError || !strings.Contains(errs, "--dump-facts") {
 		t.Errorf("--textfile with --dump-facts: exit %d, stderr %q", code, errs)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "x.prom")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "x.prom.tmp")); err == nil {
 		t.Error("a refused run created the textfile")
 	}
 
@@ -52,7 +52,7 @@ func TestAuditTextfileRefusalsAndSymlink(t *testing.T) {
 	if err := os.WriteFile(target, []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	link := filepath.Join(dir, "link.prom")
+	link := filepath.Join(dir, "link.prom.tmp")
 	if err := os.Symlink(target, link); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
@@ -66,5 +66,29 @@ func TestAuditTextfileRefusalsAndSymlink(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(target); string(b) != "keep" {
 		t.Errorf("symlink target overwritten: %q", b)
+	}
+}
+
+// TestAuditTextfileName: --textfile must name the temporary file that the
+// caller renames over the .prom file, so a failed run keeps the old metric
+// and node_exporter never reads a file being written.
+func TestAuditTextfileName(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"stackward.prom", "stackward.tmp", "stackward", ".prom.tmp", "sub/.prom.tmp", "stackward.prom.tmp.prom"} {
+		p := filepath.Join(dir, name)
+		code, _, errs := run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--json", "--textfile", p)
+		if code != report.ExitError || !strings.Contains(errs, "ending in .prom.tmp") {
+			t.Errorf("--textfile %s: exit %d, stderr %q", name, code, errs)
+		}
+		if _, err := os.Lstat(p); err == nil {
+			t.Errorf("a refused --textfile %s was created", name)
+		}
+	}
+	p := filepath.Join(dir, "stackward.prom.tmp")
+	if code, _, errs := run("audit", "--no-sandbox", "--facts", fixture("ubuntu-2404-clean"), "--json", "--textfile", p); code != report.ExitOK {
+		t.Fatalf("--textfile %s: exit %d, stderr %s", p, code, errs)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "stackward.prom")); err == nil {
+		t.Error("stackward must not create or rename the .prom file itself")
 	}
 }
