@@ -140,14 +140,32 @@ func runApplyEnv(args []string, stdout, stderr io.Writer, env applyEnv) int {
 		}
 		return report.ExitError
 	}
+	if len(pos) != 1 {
+		fmt.Fprintf(stderr, "stackward apply: give exactly one plan file (stackward plan --out plan.json writes one)\n")
+		return report.ExitError
+	}
+	return applySelected(env, applyRequest{planFile: pos[0], steps: steps, allSafe: allSafe, within: within, yes: yes}, stdout, stderr)
+}
+
+// applyRequest is what apply was asked to do: by its flags, or by the
+// choices made in the step list of stackward tui.
+type applyRequest struct {
+	planFile string
+	steps    []string
+	allSafe  bool
+	within   time.Duration
+	yes      bool
+}
+
+// applySelected applies the chosen steps of a plan file. It is the whole of
+// stackward apply after its flags; the step list of stackward tui calls it
+// too, so both run exactly the same code.
+func applySelected(env applyEnv, req applyRequest, stdout, stderr io.Writer) int {
 	fail := func(format string, a ...any) int {
 		fmt.Fprintf(stderr, "stackward apply: "+format+"\n", a...)
 		return report.ExitError
 	}
-	if len(pos) != 1 {
-		return fail("give exactly one plan file (stackward plan --out plan.json writes one)")
-	}
-	planFile := pos[0]
+	planFile, steps, allSafe, within, yes := req.planFile, req.steps, req.allSafe, req.within, req.yes
 	if err := apply.CheckConfirmWithin(within); err != nil {
 		return fail("%v", err)
 	}
