@@ -41,7 +41,7 @@ evidence it saw and the fix, and anything it could not inspect is reported as
 `unknown`, never as a pass.
 
 > [!NOTE]
-> **Newest: v0.2.0.** The checks below are tested against saved facts and on
+> **Newest: v0.2.1.** The checks below are tested against saved facts and on
 > real Ubuntu hosts. `audit`, `probe`, `explain` and `tui` only read: they
 > report and change nothing. Since v0.2, `plan` writes the fixes down and
 > `apply` runs the steps you choose, with backups, a journal and `undo`.
@@ -105,7 +105,7 @@ What it reads, what it never does and what it does not cover:
 
 ## Install
 
-The newest release is [`v0.2.0`](https://github.com/Shironex/stackward/releases/latest).
+The newest release is [`v0.2.1`](https://github.com/Shironex/stackward/releases/latest).
 Every release holds Linux archives for amd64 and arm64,
 archives for macOS and Windows (for `probe`), a `.deb`, an SPDX SBOM per
 archive, `checksums.txt` signed keylessly with cosign, GitHub build
@@ -135,7 +135,7 @@ installed) before it installs anything. Options, `update` and `uninstall`:
 To do every step by hand instead, download, check and run:
 
 ```sh
-VERSION=v0.2.0
+VERSION=v0.2.1
 ARCH=amd64   # or arm64
 BASE=https://github.com/Shironex/stackward/releases/download/$VERSION
 curl -fsSLO "$BASE/stackward_${VERSION#v}_linux_$ARCH.tar.gz"
