@@ -395,6 +395,22 @@ func TestSSH014(t *testing.T) {
 	})
 }
 
+// TestSSH014Fingerprints: the fingerprints of a user's keys go into the
+// evidence, sorted, so stackward diff can name a new authorized key; a
+// key without one (an old facts file) leaves the field out.
+func TestSSH014Fingerprints(t *testing.T) {
+	a := sshd.PubKey{Type: "ssh-ed25519", Bits: 256, Fingerprint: "SHA256:bbbb"}
+	b := sshd.PubKey{Type: "ssh-ed25519", Bits: 256, Fingerprint: "SHA256:aaaa"}
+	rs := runSSH(t, checkAuthorizedKeyTypes, sshUsers(sshUser("alice", 1000, 0o750, 0o700, 0o600, a, b)))
+	if got, ok := rs[0].Evidence["fingerprints"].([]string); !ok || strings.Join(got, ",") != "SHA256:aaaa,SHA256:bbbb" {
+		t.Errorf("fingerprints = %v", rs[0].Evidence["fingerprints"])
+	}
+	rs = runSSH(t, checkAuthorizedKeyTypes, sshUsers(sshUser("alice", 1000, 0o750, 0o700, 0o600, ed25519Key)))
+	if _, ok := rs[0].Evidence["fingerprints"]; ok {
+		t.Errorf("no fingerprint known, the field should be absent: %v", rs[0].Evidence)
+	}
+}
+
 func TestSSH015(t *testing.T) {
 	plus := sshWith(sshHardened(), "macs", "+hmac-sha1")
 	plusGood := sshWith(sshHardened(), "macs", "+hmac-sha2-512")

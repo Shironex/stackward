@@ -130,7 +130,7 @@
       "id": "SSH-014",
       "title": "Authorized keys are strong and not stale",
       "severity": "moderate",
-      "rationale": "DSA keys and RSA keys under 2048 bits are weak enough to retire. Keys in root's authorized_keys while root login is off are leftovers that start working again the day someone relaxes PermitRootLogin. Only the key type and size are kept, never the key or its comment.",
+      "rationale": "DSA keys and RSA keys under 2048 bits are weak enough to retire. Keys in root's authorized_keys while root login is off are leftovers that start working again the day someone relaxes PermitRootLogin. Only the key type, size and SHA256 fingerprint (as ssh-keygen -l prints it) are kept, never the key or its comment; stackward diff compares fingerprints to report a new authorized key.",
       "verify": "ssh-keygen -lf ~USER/.ssh/authorized_keys",
       "fix": "Replace weak keys with ed25519 (ssh-keygen -t ed25519) and remove root's authorized keys once nothing logs in as root.",
       "needs_root": true
