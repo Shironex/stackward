@@ -239,6 +239,9 @@ selected (or of the run you undo):
 | `ufw reload` | ufw-policy (UFW already on), ufw-docker | after the files changed; undo |
 | `iptables -F DOCKER-USER`, `iptables -A DOCKER-USER -j RETURN` | ufw-docker | undo only: Docker's own chain as the audit saw it |
 | `iptables -F ufw-docker-logging-deny`, `iptables -X ufw-docker-logging-deny` | ufw-docker | undo only, after UFW reloaded the old rules |
+| `systemctl daemon-reload` | paas-env-perms (opt in) | after the three units are written; undo, after they are removed |
+| `systemctl start stackward-paas-env-perms.service` | paas-env-perms | once, right after the reload: closes the open `.env` files now (its `find` and `chmod` run inside the unit, see [plan.md](plan.md)) |
+| `systemctl start stackward-paas-env-perms.timer` | paas-env-perms | after the service ran; undo: `systemctl stop` |
 
 No step reboots the host. `unattended-upgrades-reboot` only writes the
 setting that lets unattended-upgrades reboot at its window (04:00 host
