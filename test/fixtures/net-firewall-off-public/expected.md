@@ -6,7 +6,7 @@
 - **Profile:** public-web (inferred)
 - **Root:** yes
 - **Sandbox:** unavailable (golden test)
-- **Coverage:** 104 checks, 108 results: 8 checked, 96 unknown, 4 skipped, root: yes
+- **Coverage:** 112 checks, 116 results: 8 checked, 104 unknown, 4 skipped, root: yes
 
 ## Summary
 
@@ -14,7 +14,7 @@
 |---|---|
 | fail | 2 |
 | warn | 3 |
-| unknown | 96 |
+| unknown | 104 |
 | info | 3 |
 | pass | 0 |
 | skip | 4 |
@@ -113,7 +113,7 @@
 
 ## Not inspected
 
-<details><summary>96 checks not inspected</summary>
+<details><summary>104 checks not inspected</summary>
 
 **SYS: System**
 
@@ -164,6 +164,19 @@
 |---|---|---|---|
 | [NET-003](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-003.md) | SSH is not open to anywhere when a private path exists | `host` | SSH is open to anywhere on tcp/22; Tailscale facts are missing, so whether a private path exists is unknown |
 | [NET-009](https://github.com/Shironex/stackward/blob/main/docs/checks/NET-009.md) | Provider firewall (outside view) | `host` | the provider firewall cannot be seen from inside the host; run \`stackward probe\` from another machine to see what is reachable |
+
+**PFW: Provider firewall**
+
+| Check | Title | Subject | Reason |
+|---|---|---|---|
+| [PFW-001](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-001.md) | A provider firewall is attached and in force | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-002](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-002.md) | Inbound traffic is denied by default at the provider | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-003](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-003.md) | No provider rule allows all UDP from anywhere | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-004](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-004.md) | Every port the provider allows has a service behind it | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-005](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-005.md) | SSH is not open to anywhere at the provider | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-006](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-006.md) | IPv6 is covered by the provider or the host firewall | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-007](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-007.md) | A stateless provider firewall lets return traffic in | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
+| [PFW-008](https://github.com/Shironex/stackward/blob/main/docs/checks/PFW-008.md) | What the provider firewall allows | `host` | provider firewall not requested; run the audit with --provider to read it over the provider's API |
 
 **DKR: Docker**
 

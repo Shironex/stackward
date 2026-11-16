@@ -7,10 +7,10 @@
   [2mprofile:   [0mtunnel (inferred)
   [2mroot:      [0myes
   [2msandbox:   [0munavailable (golden test)
-  [2mcoverage:  [0m104 checks, 181 results: 169 checked, 3 unknown, 9 skipped
+  [2mcoverage:  [0m112 checks, 189 results: 169 checked, 11 unknown, 9 skipped
 
   [2m╭─ [0m[1mSummary[0m[2m ────────────────────────────────────────────────────────────────────────────────────────────────────╮[0m
-  [2m│[0m [1;31m✗[0m [1;31m4 fail[0m   [1;33m![0m [1;33m5 warn[0m   [1;35m?[0m [1;35m3 unknown[0m   [1;36mi[0m [1;36m17 info[0m   [1;32m✓[0m [1;32m143 pass[0m   [1;90m-[0m [1;90m9 skip[0m                                        [2m│[0m
+  [2m│[0m [1;31m✗[0m [1;31m4 fail[0m   [1;33m![0m [1;33m5 warn[0m   [1;35m?[0m [1;35m11 unknown[0m   [1;36mi[0m [1;36m17 info[0m   [1;32m✓[0m [1;32m143 pass[0m   [1;90m-[0m [1;90m9 skip[0m                                       [2m│[0m
   [2m│[0m                                                                                                              [2m│[0m
   [2m│[0m [1mFails, most severe first[0m                                                                                     [2m│[0m
   [2m│[0m [1;31m✗[0m [31mcritical[0m  [1mDKR-001 [0m  coolify is reachable from anywhere past the host firewall: 0.0.0.0:8000->8080/tcp…     [2m│[0m
@@ -84,12 +84,40 @@
     [2mrule: [0m[2mDocker Engine is supported upstream[0m
     [2mfix:  [0mUpgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.
 
-  [2m── [0m[1;35mUNKNOWN (3)[0m [2m───────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+  [2m── [0m[1;35mUNKNOWN (11)[0m [2m──────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-001 · high[0m
+    [2mrule: [0m[2mA provider firewall is attached and in force[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-002 · high[0m
+    [2mrule: [0m[2mInbound traffic is denied by default at the provider[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-003 · high[0m
+    [2mrule: [0m[2mNo provider rule allows all UDP from anywhere[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-005 · high[0m
+    [2mrule: [0m[2mSSH is not open to anywhere at the provider[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-006 · high[0m
+    [2mrule: [0m[2mIPv6 is covered by the provider or the host firewall[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-007 · high[0m
+    [2mrule: [0m[2mA stateless provider firewall lets return traffic in[0m
 
   [1;35m?[0m only an outside view proves the origin does not answer; run `stackward probe` against the origin address from
     another machine
     [2mCF-005 · high[0m
     [2mrule: [0m[2mThe origin IP does not answer on 80/443 from outside (probe)[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-004 · moderate[0m
+    [2mrule: [0m[2mEvery port the provider allows has a service behind it[0m
 
   [1;35m?[0m proxy bouncers pulled within the last 60 s; the interval itself is in the bouncer config, which holds the API key
     and is not read
@@ -100,6 +128,10 @@
     reachable
     [2mNET-009 · info[0m
     [2mrule: [0m[2mProvider firewall (outside view)[0m
+
+  [1;35m?[0m provider firewall not requested; run the audit with --provider to read it over the provider's API
+    [2mPFW-008 · info[0m
+    [2mrule: [0m[2mWhat the provider firewall allows[0m
 
   [2m── [0m[1;36mINFO (17), one line each; --info lists them in full[0m [2m───────────────────────────────────────────────────────────────[0m
 
@@ -122,5 +154,5 @@
   [1;36mi[0m BAK-001   /data/coolify: 4 files in the platform backup folder, newest 2 days old; keep a copy off the server
   [1;36mi[0m BAK-002   no restic, borg, borgmatic, kopia or rclone found
 
-  [2msummary: [0m4 fail, 5 warn, 3 unknown, 17 info, 143 pass, 9 skip
+  [2msummary: [0m4 fail, 5 warn, 11 unknown, 17 info, 143 pass, 9 skip
   [2mexplain any check with: [0mstackward explain <id>

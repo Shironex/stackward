@@ -1,0 +1,1921 @@
+{
+  "schema": "stackward.report.v1",
+  "tool": {
+    "name": "stackward",
+    "version": "test"
+  },
+  "generated_at": "2026-11-16T12:00:00Z",
+  "host": {
+    "hostname_hash": "sha256:83f565c149715e02"
+  },
+  "profile": {
+    "name": "public-web",
+    "source": "inferred"
+  },
+  "coverage": {
+    "checks": 112,
+    "results": 114,
+    "checked": 8,
+    "unknown": 103,
+    "skipped": 3,
+    "root": true,
+    "sandbox": {
+      "state": "unavailable",
+      "reason": "golden test"
+    },
+    "collectors": [
+      {
+        "name": "firewall",
+        "status": "ok"
+      },
+      {
+        "name": "listeners",
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "unknown": 103,
+    "info": 2,
+    "pass": 6,
+    "skip": 3
+  },
+  "results": [
+    {
+      "id": "SYS-001",
+      "group": "SYS",
+      "title": "Distribution is one stackward is tested on",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the os collector did not run",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Run on Ubuntu 22.04 or later, or Debian 12 or later, or read results from other distributions with care."
+      }
+    },
+    {
+      "id": "SYS-002",
+      "group": "SYS",
+      "title": "No reboot pending",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the os collector did not run",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Reboot in a maintenance window, or set an automatic reboot window for unattended upgrades (see UPD-004)."
+      }
+    },
+    {
+      "id": "SYS-003",
+      "group": "SYS",
+      "title": "Running kernel is the newest installed",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the os collector did not run",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Reboot to load the patched kernel."
+      }
+    },
+    {
+      "id": "SYS-004",
+      "group": "SYS",
+      "title": "Clock is synchronized",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the clock collector did not run",
+      "evidence": {
+        "collector": "clock",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable systemd-timesyncd (`timedatectl set-ntp true`) or install chrony."
+      }
+    },
+    {
+      "id": "SYS-005",
+      "group": "SYS",
+      "title": "Disks have free space",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the disk collector did not run",
+      "evidence": {
+        "collector": "disk",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Prune images and build cache (`docker system prune`), cap logs (LOG-001 to LOG-003) and remove what is not needed."
+      }
+    },
+    {
+      "id": "SSH-001",
+      "group": "SSH",
+      "title": "Password authentication is off",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a drop-in with PasswordAuthentication no, named to sort before cloud-init's (for example /etc/ssh/sshd_config.d/00-hardening.conf), then check with sudo sshd -t and reload ssh."
+      }
+    },
+    {
+      "id": "SSH-002",
+      "group": "SSH",
+      "title": "Keyboard-interactive authentication is off",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set KbdInteractiveAuthentication no (ChallengeResponseAuthentication on older releases) in the same early drop-in."
+      }
+    },
+    {
+      "id": "SSH-003",
+      "group": "SSH",
+      "title": "Root cannot log in over SSH",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Log in as a sudo user (a dedicated non root user for the PaaS too), then set PermitRootLogin no."
+      }
+    },
+    {
+      "id": "SSH-004",
+      "group": "SSH",
+      "title": "Empty passwords are refused",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set PermitEmptyPasswords no (the default) and lock accounts with empty passwords (passwd -l)."
+      }
+    },
+    {
+      "id": "SSH-005",
+      "group": "SSH",
+      "title": "MaxAuthTries is low",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set MaxAuthTries 3."
+      }
+    },
+    {
+      "id": "SSH-006",
+      "group": "SSH",
+      "title": "Logins are limited with AllowUsers or AllowGroups",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add AllowUsers with the accounts that log in (or AllowGroups with a group such as sshusers)."
+      }
+    },
+    {
+      "id": "SSH-007",
+      "group": "SSH",
+      "title": "X11 and agent forwarding are off",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set X11Forwarding no and AllowAgentForwarding no; use ProxyJump instead of agent forwarding."
+      }
+    },
+    {
+      "id": "SSH-008",
+      "group": "SSH",
+      "title": "No early drop-in shadows a later hardening setting",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Rename the hardening drop-in to sort first (00-hardening.conf), or fix the earlier file, then confirm with sudo sshd -T."
+      }
+    },
+    {
+      "id": "SSH-009",
+      "group": "SSH",
+      "title": "Effective SSH configuration fully confirmed",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Rerun with sudo for full coverage."
+      }
+    },
+    {
+      "id": "SSH-010",
+      "group": "SSH",
+      "title": "sshd listens where it is configured to",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "systemctl daemon-reload \u0026\u0026 systemctl restart ssh.socket (or restart ssh.service without socket activation), then compare ss -tln with sshd -T again."
+      }
+    },
+    {
+      "id": "SSH-011",
+      "group": "SSH",
+      "title": "sshd reachable from anywhere takes keys only and bans brute force",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Best: allow SSH only on tailscale0 or from one known source and close the public rule. Otherwise turn off PasswordAuthentication and KbdInteractiveAuthentication and enable an sshd jail on the real sshd port, or install the crowdsecurity/sshd collection with a firewall bouncer."
+      }
+    },
+    {
+      "id": "SSH-012",
+      "group": "SSH",
+      "title": "Host keys are strong and private",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the private keys and chown them to root; remove DSA keys and regenerate a small RSA key with ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key."
+      }
+    },
+    {
+      "id": "SSH-013",
+      "group": "SSH",
+      "title": "Home, ~/.ssh and authorized_keys are not writable by others",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod go-w ~USER; chmod 700 ~USER/.ssh; chmod 600 ~USER/.ssh/authorized_keys; chown the files to the user."
+      }
+    },
+    {
+      "id": "SSH-014",
+      "group": "SSH",
+      "title": "Authorized keys are strong and not stale",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Replace weak keys with ed25519 (ssh-keygen -t ed25519) and remove root's authorized keys once nothing logs in as root."
+      }
+    },
+    {
+      "id": "SSH-015",
+      "group": "SSH",
+      "title": "No weak key exchange, cipher or MAC algorithms",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the ssh collector did not run",
+      "evidence": {
+        "collector": "ssh",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Follow the ssh-audit hardening guide for the distribution: a drop-in with explicit KexAlgorithms, Ciphers and MACs lists.",
+        "docs": "https://www.ssh-audit.com/hardening_guides.html"
+      }
+    },
+    {
+      "id": "SSH-016",
+      "group": "SSH",
+      "title": "Tailscale SSH and OpenSSH are not both serving",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pick one. If OpenSSH is the path, turn Tailscale SSH off with tailscale set and its ssh option set to false; if Tailscale SSH is the path, stop and disable the OpenSSH server once a Tailscale SSH login works.",
+        "docs": "https://tailscale.com/kb/1193/tailscale-ssh"
+      }
+    },
+    {
+      "id": "USR-001",
+      "group": "USR",
+      "title": "Only root has uid 0",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the account, or give it a normal uid with `usermod -u` after checking what it owns."
+      }
+    },
+    {
+      "id": "USR-002",
+      "group": "USR",
+      "title": "No login account has an empty password",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock the account with `passwd -l \u003cuser\u003e` or set a password."
+      }
+    },
+    {
+      "id": "USR-003",
+      "group": "USR",
+      "title": "Cloud default account is locked down",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock it: `passwd -l \u003cuser\u003e`, set its shell to nologin, move its authorized_keys aside and drop its NOPASSWD line. Keep your own admin account working first."
+      }
+    },
+    {
+      "id": "USR-004",
+      "group": "USR",
+      "title": "sudoers is root owned and NOPASSWD entries are deliberate",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf \u003cfile\u003e`, and keep NOPASSWD to the PaaS account."
+      }
+    },
+    {
+      "id": "USR-005",
+      "group": "USR",
+      "title": "Docker group has no extra members",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove users who do not need it: `gpasswd -d \u003cuser\u003e docker`."
+      }
+    },
+    {
+      "id": "USR-006",
+      "group": "USR",
+      "title": "Login accounts are used",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Lock unused accounts with `passwd -l \u003cuser\u003e` or remove them."
+      }
+    },
+    {
+      "id": "USR-007",
+      "group": "USR",
+      "title": "Root recovery path is known",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the users collector did not run",
+      "evidence": {
+        "collector": "users",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Store the console or rescue procedure and any root password in a password manager."
+      }
+    },
+    {
+      "id": "NET-001",
+      "group": "NET",
+      "title": "A host firewall is active and denies incoming traffic by default",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "UFW is active with default incoming deny",
+      "evidence": {
+        "denies_incoming": "yes",
+        "iptables_backend": "nf_tables",
+        "iptables_input_policy": "DROP",
+        "mechanism": "ufw",
+        "nft_listed": true,
+        "ufw_default_incoming": "deny",
+        "ufw_source": "status",
+        "ufw_status": "active"
+      },
+      "fix": {
+        "hint": "Allow SSH first (ufw allow in on tailscale0 to any port 22, or from one source), then: ufw default deny incoming; ufw enable"
+      }
+    },
+    {
+      "id": "NET-002",
+      "group": "NET",
+      "title": "UFW filters IPv6 when the host has a global IPv6 address",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "UFW filters IPv6 (IPV6=yes)",
+      "evidence": {
+        "ipv6": "yes"
+      },
+      "fix": {
+        "hint": "Set IPV6=yes in /etc/default/ufw, then ufw reload"
+      }
+    },
+    {
+      "id": "NET-003",
+      "group": "NET",
+      "title": "SSH is not open to anywhere when a private path exists",
+      "level": "pass",
+      "severity": "high",
+      "subject": "host",
+      "message": "SSH is not reachable from anywhere: tcp/22: UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "open_from_anywhere": "no",
+        "ssh_ports": [
+          22
+        ],
+        "tailnet": "unknown"
+      },
+      "fix": {
+        "hint": "Allow SSH on tailscale0 and from one explicit source, prove a login over the tailnet from a new session, then delete the public SSH rule"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "port:tcp/22",
+      "message": "tcp/22 (sshd) listens on wildcard, but UFW allows it only from specific sources or interfaces, or not at all",
+      "evidence": {
+        "binds": [
+          "0.0.0.0",
+          "::"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "no",
+        "processes": [
+          "sshd"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/443",
+      "message": "tcp/443 (caddy) is public by design: UFW allows tcp/443 from anywhere (allow in 443/tcp from anywhere)",
+      "evidence": {
+        "binds": [
+          "0.0.0.0",
+          "::"
+        ],
+        "class": "wildcard",
+        "open_from_anywhere": "yes",
+        "processes": [
+          "caddy"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-004",
+      "group": "NET",
+      "title": "Exposure: every listening socket and who can reach it",
+      "level": "info",
+      "severity": "moderate",
+      "subject": "port:tcp/8080",
+      "message": "tcp/8080 (app) listens on loopback addresses only",
+      "evidence": {
+        "binds": [
+          "127.0.0.1"
+        ],
+        "class": "loopback",
+        "processes": [
+          "app"
+        ],
+        "processes_visible": true
+      },
+      "fix": {
+        "hint": "Bind services to 127.0.0.1 or the tailnet address instead of 0.0.0.0, or filter the port in the host firewall"
+      }
+    },
+    {
+      "id": "NET-005",
+      "group": "NET",
+      "title": "No public 80/443 rule on a tunnel or tailnet only host",
+      "level": "skip",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "80/443 may be public on the public-web profile",
+      "evidence": {
+        "profile": "public-web"
+      },
+      "fix": {
+        "hint": "Delete the rule (ufw delete \u003cnumber\u003e); ingress is the tunnel"
+      }
+    },
+    {
+      "id": "NET-006",
+      "group": "NET",
+      "title": "DOCKER-USER chain state",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "DOCKER-USER chain not read (iptables -S needs root)",
+      "evidence": {
+        "docker_backend": "unknown",
+        "docker_user": "unknown"
+      },
+      "fix": {
+        "hint": "No direct fix: filter published ports in DOCKER-USER (ufw-docker does this) or publish them on 127.0.0.1 only."
+      }
+    },
+    {
+      "id": "NET-007",
+      "group": "NET",
+      "title": "ufw-docker is loaded and lets tailnet traffic reach published ports",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "UFW is not installed",
+      "fix": {
+        "hint": "ufw reload; then ufw route allow in on tailscale0 proto tcp to any port \u003ccontainer-port\u003e"
+      }
+    },
+    {
+      "id": "NET-008",
+      "group": "NET",
+      "title": "ufw-docker is not paired with Docker's nftables backend",
+      "level": "skip",
+      "severity": "high",
+      "subject": "host",
+      "message": "ufw-docker is not installed",
+      "evidence": {
+        "docker_backend": "unknown"
+      },
+      "fix": {
+        "hint": "Use Docker's iptables backend with ufw-docker, or filter published ports directly in nftables"
+      }
+    },
+    {
+      "id": "NET-009",
+      "group": "NET",
+      "title": "Provider firewall (outside view)",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "the provider firewall cannot be seen from inside the host; run `stackward probe` from another machine to see what is reachable",
+      "evidence": {
+        "visible_from_host": false
+      },
+      "fix": {
+        "hint": "Add a provider network firewall that allows only the ports your ingress needs"
+      }
+    },
+    {
+      "id": "PFW-001",
+      "group": "PFW",
+      "title": "A provider firewall is attached and in force",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Create a provider firewall that allows only the ports your ingress needs and attach it to this server (Hetzner) or enable the Edge Network Firewall for this address (OVH)",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-002",
+      "group": "PFW",
+      "title": "Inbound traffic is denied by default at the provider",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "OVH: add a last rule (sequence 19) that denies protocol IPv4 from any source, after the permit rules for your services and for return traffic",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-003",
+      "group": "PFW",
+      "title": "No provider rule allows all UDP from anywhere",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Allow only the UDP ports your services use; on OVH, give source port rules a destination port range too where the service allows it (the ephemeral range 32768 to 60999 for replies)",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-004",
+      "group": "PFW",
+      "title": "Every port the provider allows has a service behind it",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Delete the provider rules for ports nothing should serve, or start the service that should be there",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-005",
+      "group": "PFW",
+      "title": "SSH is not open to anywhere at the provider",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Allow SSH at the provider only from the addresses you administer from (a panel, a bastion, your office), or close it there and reach SSH over the tailnet",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-006",
+      "group": "PFW",
+      "title": "IPv6 is covered by the provider or the host firewall",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Keep a host firewall that denies incoming IPv6 by default (UFW with IPV6=yes), or remove the global IPv6 address if nothing uses it",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-007",
+      "group": "PFW",
+      "title": "A stateless provider firewall lets return traffic in",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "OVH: add, before the final deny, permit TCP with option established; permit UDP source port 53; permit UDP source port 123; and for a QUIC tunnel permit UDP source port 7844",
+        "docs": "https://github.com/Shironex/stackward/blob/main/docs/provider-firewall.md"
+      }
+    },
+    {
+      "id": "PFW-008",
+      "group": "PFW",
+      "title": "What the provider firewall allows",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "the hetzner firewall was not read (no_credentials): set STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE to a read only API credential",
+      "evidence": {
+        "provider": "hetzner",
+        "status": "no_credentials"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this lists the rules the other PFW checks judge"
+      }
+    },
+    {
+      "id": "DKR-001",
+      "group": "DKR",
+      "title": "Published container ports do not bypass the host firewall",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish on 127.0.0.1 (127.0.0.1:5432:5432) or the tailnet address, or put the service behind the reverse proxy instead of publishing it. To keep a wildcard binding, filter it in DOCKER-USER (for example drop new connections on the public interface except from allowed sources), or install ufw-docker and open it with a route rule for the sources that need it.",
+        "docs": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      }
+    },
+    {
+      "id": "DKR-002",
+      "group": "DKR",
+      "title": "Docker API is not on TCP without TLS",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove -H tcp:// from the unit and \"hosts\" from daemon.json. For remote access use DOCKER_HOST=ssh://user@host, or a socket proxy that allows only the GET endpoints needed. If TCP is truly needed, use 2376 with tlsverify and client certificates.",
+        "docs": "https://docs.docker.com/engine/security/protect-access/"
+      }
+    },
+    {
+      "id": "DKR-003",
+      "group": "DKR",
+      "title": "Docker socket is not world writable",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Restore the default: chown root:docker /var/run/docker.sock \u0026\u0026 chmod 660 /var/run/docker.sock, then find what changed it (often a chmod 666 in a setup script or a unit override) and remove that."
+      }
+    },
+    {
+      "id": "DKR-010",
+      "group": "DKR",
+      "title": "No container mounts the Docker socket",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the socket mount. If the container needs to read Docker state, put a socket proxy in front (for example tecnativa/docker-socket-proxy with only CONTAINERS=1) and point the container at it.",
+        "docs": "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      }
+    },
+    {
+      "id": "DKR-011",
+      "group": "DKR",
+      "title": "Socket proxies do not allow writes",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set POST=0 and EXEC=0, and enable only the read sections the client needs (for example CONTAINERS=1, NETWORKS=1). If a client truly needs writes, give it its own proxy with the narrowest flags and keep it off shared networks."
+      }
+    },
+    {
+      "id": "DKR-012",
+      "group": "DKR",
+      "title": "No container mounts a sensitive host path",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Mount only the specific files the container needs, read only (for example /etc/localtime:/etc/localtime:ro), or use a named volume."
+      }
+    },
+    {
+      "id": "DKR-020",
+      "group": "DKR",
+      "title": "Containers do not run as root",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set USER to a high non root uid in the image (USER 10001), or user: \"10001:10001\" in compose. Fix file ownership in the image rather than running as root."
+      }
+    },
+    {
+      "id": "DKR-021",
+      "group": "DKR",
+      "title": "No privileged containers",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove privileged: true and add back only the capabilities or devices the container needs (cap_add, devices)."
+      }
+    },
+    {
+      "id": "DKR-022",
+      "group": "DKR",
+      "title": "No dangerous added capabilities",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use cap_drop: [ALL] and add back the minimum the container needs; replace SYS_ADMIN with the specific mount or device it was added for."
+      }
+    },
+    {
+      "id": "DKR-023",
+      "group": "DKR",
+      "title": "No host network, PID or IPC namespace",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use a bridge network and publish only the ports needed (on 127.0.0.1 behind the proxy); remove pid: host and ipc: host."
+      }
+    },
+    {
+      "id": "DKR-024",
+      "group": "DKR",
+      "title": "Containers keep seccomp and AppArmor, and public ones set no-new-privileges",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Remove the unconfined options; add security_opt: [\"no-new-privileges:true\"] to public containers, or \"no-new-privileges\": true in daemon.json for all new containers."
+      }
+    },
+    {
+      "id": "DKR-030",
+      "group": "DKR",
+      "title": "Projects do not share networks",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Give each project its own network and attach the reverse proxy to each one. In Coolify, give each project its own destination or network instead of the default one."
+      }
+    },
+    {
+      "id": "DKR-031",
+      "group": "DKR",
+      "title": "Container logs rotate",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set {\"log-driver\":\"json-file\",\"log-opts\":{\"max-size\":\"10m\",\"max-file\":\"3\"}} in /etc/docker/daemon.json (or use the local driver) and restart Docker. Existing containers keep their old settings until they are recreated."
+      }
+    },
+    {
+      "id": "DKR-032",
+      "group": "DKR",
+      "title": "Infrastructure containers run pinned images",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pin a version tag (traefik:v3.1, cloudflare/cloudflared:2024.12.2) or a digest, and let an update watcher tell you when a new one is out."
+      }
+    },
+    {
+      "id": "DKR-033",
+      "group": "DKR",
+      "title": "Docker manages the firewall",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Know why it was set. Usually remove \"iptables\": false and filter published ports in the DOCKER-USER chain or with ufw-docker instead."
+      }
+    },
+    {
+      "id": "DKR-034",
+      "group": "DKR",
+      "title": "Docker Engine is supported upstream",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the docker collector did not run",
+      "evidence": {
+        "collector": "docker",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Upgrade Docker Engine from Docker's apt repository (docker-ce) to a supported release line.",
+        "docs": "https://endoflife.date/docker-engine"
+      }
+    },
+    {
+      "id": "TS-001",
+      "group": "TS",
+      "title": "Tailscale is logged in and Running when installed",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "tailscale up (log the node in again), then prove SSH over the tailnet from a new session before relying on any tailnet only rule",
+        "docs": "https://tailscale.com/kb/1080/cli"
+      }
+    },
+    {
+      "id": "TS-002",
+      "group": "TS",
+      "title": "Node key expiry is disabled on server nodes",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Disable key expiry for this machine in the Tailscale admin console (Machines, the node, Disable key expiry)",
+        "docs": "https://tailscale.com/kb/1028/key-expiry"
+      }
+    },
+    {
+      "id": "TS-003",
+      "group": "TS",
+      "title": "Tailscale Funnel and Serve expose only what is intended",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "tailscale funnel reset (and tailscale serve reset) if the exposure is not intended",
+        "docs": "https://tailscale.com/kb/1223/funnel"
+      }
+    },
+    {
+      "id": "TS-004",
+      "group": "TS",
+      "title": "Firewall rules that mention tailscale0 have a running tailnet behind them",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "no UFW rule names tailscale0",
+      "evidence": {
+        "tailscale0_rules": 0
+      },
+      "fix": {
+        "hint": "Install and log in Tailscale, or remove the tailscale0 rules and keep a path you actually have"
+      }
+    },
+    {
+      "id": "TS-005",
+      "group": "TS",
+      "title": "Tailnet Lock state",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the tailscale collector did not run",
+      "evidence": {
+        "collector": "tailscale",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Consider Tailnet Lock for tailnets that reach servers (tailscale lock init)",
+        "docs": "https://tailscale.com/kb/1226/tailnet-lock"
+      }
+    },
+    {
+      "id": "CF-001",
+      "group": "CF",
+      "title": "Cloudflare Tunnel presence",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the tunnel for profile inference"
+      }
+    },
+    {
+      "id": "CF-002",
+      "group": "CF",
+      "title": "The tunnel runs more than one connector",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Run a second replica of the same tunnel (a second container or service with the same token or credentials)",
+        "docs": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/tunnel-availability/"
+      }
+    },
+    {
+      "id": "CF-003",
+      "group": "CF",
+      "title": "The proxy is not reachable on a public address while ingress is the tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (127.0.0.1:443:443) and let cloudflared reach it locally or over a Docker network"
+      }
+    },
+    {
+      "id": "CF-004",
+      "group": "CF",
+      "title": "The tunnel token is not a command line argument",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Pass the token as TUNNEL_TOKEN from a root only env file (or a credentials file with a config.yml), and never print docker inspect without a format filter"
+      }
+    },
+    {
+      "id": "CF-005",
+      "group": "CF",
+      "title": "The origin IP does not answer on 80/443 from outside (probe)",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the cloudflared collector did not run",
+      "evidence": {
+        "collector": "cloudflared",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "See CF-003: bind the proxy to loopback and close 80/443 in the provider firewall"
+      }
+    },
+    {
+      "id": "CS-001",
+      "group": "CS",
+      "title": "CrowdSec runs when installed",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable and start the service: systemctl enable crowdsec, then systemctl start crowdsec",
+        "docs": "https://docs.crowdsec.net/"
+      }
+    },
+    {
+      "id": "CS-002",
+      "group": "CS",
+      "title": "A bouncer is registered and pulling decisions",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Install the bouncer that matches your ingress (proxy bouncer behind a tunnel, firewall bouncer for direct traffic), and check it can reach the local API. Never delete a stale base bouncer whose name@IP rows still pull: they share its API key.",
+        "docs": "https://docs.crowdsec.net/u/bouncers/intro"
+      }
+    },
+    {
+      "id": "CS-003",
+      "group": "CS",
+      "title": "Behind a tunnel, an L7 bouncer enforces bans",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use the proxy bouncer (or the Cloudflare bouncer) together with a parser that reads the real client address"
+      }
+    },
+    {
+      "id": "CS-004",
+      "group": "CS",
+      "title": "Private range whitelists do not swallow tunnel traffic",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add an s02-enrich parser that sets source_ip from Cf-Connecting-Ip when the logged source is in any of 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (use IpInRange, not one literal address)",
+        "docs": "https://docs.crowdsec.net/docs/whitelist/intro"
+      }
+    },
+    {
+      "id": "CS-005",
+      "group": "CS",
+      "title": "The proxy access log is acquired",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Enable the proxy access log (JSON for Traefik) and add an acquisition entry with labels type set to the proxy (traefik, caddy, nginx)"
+      }
+    },
+    {
+      "id": "CS-006",
+      "group": "CS",
+      "title": "The CrowdSec local API is not on a wildcard address",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set api.server.listen_uri to 127.0.0.1:8080 (or the Docker bridge address) and allow that port from Docker ranges only"
+      }
+    },
+    {
+      "id": "CS-007",
+      "group": "CS",
+      "title": "The firewall bouncer also protects Docker published ports",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add DOCKER-USER to iptables_chains (or forward to nftables_hooks) in the firewall bouncer config, then restart the bouncer"
+      }
+    },
+    {
+      "id": "CS-008",
+      "group": "CS",
+      "title": "The proxy bouncer refreshes decisions often",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the crowdsec collector did not run",
+      "evidence": {
+        "collector": "crowdsec",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Use stream mode with an update interval of 10 to 15 seconds"
+      }
+    },
+    {
+      "id": "CS-010",
+      "group": "CS",
+      "title": "Public SSH has brute force protection on the right port",
+      "level": "pass",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "SSH is not reachable from anywhere, so brute force protection is optional",
+      "evidence": {
+        "ssh_ports": [
+          22
+        ],
+        "ssh_public": "no"
+      },
+      "fix": {
+        "hint": "Enable an sshd jail with port set to the real sshd port, or install the crowdsecurity/sshd collection"
+      }
+    },
+    {
+      "id": "CS-011",
+      "group": "CS",
+      "title": "fail2ban ignores the tailnet range when Tailscale is used",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the fail2ban collector did not run",
+      "evidence": {
+        "collector": "fail2ban",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add 100.64.0.0/10 (and fd7a:115c:a1e0::/48) to ignoreip in jail.local [DEFAULT]"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "group": "UPD",
+      "title": "Automatic security updates are enabled",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the updates collector did not run",
+      "evidence": {
+        "collector": "updates",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "apt install unattended-upgrades; dpkg-reconfigure -plow unattended-upgrades"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "group": "UPD",
+      "title": "Unattended upgrades ran recently",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the updates collector did not run",
+      "evidence": {
+        "collector": "updates",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Check the timer (`systemctl list-timers apt-daily-upgrade`) and /var/log/unattended-upgrades/."
+      }
+    },
+    {
+      "id": "UPD-003",
+      "group": "UPD",
+      "title": "Unattended upgrades include the security pocket",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the updates collector did not run",
+      "evidence": {
+        "collector": "updates",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Include `${distro_id}:${distro_codename}-security` (Debian: `origin=Debian,codename=${distro_codename}-security`) in Unattended-Upgrade::Allowed-Origins."
+      }
+    },
+    {
+      "id": "UPD-004",
+      "group": "UPD",
+      "title": "Reboot policy is a decision",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the updates collector did not run",
+      "evidence": {
+        "collector": "updates",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Decide: set Unattended-Upgrade::Automatic-Reboot and a time, or schedule a manual reboot routine."
+      }
+    },
+    {
+      "id": "UPD-005",
+      "group": "UPD",
+      "title": "Release is within standard support",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the os collector did not run",
+      "evidence": {
+        "collector": "os",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Upgrade to a supported release (do-release-upgrade on Ubuntu, the Debian release notes upgrade procedure)."
+      }
+    },
+    {
+      "id": "UPD-006",
+      "group": "UPD",
+      "title": "No pending security updates",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the updates collector did not run",
+      "evidence": {
+        "collector": "updates",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "apt update \u0026\u0026 apt upgrade"
+      }
+    },
+    {
+      "id": "KRN-001",
+      "group": "KRN",
+      "title": "IPv4 forwarding is on where Docker runs",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set net.ipv4.ip_forward=1 in a sysctl drop-in and never let a hardening profile own it."
+      }
+    },
+    {
+      "id": "KRN-002",
+      "group": "KRN",
+      "title": "Reverse path filter is loose where Docker or Tailscale run",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set net.ipv4.conf.all.rp_filter=2 and net.ipv4.conf.default.rp_filter=2 (loose) in a drop-in."
+      }
+    },
+    {
+      "id": "KRN-003",
+      "group": "KRN",
+      "title": "Network sysctls match the hardening baseline",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in and make /etc/ufw/sysctl.conf agree."
+      }
+    },
+    {
+      "id": "KRN-004",
+      "group": "KRN",
+      "title": "Kernel hardening sysctls match the baseline",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Set the values in a /etc/sysctl.d drop-in."
+      }
+    },
+    {
+      "id": "KRN-005",
+      "group": "KRN",
+      "title": "IPv6 router advertisements are not switched off by a profile",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the sysctl collector did not run",
+      "evidence": {
+        "collector": "sysctl",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Leave net.ipv6.conf.all.accept_ra at its default where the provider uses router advertisements, or configure the address statically."
+      }
+    },
+    {
+      "id": "LOG-001",
+      "group": "LOG",
+      "title": "journald has a size cap",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a drop-in /etc/systemd/journald.conf.d/size.conf with `[Journal]` and `SystemMaxUse=1G`, then restart systemd-journald."
+      }
+    },
+    {
+      "id": "LOG-002",
+      "group": "LOG",
+      "title": "Proxy access logs are rotated",
+      "level": "unknown",
+      "severity": "low",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add a logrotate rule (use copytruncate when the proxy cannot reopen its log)."
+      }
+    },
+    {
+      "id": "LOG-003",
+      "group": "LOG",
+      "title": "Journal disk use",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "None; informational."
+      }
+    },
+    {
+      "id": "LOG-004",
+      "group": "LOG",
+      "title": "A metrics agent is present",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Add monitoring with an alert for disk usage and SSH logins."
+      }
+    },
+    {
+      "id": "LOG-005",
+      "group": "LOG",
+      "title": "The journal survives a reboot",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the journal collector did not run",
+      "evidence": {
+        "collector": "journal",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Create /var/log/journal (or set Storage=persistent in a drop-in) and restart systemd-journald."
+      }
+    },
+    {
+      "id": "SEC-001",
+      "group": "SEC",
+      "title": "Platform app .env files are readable by their owner only",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the files, and add a systemd timer or path unit that repeats it, because the platform rewrites them on the next deploy."
+      }
+    },
+    {
+      "id": "SEC-002",
+      "group": "SEC",
+      "title": "Platform main .env is not world readable",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod o-rwx /data/coolify/source/.env and keep the owner and group the installer set (the documented install uses 9999:root and chmod 700).",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "SEC-003",
+      "group": "SEC",
+      "title": "Platform SSH key folder is closed to other users",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 700 the folder and chmod 600 every key in it."
+      }
+    },
+    {
+      "id": "SEC-004",
+      "group": "SEC",
+      "title": "No stray backup files in the proxy dynamic config folder",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Move backup and editor files out of the dynamic folder (for example into a sibling backups folder)."
+      }
+    },
+    {
+      "id": "SEC-005",
+      "group": "SEC",
+      "title": "Private keys are readable by their owner only",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the key files (and 700 their folder)."
+      }
+    },
+    {
+      "id": "SEC-006",
+      "group": "SEC",
+      "title": "Docker client config is readable by its owner only",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod 600 the file, and configure a credential helper so passwords are not stored in it.",
+        "docs": "https://docs.docker.com/reference/cli/docker/login/#credential-stores"
+      }
+    },
+    {
+      "id": "SEC-007",
+      "group": "SEC",
+      "title": "No world writable folders under the platform data root",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "chmod o-w the folders."
+      }
+    },
+    {
+      "id": "PAAS-001",
+      "group": "PAAS",
+      "title": "Self hosted platform detected",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Nothing to fix; this records the platform for the other checks.",
+        "docs": "https://coolify.io/docs/start-with-self-hosted"
+      }
+    },
+    {
+      "id": "PAAS-002",
+      "group": "PAAS",
+      "title": "Platform proxy is not published on all interfaces behind a tunnel",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Publish the proxy on 127.0.0.1 only (for example 127.0.0.1:443:443) when ingress is a tunnel; never publish the Traefik dashboard or enable api.insecure."
+      }
+    },
+    {
+      "id": "PAAS-003",
+      "group": "PAAS",
+      "title": "Platform panel ports are not open to the world",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Reach the panel over the tailnet or behind an access proxy, and publish its ports on 127.0.0.1 or the tailnet address.",
+        "docs": "https://coolify.io/docs/core/infrastructure/servers/firewall"
+      }
+    },
+    {
+      "id": "PAAS-004",
+      "group": "PAAS",
+      "title": "No platform database is published publicly",
+      "level": "unknown",
+      "severity": "critical",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Turn off \"publicly available\" for the database and reach it over the tailnet or an SSH tunnel."
+      }
+    },
+    {
+      "id": "PAAS-005",
+      "group": "PAAS",
+      "title": "Projects do not share the platform default network",
+      "level": "unknown",
+      "severity": "moderate",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Give each project its own destination (Coolify: a new destination network per project; Dokploy: an isolated network per compose project) and attach the platform proxy to each."
+      }
+    },
+    {
+      "id": "PAAS-008",
+      "group": "PAAS",
+      "title": "Docker Swarm ports are restricted to cluster peers",
+      "level": "unknown",
+      "severity": "high",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Allow 2377/tcp, 7946/tcp and udp and 4789/udp only from the other nodes' addresses (or the tailnet), deny them from anywhere else.",
+        "docs": "https://docs.docker.com/engine/swarm/swarm-tutorial/#open-protocols-and-ports-between-the-hosts"
+      }
+    },
+    {
+      "id": "BAK-001",
+      "group": "BAK",
+      "title": "Platform database backups on the host",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the paas collector did not run",
+      "evidence": {
+        "collector": "paas",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Schedule backups of the platform database to off site storage and test a restore; store the app key outside the server."
+      }
+    },
+    {
+      "id": "BAK-002",
+      "group": "BAK",
+      "title": "Backup tools present",
+      "level": "unknown",
+      "severity": "info",
+      "subject": "host",
+      "message": "not inspected: the secrets collector did not run",
+      "evidence": {
+        "collector": "secrets",
+        "collector_status": "missing"
+      },
+      "fix": {
+        "hint": "Run a restore test into a scratch folder and write down how long it took."
+      }
+    }
+  ]
+}
