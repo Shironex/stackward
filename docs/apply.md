@@ -6,7 +6,9 @@ run from its journal. Access-critical steps run inside a
 [transaction](#the-access-critical-transaction) that `stackward confirm`
 keeps. All three are part of the upcoming 0.2 and are not in a release yet.
 They are the only commands that change a system: `audit`, `probe`, `tui`
-and `plan` stay read only.
+and `plan` stay read only. The [step list](#the-step-list) of
+`stackward tui --plan` is a front end to apply: it changes nothing itself,
+and what you confirm in it runs through the same code as `stackward apply`.
 
 ```
 stackward apply [--step ID]... [--all-safe] [--confirm-within 5m] [--yes] PLAN.json
@@ -401,6 +403,53 @@ undo commands run (the restarts, `sysctl -w` of the old running values).
 `kernel.unprivileged_bpf_disabled = 1` cannot be lowered again without a
 reboot, and journal files vacuumed by the cap are gone; undo does not
 pretend otherwise.
+
+## The step list
+
+`stackward tui --plan PLAN.json` picks steps in a guided list instead of
+`--step` flags. It is a front end only: the list presents the steps and
+collects your choice, and the CLI judges and applies them with apply's own
+code.
+
+```
+sudo stackward plan --out plan.json
+sudo stackward tui --plan plan.json [--confirm-within 5m]
+```
+
+- It refuses, like apply, without root or on a host the plan is not for.
+- When it opens, it runs `apply.Prepare` on every step (read only), the
+  transaction state checks and, for access-critical steps that narrow a way
+  in, the lockout guard over facts read from the host now. Steps are grouped
+  safe, networking, access-critical. Each one shows what it changes, why
+  (the checks it fixes), its diff, its undo and its notes; an
+  access-critical step also shows the guard's proof in plain words, or its
+  refusal. A step apply would refuse (a file changed since the audit, an
+  open transaction, no proven second way in) says why and cannot be
+  selected.
+- Safe steps that are not opt in start selected, like `--all-safe`; opt in,
+  networking and access-critical steps start off. Selecting a networking or
+  access-critical step asks first, with what it can interrupt or the
+  transaction it runs in. Whether steps may run together is
+  `apply.Select`'s answer, so an access-critical step still runs alone.
+- `enter` opens the review: the preview apply prints before it asks, and
+  for access-critical steps the console reminder, the guard proof, the
+  transaction (timer, boot unit, checks), and how to confirm from a new
+  session or roll back, named by the run id apply will use. A selection
+  apply would refuse shows the refusal and cannot be applied.
+- Only `y` on the review applies. The list closes and `applySelected`, the
+  code of `stackward apply` after its flags, runs the choice with the review
+  as its confirmation (as `--yes` after reading the preview): it takes the
+  run lock and checks every step again, so a host that changed since the
+  review is refused, with the reason printed. Pending restarts are listed
+  in the review and finished first, as apply does.
+- Without a terminal, or with `--plain`, it prints the plan as text (the
+  output of `stackward plan`) and applies nothing. `NO_COLOR` turns colors
+  off. It is laid out for 80x24, keyboard only: arrows or `j`/`k` move,
+  `space` selects, `tab` switches to the detail pane, `enter` reviews, `?`
+  lists every key, `q` quits without applying.
+
+The list is tested with teatest golden frames (`internal/tui`, and over real
+plans in `internal/cli`), never a real terminal.
 
 ## No sandbox
 
