@@ -147,7 +147,8 @@ verify_empty_lists() {
 	confirm_as root confirm-f2b "$run"
 	note "$(yn [ "$(txn status)" = confirmed ])" "fail2ban-sshd is confirmed from a new session" confirmed "$(txn status)"
 	apply_as root apply-f2b-again --step fail2ban-sshd --yes "$WORK/plan-f2b2.json"
-	note "$(yn ! grep -q 'Pending restarts' "$OUT/apply-f2b-again.txt")" "the next apply finds no pending restart" none "$(grep -m1 'Pending restarts' "$OUT/apply-f2b-again.txt" || true)"
+	pending="$(grep -m1 'Pending restarts' "$OUT/apply-f2b-again.txt" || true)"
+	note "$(yn [ -z "$pending" ])" "the next apply finds no pending restart" none "$pending"
 
 	undo_as root undo-f2b "$run"
 	note "$(yn quiet vm "test ! -e /etc/fail2ban/jail.d/90-stackward-sshd.local")" "after undo, the jail is gone" gone ""
