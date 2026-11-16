@@ -45,7 +45,7 @@
       "id": "PFW-005",
       "title": "SSH is not open to anywhere at the provider",
       "severity": "high",
-      "rationale": "SSH open to the whole internet at the provider draws constant brute force traffic and exposes every future sshd flaw. A source of a /8 or wider counts as anywhere. Like NET-003, this is a failure when Tailscale offers a private path and a warning otherwise. The sshd ports come from the listeners (port 22 when they could not be read).",
+      "rationale": "SSH open to the whole internet at the provider draws constant brute force traffic and exposes every future sshd flaw. A permit from a source of /8 or wider counts as anywhere; a deny only counts against anywhere when its source is a true /0. Like NET-003, this is a failure when Tailscale offers a private path and a warning otherwise. The sshd ports come from the listeners (port 22 when they could not be read).",
       "verify": "List the provider firewall's inbound TCP rules for the sshd ports and their sources",
       "fix": "Allow SSH at the provider only from the addresses you administer from (a panel, a bastion, your office), or close it there and reach SSH over the tailnet",
       "breaks": "Restricting SSH before another way in works locks you out; most providers still give a console in their web panel for that case.",

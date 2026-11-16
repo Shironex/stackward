@@ -84,7 +84,8 @@ are attached to bug reports. `--dump-facts` also masks, in
 - every rule network, which keeps its prefix length but loses its host bits
   past the first three octets (IPv4) or the first 64 bits (IPv6), so
   `198.51.100.7/32` becomes `198.51.100.0/32` and the checks still see how
-  wide it is.
+  wide it is; a network that does not parse becomes `unparsed`, which a
+  replay judges the same way.
 
 The interface addresses in `listeners.addresses` are not masked; that is a
 decision for the whole dump, not for this module. The live report keeps
@@ -122,16 +123,24 @@ How they read the rules:
   still being applied next to an applied one) counts as in force; a pending
   deny does not. Both err on the side of a finding.
 - On a stateless firewall a sender picks its own source port, so every
-  "from anywhere" question is also asked for each source port that a
-  source-port-only permit names: `permit tcp from any source port 443`
-  before the final deny opens every TCP port, SSH included (PFW-002 and
-  PFW-005 fail).
-- A rule network that does not parse is refused by the client (the rule
-  read becomes partial, so the checks say `unknown`); in a hand edited facts
-  file it counts as anywhere.
+  "from anywhere" question is also asked from the edges of every source
+  port range the rules name (its first and last port and the ports just
+  outside it): `permit tcp from any source port 443` before the final deny
+  opens every TCP port, SSH included (PFW-002 and PFW-005 fail), and so
+  does `permit tcp source port 1000-2000` behind `deny tcp source port
+  1000`, from port 1001.
+- Sources are read in the direction that leans toward a finding. A permit
+  reaches anywhere when its source is empty, a /8 or wider, or does not
+  parse. A deny only blocks a sender anywhere when its source is empty or a
+  true /0 (`0.0.0.0/0`, `::/0`, `::ffff:0.0.0.0/96`); a narrower or
+  unparsable source never makes a deny count, so `deny ipv4 from
+  0.0.0.0/1` is not a catch-all. IPv4-mapped IPv6 sources are unmapped
+  before their width is judged.
+- A rule network that does not parse is refused by the client, so the rule
+  read becomes partial and the checks say `unknown`. The rules above only
+  apply to a hand edited facts file.
 - On an ordered firewall (OVH) the first matching rule wins, so a deny
   before a permit makes the permit dead and the other way round.
-- A source of a /8 or wider counts as anywhere.
 - Rules for ICMP, ESP, GRE, AH or every IPv4 packet are listed in PFW-008
   but take no part in the port checks.
 - `no_match` (no server of this project has the address) is `unknown`, not a
