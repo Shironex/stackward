@@ -371,6 +371,57 @@ func TestPFWOVHMissingReplies(t *testing.T) {
 	}
 }
 
+// TestPFWRepliesLeanTowardAFinding: in the reply checks a dropped packet is
+// the finding, so a deny counts from a wide or unparsable source and a
+// permit only from an empty or true /0 source (the third gate review).
+func TestPFWRepliesLeanTowardAFinding(t *testing.T) {
+	stubTunnel(t, false)
+	est := facts.ProviderRule{Order: 1, Direction: "in", Action: "permit", Protocol: "tcp", TCPOption: "established"}
+	dns := facts.ProviderRule{Order: 2, Direction: "in", Action: "permit", Protocol: "udp", SrcPorts: port(53)}
+	final := facts.ProviderRule{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4"}
+	run := func(rules ...facts.ProviderRule) Result {
+		f := pfwFacts(ovhPF(rules))
+		f.Clock = nil
+		return runOne(t, checkPFWReturnTraffic, f)
+	}
+	wantLevel(t, run(est, dns, final), Pass, "")
+
+	// P12: a deny from half the internet before the established permit.
+	for _, src := range []string{"0.0.0.0/1", "garbage"} {
+		deny := facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{src}}
+		wantLevel(t, run(deny, est, dns, final), Fail, "seq 0 denies them")
+	}
+	// P13: a DNS reply deny from half the internet before the DNS permit.
+	deny53 := facts.ProviderRule{Order: 0, Direction: "in", Action: "deny", Protocol: "udp", Sources: []string{"0.0.0.0/1"}, SrcPorts: port(53)}
+	wantLevel(t, run(est, deny53, dns, final), Warn, "DNS replies")
+
+	// A narrow permit does not let replies in from anywhere.
+	narrow := est
+	narrow.Sources = []string{"10.0.0.0/8"}
+	wantLevel(t, run(narrow, dns, final), Fail, "seq 19 denies them")
+	narrowDNS := dns
+	narrowDNS.Sources = []string{"10.0.0.0/8"}
+	wantLevel(t, run(est, narrowDNS, final), Warn, "DNS replies")
+	// An IPv6 /0 permit does not cover IPv4 senders either.
+	v6 := est
+	v6.Sources = []string{"::/0"}
+	wantLevel(t, run(v6, dns, final), Fail, "seq 19 denies them")
+	// A true /0, mapped included, does.
+	mapped := est
+	mapped.Sources = []string{"::ffff:0.0.0.0/96"}
+	wantLevel(t, run(mapped, dns, final), Pass, "")
+}
+
+// TestPFWIPv6DenyDoesNotBlockIPv4: a deny from ::/0 is no catch-all for the
+// IPv4 packets the checks simulate.
+func TestPFWIPv6DenyDoesNotBlockIPv4(t *testing.T) {
+	stubTailnet(t, false, true)
+	rules := []facts.ProviderRule{{Order: 19, Direction: "in", Action: "deny", Protocol: "ipv4", Sources: []string{"::/0"}}}
+	f := pfwFacts(ovhPF(rules))
+	wantLevel(t, runOne(t, checkPFWDefaultDeny, f), Fail, "")
+	wantLevel(t, runOne(t, checkPFWSSH, f), Warn, "")
+}
+
 func TestPFWAttachedStates(t *testing.T) {
 	disabled := ovhPF(ovhRealRules())
 	disabled.Targets[0].Enabled = false

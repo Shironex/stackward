@@ -54,7 +54,7 @@ func checkPFWAttached(in Input) []Result {
 func catchAllDeny(t facts.ProviderTarget) *facts.ProviderRule {
 	rs := sortedRules(t)
 	for i, r := range rs {
-		if inForce(r) && r.Action == "deny" && r.Protocol == "ipv4" && denyFromWorld(r.Sources) &&
+		if inForce(r) && r.Action == "deny" && r.Protocol == "ipv4" && exactWorld(r.Sources) &&
 			len(r.DstPorts) == 0 && len(r.SrcPorts) == 0 && r.TCPOption == "" && !r.Fragments {
 			return &rs[i]
 		}
@@ -96,7 +96,7 @@ func checkPFWOpenUDP(in Input) []Result {
 		}
 		var wide, srcOnly []string
 		for _, r := range sortedRules(t) {
-			if !inForce(r) || r.Action != "permit" || (r.Protocol != "udp") || !permitFromWorld(r.Sources) {
+			if !inForce(r) || r.Action != "permit" || (r.Protocol != "udp") || !looseWorld(r.Sources) {
 				continue
 			}
 			if len(r.DstPorts) == 0 && len(r.SrcPorts) > 0 {
@@ -294,7 +294,7 @@ func checkPFWReturnTraffic(in Input) []Result {
 		if !t.RulesComplete {
 			return pfwResult(pf, t, Unknown, "some firewall rules could not be read; a judgement from part of them would mislead", ev)
 		}
-		ok, by := verdict(t, packet{proto: "tcp", dst: ephemeralPort, src: 443, established: true})
+		ok, by := verdict(t, packet{proto: "tcp", dst: ephemeralPort, src: 443, established: true, blockIsFinding: true})
 		ev["tcp_replies"] = ruleLabel(t, by)
 		if !ok {
 			return pfwResult(pf, t, Fail, fmt.Sprintf("replies to TCP connections the host opens are dropped: %s denies them before any \"tcp established\" permit, which can cut the host off", ruleLabel(t, by)), ev)
@@ -314,7 +314,7 @@ func checkPFWReturnTraffic(in Input) []Result {
 func missingReplies(f *facts.Facts, t facts.ProviderTarget) []string {
 	var out []string
 	reply := func(src int) bool {
-		ok, _ := verdict(t, packet{proto: "udp", dst: ephemeralPort, src: src})
+		ok, _ := verdict(t, packet{proto: "udp", dst: ephemeralPort, src: src, blockIsFinding: true})
 		return ok
 	}
 	if !reply(53) {
