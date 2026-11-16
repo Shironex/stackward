@@ -262,6 +262,18 @@ func TestHetznerPartialRuleRead(t *testing.T) {
 	}
 }
 
+func TestHetznerRefusesUnparsableNetworks(t *testing.T) {
+	a := hetznerAnswers()
+	a["/v1/firewalls/7"] = answer{body: `{"firewall":{"rules":[
+		{"direction":"in","protocol":"tcp","port":"22","source_ips":["0.0.0.0"]},
+		{"direction":"in","protocol":"tcp","port":"443","source_ips":["0.0.0.0/0"]}]}}`}
+	rec := newRecorder(t, a)
+	tg := fetchWith(t, rec, "192.0.2.10").Targets[0]
+	if tg.RulesComplete || len(tg.Rules) != 1 {
+		t.Errorf("target = %+v", tg)
+	}
+}
+
 func TestUnreachable(t *testing.T) {
 	rec := newRecorder(t, nil)
 	rec.srv.Close()
