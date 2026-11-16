@@ -374,14 +374,7 @@ func finishPendingRestarts(ctx context.Context, env applyEnv, yes bool, stdout, 
 	if len(pending) == 0 {
 		return -1
 	}
-	fmt.Fprintf(stdout, "Pending restarts: an earlier run wrote these files but its restart did not finish. They are finished first:\n")
-	for _, p := range pending {
-		fmt.Fprintf(stdout, "  step %s of run %s:", p.StepID, p.RunID)
-		for _, c := range p.Commands {
-			fmt.Fprintf(stdout, " %s;", strings.Join(c, " "))
-		}
-		fmt.Fprintln(stdout)
-	}
+	writePending(stdout, pending)
 	ok, err := confirm(env, yes, stdout, "\nFinish the pending restarts now? [y/N] ")
 	if !ok {
 		if err != nil {
@@ -400,6 +393,18 @@ func finishPendingRestarts(ctx context.Context, env applyEnv, yes bool, stdout, 
 		return exitStepFailed
 	}
 	return -1
+}
+
+// writePending lists the restarts an earlier run left undone.
+func writePending(w io.Writer, pending []apply.Pending) {
+	fmt.Fprintf(w, "Pending restarts: an earlier run wrote these files but its restart did not finish. They are finished first:\n")
+	for _, p := range pending {
+		fmt.Fprintf(w, "  step %s of run %s:", p.StepID, p.RunID)
+		for _, c := range p.Commands {
+			fmt.Fprintf(w, " %s;", strings.Join(c, " "))
+		}
+		fmt.Fprintln(w)
+	}
 }
 
 // needRootOnLinux refuses to change anything off Linux or without root.

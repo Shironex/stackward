@@ -76,16 +76,7 @@ func applyTransaction(ctx context.Context, env applyEnv, a txnApply, stdout, std
 	if err != nil {
 		return fail("%v; nothing was changed", err)
 	}
-	fmt.Fprintf(stdout, "\ntransaction: the steps run inside a rollback transaction\n")
-	fmt.Fprintf(stdout, "   a systemd timer (%s.timer) rolls them back after %s unless confirmed;\n", apply.TimerUnit(a.runID), a.within)
-	fmt.Fprintf(stdout, "   it runs on its own, so a dropped SSH session cannot stop it\n")
-	fmt.Fprintf(stdout, "   a boot unit (%s) rolls them back if the host reboots first, before sshd starts\n", apply.BootUnit(a.runID))
-	fmt.Fprintf(stdout, "   after the steps: sshd -t, the effective sshd -T values, and sshd still listening on %s\n", strings.Join(base.Ports, ", "))
-	fmt.Fprintf(stdout, "   a failed check rolls back at once\n")
-	fmt.Fprintf(stdout, "   confirm with stackward confirm from a NEW SSH session (this one is refused)\n")
-	if len(confirmFrom) > 0 {
-		fmt.Fprintf(stdout, "   that session must come over the way that stays: from %s\n", strings.Join(confirmFrom, ", "))
-	}
+	writeTxnPlan(stdout, a.runID, a.within, strings.Join(base.Ports, ", "), confirmFrom)
 	if ok, err := confirm(env, a.yes, stdout, fmt.Sprintf("\nApply %d access-critical step(s) in a transaction that rolls back in %s unless confirmed? [y/N] ", n, a.within)); !ok {
 		if err != nil {
 			return fail("%v; nothing was changed", err)
@@ -135,6 +126,21 @@ To roll back now:                    sudo stackward undo --transaction %[1]s
 	return report.ExitOK
 }
 
+// writeTxnPlan says how the transaction protects the change. ports are
+// the ports sshd must still listen on afterwards, as a list for the reader.
+func writeTxnPlan(w io.Writer, runID string, within time.Duration, ports string, confirmFrom []string) {
+	fmt.Fprintf(w, "\ntransaction: the steps run inside a rollback transaction\n")
+	fmt.Fprintf(w, "   a systemd timer (%s.timer) rolls them back after %s unless confirmed;\n", apply.TimerUnit(runID), within)
+	fmt.Fprintf(w, "   it runs on its own, so a dropped SSH session cannot stop it\n")
+	fmt.Fprintf(w, "   a boot unit (%s) rolls them back if the host reboots first, before sshd starts\n", apply.BootUnit(runID))
+	fmt.Fprintf(w, "   after the steps: sshd -t, the effective sshd -T values, and sshd still listening on %s\n", ports)
+	fmt.Fprintf(w, "   a failed check rolls back at once\n")
+	fmt.Fprintf(w, "   confirm with stackward confirm from a NEW SSH session (this one is refused)\n")
+	if len(confirmFrom) > 0 {
+		fmt.Fprintf(w, "   that session must come over the way that stays: from %s\n", strings.Join(confirmFrom, ", "))
+	}
+}
+
 // proveLive runs the lockout guard for steps that close or narrow a way
 // in, over facts read from this host now (the plan's may be stale) and
 // the applying session, and prints the proof. It returns the networks the
@@ -148,16 +154,22 @@ func proveLive(ctx context.Context, env applyEnv, steps []plan.Step, sess apply.
 	if err != nil {
 		return nil, err
 	}
+	writeProofs(stdout, steps, proofs)
+	return apply.ConfirmFrom(proofs), nil
+}
+
+// writeProofs prints what each step narrows and the second way in the
+// guard proved for it.
+func writeProofs(w io.Writer, steps []plan.Step, proofs []plan.Proof) {
 	for i, p := range proofs {
 		if !p.Needed {
 			continue
 		}
-		fmt.Fprintf(stdout, "   %s %s\n", steps[i].ID, strings.Join(p.Narrows, ", "))
-		for _, w := range p.Ways {
-			fmt.Fprintf(stdout, "   second way in: %s\n", w)
+		fmt.Fprintf(w, "   %s %s\n", steps[i].ID, strings.Join(p.Narrows, ", "))
+		for _, way := range p.Ways {
+			fmt.Fprintf(w, "   second way in: %s\n", way)
 		}
 	}
-	return apply.ConfirmFrom(proofs), nil
 }
 
 // errOr is err's text, or why when err is nil.
