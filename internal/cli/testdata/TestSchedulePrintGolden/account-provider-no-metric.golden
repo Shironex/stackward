@@ -1,0 +1,58 @@
+# /etc/systemd/system/stackward-audit.service
+# Printed by stackward schedule --print. stackward never installs or
+# enables this unit: install it by hand as docs/schedule.md shows.
+[Unit]
+Description=stackward read only audit
+Documentation=https://github.com/Shironex/stackward/blob/main/docs/schedule.md
+After=docker.service
+
+[Service]
+Type=oneshot
+User=stackward
+# Not root: checks that need root say unknown, and the account must be
+# able to write its output directories.
+CapabilityBoundingSet=
+ExecStart=/usr/bin/stackward audit --format json --fail-on never --out /srv/audit/report.json.tmp --provider hetzner --profile tunnel --timeout=30s
+# Each file is written under a temporary name and renamed into place
+# (rename is atomic), and only when the audit succeeded.
+ExecStartPost=/bin/mv -f /srv/audit/report.json.tmp /srv/audit/report.json
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+# Hardening: the audit only reads, so the whole file system is read only
+# except the output directories. Nothing here hides what the audit inspects
+# (no PrivateNetwork, PrivateDevices or ProtectProc).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+ReadWritePaths=/srv/audit
+# --provider reads the provider firewall over HTTPS, so IP traffic stays
+# allowed. Give the credentials with EnvironmentFile=, never in ExecStart.
+
+# /etc/systemd/system/stackward-audit.timer
+# Printed by stackward schedule --print. Enable it yourself:
+#   systemctl daemon-reload && systemctl enable --now stackward-audit.timer
+[Unit]
+Description=Run the stackward audit on a schedule
+Documentation=https://github.com/Shironex/stackward/blob/main/docs/schedule.md
+
+[Timer]
+OnCalendar=Mon *-*-* 03:00:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target
