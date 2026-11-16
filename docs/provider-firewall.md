@@ -129,13 +129,20 @@ How they read the rules:
   opens every TCP port, SSH included (PFW-002 and PFW-005 fail), and so
   does `permit tcp source port 1000-2000` behind `deny tcp source port
   1000`, from port 1001.
-- Sources are read in the direction that leans toward a finding. A permit
-  reaches anywhere when its source is empty, a /8 or wider, or does not
-  parse. A deny only blocks a sender anywhere when its source is empty or a
-  true /0 (`0.0.0.0/0`, `::/0`, `::ffff:0.0.0.0/96`); a narrower or
-  unparsable source never makes a deny count, so `deny ipv4 from
-  0.0.0.0/1` is not a catch-all. IPv4-mapped IPv6 sources are unmapped
-  before their width is judged.
+- Sources are read, per check, in the direction that leans toward that
+  check's finding. There are two readings: loose (the source is empty, a
+  /8 or wider, or does not parse) and exact (the source is empty,
+  `0.0.0.0/0` or `::ffff:0.0.0.0/96`; the simulated packets are IPv4, so
+  `::/0` alone does not count).
+  - Where a packet getting in is the finding (PFW-002 to PFW-005), a permit
+    counts when its source is loose and a deny only when it is exact. So
+    `deny ipv4 from 0.0.0.0/1` or `from ::/0` is not a catch-all.
+  - Where a reply being dropped is the finding (PFW-007), the two swap: a
+    deny counts when its source is loose and a permit only when it is
+    exact. So `deny ipv4 from 0.0.0.0/1` before `permit tcp established`
+    fails PFW-007, and `permit tcp established from 10.0.0.0/8` does not
+    let replies in from anywhere.
+  - IPv4-mapped IPv6 sources are unmapped before their width is judged.
 - A rule network that does not parse is refused by the client, so the rule
   read becomes partial and the checks say `unknown`. The rules above only
   apply to a hand edited facts file.
