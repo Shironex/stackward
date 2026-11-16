@@ -32,7 +32,7 @@
       "id": "USR-004",
       "title": "sudoers is root owned and NOPASSWD entries are deliberate",
       "severity": "high",
-      "rationale": "A sudoers file that anyone but root can write is a direct escalation to root. NOPASSWD entries are sometimes required (a PaaS deploy account) but are the first thing an attacker with a user shell uses, so they are listed so each one is a decision.",
+      "rationale": "A sudoers file that anyone but root can write is a direct escalation to root. NOPASSWD entries are sometimes required (a PaaS deploy account) but are the first thing an attacker with a user shell uses, so they are listed so each one is a decision. The one drop-in stackward writes for its own admin-user and paas-user steps (/etc/sudoers.d/90-stackward-NAME, root owned, mode 0440, exactly the line the step renders) is reported as info, not a warning; any other content, extra line, owner or mode keeps the warning.",
       "verify": "ls -l /etc/sudoers /etc/sudoers.d; sudo visudo -c",
       "fix": "Fix ownership and mode (`chown root:root`, `chmod 0440`), validate with `visudo -cf <file>`, and keep NOPASSWD to the PaaS account.",
       "breaks": "Removing a NOPASSWD line breaks whatever automation relied on it.",
