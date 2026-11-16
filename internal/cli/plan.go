@@ -51,7 +51,7 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&pf.showHostname, "show-hostname", false, "print the hostname instead of its hash")
 	fs.BoolVar(&pf.noSandbox, "no-sandbox", false, "do not apply the Landlock self sandbox (debugging only)")
 	fs.StringVar(&pf.accounts.Admin, "admin-user", "", "plan admin-user: create this admin account (sudo, no password)")
-	fs.StringVar(&pf.accounts.AdminKeysFrom, "admin-keys-from", "", "the existing account whose authorized_keys the admin account gets (copied on the host)")
+	fs.StringVar(&pf.accounts.AdminKeysFrom, "admin-keys-from", "", "the existing account whose authorized_keys the admin account gets (copied on the host; root reads /root/.ssh/authorized_keys)")
 	fs.StringVar(&pf.accounts.PaaS, "paas-user", "", "plan paas-user: create this account for the platform to log in as")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "Usage: stackward plan [flags]\n\nWrite down the changes that would fix the findings: file edits as diffs,\ncommands, a risk class and an undo for every step. Nothing on the host\nchanges. Part of 0.2, in pre-release (v0.2.0-rc.1).\n\nFlags:\n")
@@ -164,14 +164,22 @@ func runPlan(args []string, stdout, stderr io.Writer) int {
 }
 
 // checkAccountFlags refuses account names stackward would not use, and a
-// key source without the account it is for.
+// key source without the account it is for. The key source is checked on
+// its own: root may give its keys, but is never an account to create.
 func checkAccountFlags(a plan.AccountChoices) error {
-	for _, f := range [][2]string{{"--admin-user", a.Admin}, {"--admin-keys-from", a.AdminKeysFrom}, {"--paas-user", a.PaaS}} {
-		if f[1] == "" {
+	for _, f := range []struct {
+		flag, name string
+		valid      func(string) error
+	}{
+		{"--admin-user", a.Admin, plan.ValidAccountName},
+		{"--admin-keys-from", a.AdminKeysFrom, plan.ValidKeySource},
+		{"--paas-user", a.PaaS, plan.ValidAccountName},
+	} {
+		if f.name == "" {
 			continue
 		}
-		if err := plan.ValidAccountName(f[1]); err != nil {
-			return fmt.Errorf("%s: %w", f[0], err)
+		if err := f.valid(f.name); err != nil {
+			return fmt.Errorf("%s: %w", f.flag, err)
 		}
 	}
 	if a.AdminKeysFrom != "" && a.Admin == "" {

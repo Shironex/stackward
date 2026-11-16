@@ -162,6 +162,11 @@ var NeverTouchedExceptions = []NeverTouchedException{
 			"file-mode:" + facts.DokployApplications, "file-mode:" + facts.DokployCompose,
 		},
 	},
+	{
+		Step: AdminUserID, Entry: "root-keys",
+		What:    "read root's authorized_keys as the source of the new admin account's keys (--admin-keys-from root, on a root only image): install copies it to the new account's home; root's own file is never changed",
+		Targets: []string{"file:" + rootKeysFile},
+	},
 }
 
 // excepted reports whether an exception lets step id reach target t of

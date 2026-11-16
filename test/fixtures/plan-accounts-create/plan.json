@@ -120,7 +120,7 @@
             "/home/ubuntu/.ssh/authorized_keys",
             "/home/ops/.ssh/authorized_keys"
           ],
-          "why": "copy the authorized keys of ubuntu on the host, so no key passes through the plan"
+          "why": "copy the authorized keys of ubuntu (/home/ubuntu/.ssh/authorized_keys) on the host, so no key passes through the plan"
         }
       ],
       "undo": {
@@ -145,6 +145,7 @@
         ]
       },
       "notes": [
+        "The keys come from ubuntu (/home/ubuntu/.ssh/authorized_keys), copied on the host; nothing is changed there.",
         "ops gets sudo without a password (NOPASSWD), like the cloud image's default account; USR-004 lists it. Set a password and drop NOPASSWD later if you prefer.",
         "Prove it before you confirm: open a new SSH session as ops with the key of ubuntu and run sudo stackward confirm from there.",
         "lock-default-user is planned once a session of this account applies it."

@@ -43,7 +43,7 @@ never through a symlink. Steps whose checks already pass are left out of
 | `--show-hostname` | show the hostname instead of its hash |
 | `--no-sandbox` | do not apply the Landlock sandbox (debugging only) |
 | `--admin-user NAME` | plan `admin-user`: create the admin account NAME |
-| `--admin-keys-from USER` | copy the admin account's keys from `/home/USER/.ssh/authorized_keys` on the host (needs `--admin-user`) |
+| `--admin-keys-from USER` | copy the admin account's keys from `/home/USER/.ssh/authorized_keys` on the host, or from `/root/.ssh/authorized_keys` with `--admin-keys-from root` (needs `--admin-user`) |
 | `--paas-user NAME` | plan `paas-user`: create the account NAME for a PaaS platform to log in as |
 
 Exit codes: 0 when the plan was written, 2 on an error.
@@ -75,7 +75,7 @@ select them by id. The Docker step is opt in because of its restart.
 | `journald-cap` | LOG-001 | safe | creates `/etc/systemd/journald.conf.d/90-stackward-journal-cap.conf` with `SystemMaxUse=1G`, restarts systemd-journald |
 | `sysctl-hardening` | KRN-002, KRN-003, KRN-004 | safe | creates `/etc/sysctl.d/90-stackward-hardening.conf` with only the values the checks find off baseline, loads that file with `sysctl -p` |
 | `docker-log-rotation` | DKR-031 | networking, opt in | merges `log-driver` and `log-opts` (`max-size` 10m, `max-file` 3) into `/etc/docker/daemon.json`, keeping every other key, checks the result with `dockerd --validate`, restarts Docker |
-| `admin-user` | SSH-003, USR-003 | access-critical | with `--admin-user NAME --admin-keys-from USER`: `useradd` NAME (home `/home/NAME`, `/bin/bash`, no password), copies `/home/USER/.ssh/authorized_keys` to it with `install`, creates `/etc/sudoers.d/90-stackward-NAME` (`NAME ALL=(ALL:ALL) NOPASSWD: ALL`, checked with `visudo -c -f`); undo removes the drop-in and `userdel --remove` NAME |
+| `admin-user` | SSH-003, USR-003 | access-critical | with `--admin-user NAME --admin-keys-from USER`: `useradd` NAME (home `/home/NAME`, `/bin/bash`, no password), copies `/home/USER/.ssh/authorized_keys` to it with `install` (`/root/.ssh/authorized_keys` when USER is root, as on a root only image; root's file is only read), creates `/etc/sudoers.d/90-stackward-NAME` (`NAME ALL=(ALL:ALL) NOPASSWD: ALL`, checked with `visudo -c -f`); undo removes the drop-in and `userdel --remove` NAME |
 | `paas-user` | SSH-003 | access-critical | with `--paas-user NAME` on a host that runs a platform: the same account and sudoers drop-in, with an empty `~/.ssh` for the platform's key |
 | `sshd-hardening` | SSH-001, SSH-002, SSH-003, SSH-004, SSH-005 | access-critical | creates `/etc/ssh/sshd_config.d/00-stackward-hardening.conf` with the failing settings only (`PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`, `PermitEmptyPasswords no`, `MaxAuthTries 3`), checked with `sshd -t -f`, reloads ssh.service |
 | `lock-default-user` | USR-003 | access-critical | for a cloud image account (`ubuntu`, `debian`, `admin`, `ec2-user`) USR-003 warns about: sets its shell to `/usr/sbin/nologin`, locks a usable password, moves `authorized_keys` aside to `authorized_keys.stackward-locked`; undo puts all three back |
@@ -92,7 +92,11 @@ The account and SSH steps, in the order apply should run them:
 1. **Keys come from the host, never from the plan.** `admin-user` copies an
    existing account's `authorized_keys` on the host (`--admin-keys-from`), so
    no key reaches the plan, the journal or the screen, and stackward never
-   invents one. No step sets or prints a password: the accounts have none,
+   invents one. On an image with root only (Hetzner, DigitalOcean, Vultr),
+   `--admin-keys-from root` copies root's keys; root itself is never
+   created, locked or changed, and the plan suggests `sshd-hardening`
+   (`PermitRootLogin no`) once the new account's login is confirmed. No step
+   sets or prints a password: the accounts have none,
    which is why their sudo rule is `NOPASSWD`. A name that exists already
    (account, group or home) is left alone (`manual`), because the undo
    deletes the account.
