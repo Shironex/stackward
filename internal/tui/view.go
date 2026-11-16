@@ -141,12 +141,22 @@ func (m Model) header() []string {
 	l2 := " " + label("profile", fmt.Sprintf("%s (%s)", r.Profile.Name, r.Profile.Source)) +
 		dot + label("sandbox", sandboxShort(r.Coverage.Sandbox)) +
 		dot + st.quiet.Render("root ") + root
+	if n := len(report.WaiversToReview(r.Waivers)); n > 0 {
+		// First, so a narrow terminal cuts the profile line, not this.
+		l2 = " " + st.warnText.Render(fmt.Sprintf("review %s", pluralWaivers(n))) + dot + strings.TrimPrefix(l2, " ")
+	}
 
 	s := r.Summary
 	counts := []struct {
 		n int
 		l checks.Level
 	}{{s.Fail, checks.Fail}, {s.Warn, checks.Warn}, {s.Unknown, checks.Unknown}, {s.Info, checks.Info}, {s.Pass, checks.Pass}, {s.Skip, checks.Skip}}
+	if s.Accepted > 0 {
+		counts = append(counts, struct {
+			n int
+			l checks.Level
+		}{s.Accepted, accepted})
+	}
 	var parts []string
 	for _, c := range counts {
 		txt := fmt.Sprintf("%d %s", c.n, c.l)
@@ -232,7 +242,7 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 		return spread(left, st.faint.Render(right), w)
 	}
 	it := m.items[r.item]
-	badge := fmt.Sprintf("%-7s", strings.ToUpper(string(it.Level)))
+	badge := fmt.Sprintf("%-*s", max(m.badgeW, 7), strings.ToUpper(string(shownLevel(it))))
 	id := fmt.Sprintf("%-*s", idw, it.ID)
 	subj := report.ShortSubject(it.Subject)
 	if report.NamesSubject(it.Message, subj) {
@@ -260,7 +270,7 @@ func (m Model) rowLine(r row, sel bool, idw, w int) string {
 	if sel {
 		marker = st.marker.Render("› ")
 	}
-	line := marker + st.levelStyle(it.Level).Render(badge) + " " + st.text.Render(id) + " "
+	line := marker + st.levelStyle(shownLevel(it)).Render(badge) + " " + st.text.Render(id) + " "
 	if subj != "" {
 		line += st.quiet.Render(subj) + st.faint.Render(" · ")
 	}
@@ -336,8 +346,11 @@ func (m Model) detailContent(w int) string {
 		}
 		add(lead + st.bold.Render(l))
 	}
-	add(st.levelStyle(it.Level).Render(strings.ToUpper(string(it.Level))) +
-		st.faint.Render(" · ") + st.text.Render(string(it.Severity)) + st.quiet.Render(" severity"))
+	levelLine := st.levelStyle(it.Level).Render(strings.ToUpper(string(it.Level)))
+	if it.Accepted() {
+		levelLine = st.levelStyle(accepted).Render("ACCEPTED") + st.faint.Render(" · ") + levelLine
+	}
+	add(levelLine + st.faint.Render(" · ") + st.text.Render(string(it.Severity)) + st.quiet.Render(" severity"))
 	if it.Subject != "host" {
 		for i, l := range wrapText(it.Subject, w-8) {
 			lead := "        "
@@ -364,6 +377,9 @@ func (m Model) detailContent(w int) string {
 		}
 	}
 	section := func(name, body string) { sectionHead(st.section.Render(name), body) }
+	if it.Waiver != nil {
+		section("WAIVER", report.AcceptedNote(it.Waiver))
+	}
 	if ev := nonEmptyEvidence(it.Evidence); len(ev) > 0 {
 		add("", st.section.Render("EVIDENCE"))
 		add(m.evidenceLines(ev, w)...)
@@ -623,4 +639,12 @@ func orDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// pluralWaivers is "1 waiver" or "n waivers".
+func pluralWaivers(n int) string {
+	if n == 1 {
+		return "1 waiver"
+	}
+	return fmt.Sprintf("%d waivers", n)
 }

@@ -74,6 +74,7 @@ func newStyles(dark bool) styles {
 		checks.Warn:    base.Foreground(warn).Bold(true),
 		checks.Unknown: base.Foreground(s.secondary).Bold(true),
 		checks.Info:    base.Foreground(s.secondary),
+		accepted:       base.Foreground(s.secondary).Italic(true),
 		checks.Pass:    base.Foreground(s.accent),
 		checks.Skip:    base.Foreground(s.dim),
 	}

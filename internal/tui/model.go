@@ -62,6 +62,8 @@ type Model struct {
 	cat   *catalog.Catalog
 	opts  Options
 	items []report.Item // every result, in list order
+	// badgeW is the width of the level badge in the list.
+	badgeW int
 
 	f       filter
 	rows    []row
@@ -95,6 +97,7 @@ func New(rep *report.Report, o Options) (Model, error) {
 	m := Model{
 		rep: rep, cat: cat, opts: o,
 		items:  sortItems(rep.Results),
+		badgeW: badgeWidth(rep.Results),
 		input:  in,
 		detail: viewport.New(),
 		dark:   true,
@@ -176,7 +179,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.input.CursorEnd()
 		return m, m.input.Focus()
 	case "l":
-		m.f.level = nextLevel(m.f.level, m.f.passing)
+		m.f.level = nextLevel(m.f.level, m.f.passing, m.rep.Summary.Accepted > 0)
 		m.rebuild()
 	case "a":
 		m.f.passing = !m.f.passing
