@@ -139,7 +139,7 @@ func goldenPlan(t *testing.T, factsPath string) *plan.Plan {
 		t.Fatal(err)
 	}
 	rep := evaluate(t, factsPath)
-	return plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: goldenAccounts(t, filepath.Dir(factsPath))}, rep, plan.Options{
+	return plan.Build(plan.Input{Facts: f, Results: plan.ResultsFromReport(rep), Accounts: goldenAccounts(t, filepath.Dir(factsPath)), Profile: rep.Profile.Name}, rep, plan.Options{
 		Version: "test", Sandbox: goldenOptions.Sandbox, SourceKind: plan.FromFacts,
 	})
 }
