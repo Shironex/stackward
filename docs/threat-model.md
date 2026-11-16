@@ -200,7 +200,9 @@ and the only time stackward writes to an audited host.
   nothing back from your machine.
 - **Host names cannot become options or code.** A host is a name from your
   ssh config, `user@name` or an address: letters, digits, `.`, `-`, `_` and
-  `:`, never starting with `-`, at most 256 per run. It is passed after `--`.
+  `:`, never starting with `-`, at most 256 per run. An IPv6 address must
+  start with a hex digit (`2001:db8::1`); one that starts with a colon, such
+  as `::1`, is refused, so give it an alias in your ssh config. It is passed after `--`.
   Anything else is refused before ssh starts. Every remote command is a fixed
   string of this program; the only flags passed on are `--profile` (checked
   against the known names), `--timeout` and `--show-hostname`. `--provider`
@@ -210,21 +212,44 @@ and the only time stackward writes to an audited host.
   ELF header) does not match, nothing is copied and the error names the
   release archive to download. Otherwise a second connection runs a one line
   POSIX `sh` script: `umask 077`, `mktemp -d` (a new directory only your
-  user can enter, mode 700), an `EXIT` trap that removes it however the
+  user can enter, mode 700, under `$TMPDIR` or `/tmp`), an `EXIT` trap that removes it however the
   script ends, the binary streamed in on standard input (the only file
   written), then `stackward audit --json` from there, under `sudo -n` only
-  with `--ssh-sudo`. The remote audit applies its own Landlock sandbox, as
-  any audit does. If the run fails before the trap could run (a broken
+  with `--ssh-sudo`. With `--ssh-sudo` the directory is always made under
+  `/tmp`, never `$TMPDIR`, and the script refuses to run unless `/tmp` is
+  owned by root and has the sticky bit: in a parent that other users may
+  write without the sticky bit, they could rename the directory away and
+  plant a binary that root would then run. The remote audit applies its own
+  Landlock sandbox, as any audit does. If the run fails before the trap could run (a broken
   connection, a timeout, a killed process), a third connection removes the
   directory the script announced, after checking it has the expected
   `.../stackward.XXXXXXXXXX` form; when that cannot be confirmed the report
   says so and names the path.
 - **What comes back is not trusted.** The report is read from standard
-  output with a 32 MiB cap and must be a `stackward.report.v1` document.
-  Control characters and bidirectional overrides in every string are
-  replaced before rendering, so a compromised host cannot send escape
-  sequences to your terminal or forge lines in the report. Error output is
-  capped, cleaned and redacted.
+  output with an 8 MiB cap and must be a `stackward.report.v1` document. It
+  is then rebuilt against this binary's own check catalog: a result is kept
+  only when its check id is in the catalog and its level is a known one, and
+  its title, severity, group and fix hint come from the local catalog, never
+  from the host, because the renderers print those as trusted text (check
+  links, fix hints). Dropped results are counted in a note beside the host
+  ("unknown results dropped: N"). The summary, the coverage counts, the
+  fleet totals and the exit code are recomputed from the kept results, not
+  read from the host. The hostname hash, hostname, tool version and
+  collection time must have their expected shape, or they are replaced with
+  a note; the check count is kept between the checks that left a result and
+  the size of the catalog. Everything else the host supplies (subject,
+  message, evidence, OS, kernel, sandbox and collector text, error output)
+  has control characters and bidirectional overrides replaced, is cut to a
+  size limit (2 KiB per subject or message, 8 KiB of evidence per result and
+  256 KiB per host, at most 5000 results, each with a note), and in the
+  Markdown fleet report is always shown inside a code span, which Markdown
+  never turns into a link, an autolinked bare URL or email address, an
+  image, HTML, a heading or a table row. Inside a table cell a host's `|`
+  is replaced by U+2223 (`∣`, a look-alike) rather than escaped, because a
+  backslash the host puts before it would undo the escape and end the cell.
+  So a compromised host cannot send escape sequences to your terminal, add
+  links, images or rows to the Markdown report, or forge another host's
+  section. Error output is also redacted.
 - **No local trace.** Host names appear only in the report you asked for
   (stdout or `--out`); nothing else is written on your machine by stackward
   (ssh keeps its own files, such as known hosts, as usual).
@@ -232,6 +257,12 @@ and the only time stackward writes to an audited host.
   (`--ssh-parallel`, default 4, at most 32), each with its own time limit
   (`--ssh-timeout`, default 10 minutes). A host that fails is listed with its
   error and the run exits 2.
+
+**ControlPersist.** With `ControlMaster` and `ControlPersist` in your ssh
+config, the first connection may start a background master that keeps the
+standard error pipe open after ssh itself exited. stackward closes the
+pipes 5 seconds after ssh exits and keeps the exit code, so such a host
+takes up to 5 seconds longer per connection; the output is complete by then.
 
 **The local side is not sandboxed.** Landlock would forbid ssh its network
 connection and its own files (known hosts, control sockets), so the fleet

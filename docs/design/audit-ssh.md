@@ -21,7 +21,10 @@ Hosts come after the flags (the standard `flag` package stops at the first
 argument), or from a file with one host per line and `#` comments. Both can
 be combined; duplicates keep their first place. `--json`, `--md`, `--out`,
 `--fail-on`, `--profile`, `--timeout`, `--show-hostname`, `--all`, `--info`,
-`--group` and `--plain` keep their meaning. `--facts`, `--dump-facts`,
+`--group` and `--plain` keep their meaning. Hosts are names from the ssh
+config, `user@name`, IPv4 addresses or IPv6 addresses that start with a hex
+digit; `::1` and other addresses starting with a colon are refused (use an
+alias). `--facts`, `--dump-facts`,
 `--provider` and `--no-sandbox` are refused with `--ssh`.
 
 Exit codes: 2 when any host could not be audited, otherwise the worst code of
@@ -60,8 +63,28 @@ the hosts' reports for `--fail-on`.
   elsewhere. Without it the remote audit runs as the login user and the
   report says which checks needed root, as any non root audit does.
 - **The report is data from another machine.** It is parsed as
-  `report.v1` with a size cap, and every string is stripped of control and
-  bidi characters before rendering. The remote audit already redacted it.
+  `report.v1` with an 8 MiB cap and rebuilt against the local catalog
+  (`internal/fleet/validate.go`): unknown check ids and levels are dropped
+  with a note, title, severity, group and fix come from the local catalog,
+  counts are recomputed, free text is cleaned of control and bidi
+  characters and capped, oversized evidence is dropped with a note, and the
+  hostname hash, hostname, version and collection time must match their
+  shape. The fleet Markdown renders every host report with
+  `MarkdownOptions.Untrusted`: all host supplied text goes into code spans,
+  because escaping alone does not stop GitHub from autolinking bare URLs,
+  `www.` names and email addresses. In table cells a host's pipes become
+  U+2223 instead of `\|`, since a host backslash before the pipe would undo
+  the escape and end the cell. Only catalog text and local text are printed
+  as Markdown.
+- **sudo and the temporary directory.** With `--ssh-sudo` the script uses
+  `/tmp` only and checks with `ls -ldn /tmp/` that it is owned by uid 0 with
+  the sticky bit (exit 96 otherwise), so no other user can swap the
+  directory before root runs the binary. Without sudo `$TMPDIR` is honoured:
+  a swap there could only run code as the login user, who controls
+  `$TMPDIR` anyway.
+- **ControlPersist.** A ControlMaster started by our ssh call can keep
+  stderr open; `cmd.WaitDelay` (5 s) closes the pipes after ssh exits and
+  the exit code still counts.
 - **No local sandbox.** ssh needs the network and writes its own files, so
   the fleet side cannot run under Landlock. It collects nothing locally.
 - **Guard entry.** `internal/fleet/ssh.go` is the one new place allowed to
@@ -78,6 +101,7 @@ the hosts' reports for `--fail-on`.
 | `internal/fleet/ssh.go` | the only exec: `ssh <fixed options> -- HOST COMMAND` |
 | `internal/fleet/fleet.go` | per host flow, bounded parallelism, error wording, caps |
 | `internal/fleet/sanitize.go` | cleaning strings that came back from a host |
+| `internal/fleet/validate.go` | rebuilding a host's report against the local catalog, size limits, notes |
 | `internal/report/fleet.go` | `fleet.v1` type and the text, Markdown and JSON renderers |
 | `internal/cli/fleet.go` | the `--ssh` flags and the run |
 
