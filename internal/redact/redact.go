@@ -23,6 +23,8 @@ type rule struct {
 // key names, not a credential.
 const secretWord = `(?:pass(?:word|wd|phrase)?|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|client[_-]?secret|credentials?|auth[_-]?key|session[_-]?key)` //nolint:gosec // G101: a name pattern, not a secret
 
+// rules are applied in order; the first structural of them are structural
+// (see applyRules).
 var rules = []rule{
 	// PEM private key blocks, whole.
 	{regexp.MustCompile(`-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----`), Mask},
@@ -98,9 +100,7 @@ func String(s string) string {
 		return s
 	}
 	s = maskLiterals(s)
-	for _, r := range rules {
-		s = r.re.ReplaceAllString(s, r.repl)
-	}
+	s = applyRules(s)
 	// A leading space lets the flag pattern match at the very start too.
 	s = " " + s
 	for _, re := range keyed {
@@ -117,6 +117,52 @@ func String(s string) string {
 		})
 	}
 	return s[1:]
+}
+
+// structural is how many rules at the start of rules match a structure that
+// can span lines or contain a fingerprint shaped part (private key blocks,
+// URL passwords, Authorization headers). They run over the whole string
+// before anything is exempted.
+const structural = 3
+
+// fingerprint matches an OpenSSH SHA256 key fingerprint (43 characters of
+// unpadded base64), anchored at both ends: it must not be preceded by a
+// base64 character nor followed by one or by a character a token continues
+// with ("=", ".", "_", "-"), so a longer token that only starts like a
+// fingerprint is not one. Group 1 is the fingerprint.
+var fingerprint = regexp.MustCompile(`(?:^|[^A-Za-z0-9+/])(SHA256:[A-Za-z0-9+/]{43})(?:$|[^A-Za-z0-9+/=._-])`)
+
+// applyRules applies the rules to s. The structural rules see the whole
+// string; the single line token format rules then skip key fingerprints,
+// which name a public key and are evidence, while base64 can hold "eyJ" or
+// "AIza" by chance.
+func applyRules(s string) string {
+	for _, r := range rules[:structural] {
+		s = r.re.ReplaceAllString(s, r.repl)
+	}
+	var b strings.Builder
+	last := 0
+	for last <= len(s) {
+		m := fingerprint.FindStringSubmatchIndex(s[last:])
+		if m == nil {
+			break
+		}
+		fpStart, fpEnd := last+m[2], last+m[3]
+		b.WriteString(applyTokenRules(s[last:fpStart]))
+		b.WriteString(s[fpStart:fpEnd])
+		// The character after the fingerprint is not consumed, so a
+		// fingerprint right after it can still match its leading anchor.
+		last = fpEnd
+	}
+	b.WriteString(applyTokenRules(s[last:]))
+	return b.String()
+}
+
+func applyTokenRules(s string) string {
+	for _, r := range rules[structural:] {
+		s = r.re.ReplaceAllString(s, r.repl)
+	}
+	return s
 }
 
 // benignValues are values a secret named key commonly holds that are not
