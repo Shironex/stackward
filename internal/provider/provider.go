@@ -29,11 +29,12 @@ const DefaultTimeout = 10 * time.Second
 // Names accepted by --provider.
 const (
 	Hetzner = "hetzner"
+	OVH     = "ovh"
 	Auto    = "auto"
 )
 
 // Names lists the --provider values this build supports.
-var Names = []string{Hetzner, Auto}
+var Names = []string{Hetzner, OVH, Auto}
 
 // Options says what to ask and how.
 type Options struct {
@@ -46,6 +47,8 @@ type Options struct {
 	Env func(string) string
 	// Timeout bounds the whole fetch; zero means DefaultTimeout.
 	Timeout time.Duration
+	// Now is the clock for OVH request timestamps; nil means time.Now.
+	Now func() time.Time
 	// Transport replaces the HTTP transport. Tests use it to answer from
 	// recorded responses; the URL host is still checked against the fixed
 	// host list first.
@@ -68,12 +71,23 @@ func Fetch(ctx context.Context, o Options) *facts.ProviderFirewall {
 		return &facts.ProviderFirewall{Provider: name, Status: facts.ProviderNoCredentials, Reason: err.Error()}
 	}
 	g := newGetter(o.Transport, timeout)
-	if name == Hetzner {
+	switch name {
+	case Hetzner:
 		tok, err := hetznerToken(o.Env)
 		if err != nil {
 			return credFailure(Hetzner, err, EnvHetznerToken+" or "+EnvHetznerTokenFile)
 		}
 		return fetchHetzner(ctx, g, tok, o.Addresses)
+	case OVH:
+		creds, err := ovhCredentials(o.Env)
+		if err != nil {
+			return credFailure(OVH, err, EnvOVHAppKey+", "+EnvOVHAppSecret+" and "+EnvOVHConsumer+" (or "+EnvOVHCredsFile+")")
+		}
+		now := o.Now
+		if now == nil {
+			now = time.Now
+		}
+		return fetchOVH(ctx, g, creds, o.Addresses, now)
 	}
 	return &facts.ProviderFirewall{Provider: name, Status: facts.ProviderError, Reason: "unsupported provider " + name}
 }
@@ -84,10 +98,21 @@ func choose(o Options) (string, error) {
 	if o.Provider != Auto {
 		return o.Provider, nil
 	}
-	if o.Env(EnvHetznerToken) != "" || o.Env(EnvHetznerTokenFile) != "" {
-		return Hetzner, nil
+	hetzner := o.Env(EnvHetznerToken) != "" || o.Env(EnvHetznerTokenFile) != ""
+	ovh := o.Env(EnvOVHCredsFile) != ""
+	for _, k := range ovhVars {
+		ovh = ovh || (k != EnvOVHEndpoint && o.Env(k) != "")
 	}
-	return "none", fmt.Errorf("--provider auto found no credentials: set %s or %s", EnvHetznerToken, EnvHetznerTokenFile)
+	switch {
+	case hetzner && ovh:
+		return "none", fmt.Errorf("--provider auto found Hetzner and OVH credentials; name the provider")
+	case hetzner:
+		return Hetzner, nil
+	case ovh:
+		return OVH, nil
+	}
+	return "none", fmt.Errorf("--provider auto found no credentials: set %s or %s for Hetzner, or the %s variables for OVH",
+		EnvHetznerToken, EnvHetznerTokenFile, "STACKWARD_OVH_*")
 }
 
 func credFailure(name string, err error, vars string) *facts.ProviderFirewall {

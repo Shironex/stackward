@@ -15,7 +15,8 @@ func TestProviderFlags(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"audit", "--no-sandbox", "--provider", "aws"}, "--provider must be one of"},
+		{[]string{"audit", "--no-sandbox", "--provider", "aws"}, "--provider must be one of hetzner, ovh, auto"},
+		{[]string{"audit", "--no-sandbox", "--provider", "ovh", "--facts", fixture("pfw-ovh-stateless-ok")}, "cannot be combined with --facts"},
 		{[]string{"audit", "--no-sandbox", "--provider-ip", "192.0.2.10"}, "--provider-ip needs --provider"},
 		{[]string{"audit", "--no-sandbox", "--provider", "hetzner", "--provider-ip", "2001:db8::1"}, "must be an IPv4 address"},
 		{[]string{"audit", "--no-sandbox", "--provider", "hetzner", "--facts", fixture("pfw-hetzner-ok")}, "cannot be combined with --facts"},
@@ -33,7 +34,7 @@ func TestProviderFlags(t *testing.T) {
 
 func TestAuditHelpNamesReadToken(t *testing.T) {
 	_, _, errs := run("audit", "-h")
-	for _, want := range []string{"--provider", provider.EnvHetznerToken, "never from a flag", "with permission Read"} {
+	for _, want := range []string{"--provider", provider.EnvHetznerToken, provider.EnvOVHCredsFile, "GET /ip/*", "never from a flag", "with permission Read"} {
 		if !strings.Contains(errs, want) {
 			t.Errorf("audit help lacks %q", want)
 		}

@@ -21,13 +21,17 @@ type providerFlags struct {
 // providerHelp is appended to the usage of audit and plan.
 const providerHelp = `
 Provider firewall (opt in, read only):
-  --provider hetzner|auto reads the cloud provider's firewall over its API
-  before the sandbox, with GET requests to the provider's API host only.
+  --provider hetzner|ovh|auto reads the cloud provider's firewall over its
+  API before the sandbox, with GET requests to the provider's API host only.
   Credentials come from the environment or a file, never from a flag:
-    STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE
+    Hetzner: STACKWARD_HETZNER_TOKEN or STACKWARD_HETZNER_TOKEN_FILE
+    OVH:     STACKWARD_OVH_APPLICATION_KEY, STACKWARD_OVH_APPLICATION_SECRET,
+             STACKWARD_OVH_CONSUMER_KEY, STACKWARD_OVH_ENDPOINT (default
+             ovh-eu), or STACKWARD_OVH_CREDENTIALS_FILE with KEY=VALUE lines
   Use a Hetzner API token with permission Read: the audit cannot tell a
-  Read token from a Read & Write one. A token file must be a regular file
-  owned by you with mode 600. Nothing is stored.
+  Read token from a Read & Write one. Limit the OVH consumer key to
+  GET /ip/*. A credential file must be a regular file owned by you with
+  mode 600. Nothing is stored.
 `
 
 func addProviderFlags(fs *flag.FlagSet, p *providerFlags) {

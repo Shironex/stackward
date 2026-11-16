@@ -51,7 +51,7 @@ func (r *recorder) serve(w http.ResponseWriter, req *http.Request) {
 	r.mu.Lock()
 	r.seen = append(r.seen, req.Clone(context.Background()))
 	r.mu.Unlock()
-	key := req.URL.Path
+	key := req.URL.EscapedPath()
 	if req.URL.RawQuery != "" {
 		key += "?" + req.URL.RawQuery
 	}
