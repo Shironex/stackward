@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         distro: [ubuntu-22.04, ubuntu-24.04, debian-12, debian-13]
-        scenario: [rollback, confirm, guard, accounts]
+        scenario: [rollback, confirm, guard, accounts, rootonly]
     name: ${{ matrix.scenario }} (${{ matrix.distro }})
     # apply runs only inside the VM, where no CI variable reaches it over
     # SSH; the flag says this job owns a throwaway VM (see
@@ -112,7 +112,7 @@ jobs:
       - name: boot ${{ matrix.distro }}
         env:
           STACKWARD: ${{ github.workspace }}/dist/stackward
-          SEED: ${{ matrix.scenario == 'accounts' && 'accounts' || 'users' }}
+          SEED: ${{ matrix.scenario == 'accounts' && 'accounts' || matrix.scenario == 'rootonly' && 'root' || 'users' }}
         run: |
           chmod +x dist/stackward
           test/vm/vm.sh boot "${{ matrix.distro }}" "$SEED"
