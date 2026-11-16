@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 0 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  0 of 6 selected │ DETAIL                       1-17 of 28
+SAFE                                 3 │ journald-cap  SAFE                     
+› [ ] journald-cap                     │ Cap the systemd journal at 500M        
+  [ ] sysctl-hardening         applied │                                        
+  [ ] unattended-upgrades-ins…  opt in │ WHY: THE CHECKS IT FIXES               
+NETWORKING                           1 │   LOG-001 journald has a size cap      
+  [ ] docker-log-rotation       opt in │                                        
+ACCESS-CRITICAL                      2 │ WHAT IT CHANGES                        
+  [ ] sshd-hardening                   │   create /etc/systemd/                 
+  [ ] ufw-policy            cannot run │     journald.conf.d/90-stackward-      
+                                       │     journal-cap.conf (0644)            
+                                       │   run systemctl restart systemd-       
+                                       │     journald                           
+                                       │   restarts systemd-journald            
+                                       │                                        
+                                       │ DIFF                                   
+                                       │   --- /dev/null                        
+                                       │   +++ b/etc/systemd/journald.conf.d/   
+────────────────────────────────────────────────────────────────────────────────
+ nothing selected; space selects the step under the cursor                      

@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 0 steps: 0 safe, 0 networking, 0 access-critical, 0 opt in        facts from - 
+ 0 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  0 of 0 selected │ DETAIL                                 
+                                       │                                        
+ This plan has no steps: nothing to    │                                        
+ apply.                                │                                        
+ 12 checks have no step; stackward     │                                        
+ plan lists why.                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+                                       │                                        
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  

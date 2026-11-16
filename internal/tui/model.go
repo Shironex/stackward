@@ -1,8 +1,11 @@
-// Package tui is the interactive findings browser behind "stackward tui".
-// It only reads a report: it writes nothing to disk, runs no command and
-// opens no connection. The one thing it can send anywhere is the fix text of
-// the selected check, to the terminal clipboard over OSC 52, and only when
-// the user presses the copy key.
+// Package tui is the interactive findings browser behind "stackward tui"
+// and the guided step list behind "stackward tui --plan". It writes nothing
+// to disk, runs no command and opens no connection. The browser only reads
+// a report; the one thing it can send anywhere is the fix text of the
+// selected check, to the terminal clipboard over OSC 52, and only when the
+// user presses the copy key. The step list only presents steps the CLI
+// judged and returns the reader's choice; the CLI applies it with the code
+// of stackward apply.
 package tui
 
 import (

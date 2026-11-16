@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+ REVIEW                                                                         
+ Apply would refuse this selection; nothing can be applied:                     
+   transaction 20260301T110000Z-aaaaaa is open until 2026-03-01T11:05:00Z and   
+      only one transaction can be open                                          
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ esc back  ↑↓ scroll  q quit                                                    

@@ -1,0 +1,32 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d                                                     plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                             facts from 2026-03-01T12:00:00Z 
+ 1 selected                                                                                     nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+STEPS                                     1 of 6 selected │ DETAIL                                            1-25 of 32
+SAFE                                                    3 │ docker-log-rotation  NETWORKING                             
+  [x] journald-cap                                        │ Rotate Docker container logs                                
+  [ ] sysctl-hardening                            applied │ Opt in: off until you select it.                            
+  [ ] unattended-upgrades-install                  opt in │                                                             
+NETWORKING                                              1 │ Networking: it restarts docker, which can interrupt traffic 
+› [ ] docker-log-rotation                          opt in │ (running containers stop and start).                        
+ACCESS-CRITICAL                                         2 │                                                             
+  [ ] sshd-hardening                                      │ WHY: THE CHECKS IT FIXES                                    
+  [ ] ufw-policy                               cannot run │   DKR-031 Container logs rotate                             
+                                                          │                                                             
+                                                          │ WHAT IT CHANGES                                             
+                                                          │   replace /etc/docker/daemon.json                           
+                                                          │   checked first with: dockerd --validate --config-file      
+                                                          │     <new file>                                              
+                                                          │   run systemctl restart docker                              
+                                                          │   restarts docker                                           
+                                                          │                                                             
+                                                          │ DIFF                                                        
+                                                          │   --- a/etc/docker/daemon.json                              
+                                                          │   +++ b/etc/docker/daemon.json                              
+                                                          │   @@ -1,3 +1,7 @@                                           
+                                                          │    {                                                        
+                                                          │   -  "live-restore": true                                   
+                                                          │   +  "live-restore": true,                                  
+                                                          │   +  "log-driver": "json-file"                              
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                                                          

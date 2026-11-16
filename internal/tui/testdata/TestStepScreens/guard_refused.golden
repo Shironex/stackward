@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  1 of 6 selected │ DETAIL                       1-17 of 31
+SAFE                                 3 │ ufw-policy  ACCESS-CRITICAL            
+  [x] journald-cap                     │ Turn on a default deny firewall        
+  [ ] sysctl-hardening         applied │ Cannot run now: lockout guard: no      
+  [ ] unattended-upgrades-ins…  opt in │ second way in survives: SSH is only    
+NETWORKING                           1 │ reachable through the port this step   
+  [ ] docker-log-rotation       opt in │ closes                                 
+ACCESS-CRITICAL                      2 │                                        
+  [ ] sshd-hardening                   │ Access-critical: it changes SSH, the   
+› [ ] ufw-policy            cannot run │ firewall or accounts. It runs alone,   
+                                       │ inside a rollback transaction: unless  
+                                       │ you confirm from a new SSH session     
+                                       │ within 5m0s, a timer undoes it. Make   
+                                       │ sure you can log in to the provider    
+                                       │ console first.                         
+                                       │                                        
+                                       │ WHY: THE CHECKS IT FIXES               
+                                       │   NET-001 A host firewall is active    
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  

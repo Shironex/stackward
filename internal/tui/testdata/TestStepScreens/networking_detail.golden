@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  1 of 6 selected │ DETAIL                      18-34 of 35
+SAFE                                 3 │                                        
+  [x] journald-cap                     │ DIFF                                   
+  [ ] sysctl-hardening         applied │   --- a/etc/docker/daemon.json         
+  [ ] unattended-upgrades-ins…  opt in │   +++ b/etc/docker/daemon.json         
+NETWORKING                           1 │   @@ -1,3 +1,7 @@                      
+› [ ] docker-log-rotation       opt in │    {                                   
+ACCESS-CRITICAL                      2 │   -  "live-restore": true              
+  [ ] sshd-hardening                   │   +  "live-restore": true,             
+  [ ] ufw-policy            cannot run │   +  "log-driver": "json-file"         
+                                       │                                        
+                                       │ UNDO                                   
+                                       │   Put the old daemon.json back and     
+                                       │     restart Docker.                    
+                                       │   systemctl restart docker             
+                                       │                                        
+                                       │ NOTES                                  
+                                       │   Containers stop and start while      
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  

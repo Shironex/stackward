@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  1 of 6 selected │ DETAIL                       1-17 of 25
+SAFE                                 3 │ sysctl-hardening  SAFE                 
+  [x] journald-cap                     │ Set the kernel hardening sysctls       
+› [ ] sysctl-hardening         applied │ Already applied: the drop-in holds the 
+  [ ] unattended-upgrades-ins…  opt in │ planned content and every value        
+NETWORKING                           1 │ matches. Apply would skip it.          
+  [ ] docker-log-rotation       opt in │                                        
+ACCESS-CRITICAL                      2 │ WHY: THE CHECKS IT FIXES               
+  [ ] sshd-hardening                   │   KRN-002 Reverse path filter is       
+  [ ] ufw-policy            cannot run │     loose where Docker or Tailscale run
+                                       │   KRN-003 Network sysctls match the    
+                                       │     hardening baseline                 
+                                       │   KRN-004 Kernel hardening sysctls     
+                                       │     match the baseline                 
+                                       │                                        
+                                       │ WHAT IT CHANGES                        
+                                       │   create /etc/sysctl.d/90-stackward-   
+                                       │     hardening.conf (0644)              
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  

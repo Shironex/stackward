@@ -1,0 +1,24 @@
+ stackward 0.2.0-dev · step list · host 4f1c2a9e0b7d             plan plan.json 
+ 6 steps: 3 safe, 1 networking, 2 access-critical, 2 opt in                     
+ 1 selected                                             nothing has changed yet 
+────────────────────────────────────────────────────────────────────────────────
+STEPS                  1 of 6 selected │ DETAIL                      25-41 of 41
+SAFE                                 3 │ UNDO                                   
+  [x] journald-cap                     │   Remove the drop-in and reload sshd.  
+  [ ] sysctl-hardening         applied │   rm -f /etc/ssh/sshd_config.d/10-     
+  [ ] unattended-upgrades-ins…  opt in │     stackward-hardening.conf           
+NETWORKING                           1 │   systemctl reload ssh                 
+  [ ] docker-log-rotation       opt in │                                        
+ACCESS-CRITICAL                      2 │ LOCKOUT GUARD                          
+› [ ] sshd-hardening                   │   Proven from this host's live state;  
+  [ ] ufw-policy            cannot run │     apply proves it again right before 
+                                       │     it runs.                           
+                                       │   This step password logins, root      
+                                       │     login.                             
+                                       │   A second way in stays: key login     
+                                       │     for admin (authorized_keys holds 1 
+                                       │     key) over public SSH on port 22.   
+                                       │   The confirming session must come     
+                                       │     from 198.51.100.0/24.              
+────────────────────────────────────────────────────────────────────────────────
+ space select  enter review  tab pane  ↑↓ move  ? help  q quit                  
