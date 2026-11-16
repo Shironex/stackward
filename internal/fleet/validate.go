@@ -84,7 +84,14 @@ func validateReport(r *report.Report, cat *catalog.Catalog) []string {
 	}
 	kept := make([]report.Item, 0, min(len(r.Results), maxResults))
 	dropped, truncated, overflow, evDropped, evBudget := 0, 0, 0, 0, maxEvidenceHost
+	// Waivers are never taken from a host: a fleet run reads no waivers
+	// file, and a host's own .stackward.yml (or a forged waiver) must not
+	// mark its findings accepted or bring its reason text into the report.
+	waived := len(r.Waivers) > 0
+	r.Waivers = nil
 	for _, it := range r.Results {
+		waived = waived || it.Waiver != nil
+		it.Waiver = nil
 		e, ok := cat.Lookup(it.ID)
 		if !ok || !knownLevels[it.Level] {
 			dropped++
@@ -120,6 +127,9 @@ func validateReport(r *report.Report, cat *catalog.Catalog) []string {
 		ids[it.ID] = true
 	}
 	r.Coverage.Checks = max(min(r.Coverage.Checks, len(cat.Entries())), len(ids))
+	if waived {
+		notes = append(notes, "waivers from the host ignored: every finding is shown at its level")
+	}
 	if dropped > 0 {
 		notes = append(notes, fmt.Sprintf("unknown results dropped: %d (check id not in this stackward's catalog, or an unknown level)", dropped))
 	}

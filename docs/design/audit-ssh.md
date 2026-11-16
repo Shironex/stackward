@@ -25,7 +25,11 @@ be combined; duplicates keep their first place. `--json`, `--md`, `--out`,
 config, `user@name`, IPv4 addresses or IPv6 addresses that start with a hex
 digit; `::1` and other addresses starting with a colon are refused (use an
 alias). `--facts`, `--dump-facts`,
-`--provider` and `--no-sandbox` are refused with `--ssh`.
+`--provider`, `--waivers`, `--textfile` and `--no-sandbox` are refused with
+`--ssh` (a fleet metric would need per host labels and its own design). A
+host's own waivers (its `.stackward.yml`) are ignored in the fleet report,
+with a note: waivers for a fleet need their own design (which file, whose
+owner rule, per host or shared).
 
 Exit codes: 2 when any host could not be audited, otherwise the worst code of
 the hosts' reports for `--fail-on`.

@@ -226,7 +226,8 @@ func WriteFleetMarkdown(w io.Writer, f *Fleet, o MarkdownOptions) error {
 // report, which is never trusted for its own counts).
 func (r *Report) Recount() {
 	r.Summary = Summary{}
-	r.Coverage.Results, r.Coverage.Checked, r.Coverage.Unknown, r.Coverage.Skipped = len(r.Results), 0, 0, 0
+	c := &r.Coverage
+	c.Results, c.Checked, c.Accepted, c.Unknown, c.Skipped = len(r.Results), 0, 0, 0, 0
 	for _, it := range r.Results {
 		r.count(it)
 	}

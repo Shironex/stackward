@@ -721,3 +721,57 @@ func TestCheckCountNotBelowResults(t *testing.T) {
 		t.Errorf("checks %d, want the %d checks with results", h.Report.Coverage.Checks, len(ids))
 	}
 }
+
+func TestRunIgnoresWaiversFromTheHost(t *testing.T) {
+	e := newFakeEnv(t)
+	forged := filepath.Join(t.TempDir(), "waived.json")
+	writeReport(t, forged, func(r *report.Report) {
+		for i := range r.Results {
+			if r.Results[i].Level == "fail" {
+				r.Results[i].Waiver = &report.ResultWaiver{Status: report.WaiverAccepted, Level: "fail",
+					Reason: "trust me https://evil.example/w", Expires: "2099-01-01"}
+			}
+		}
+		r.Summary.Accepted, r.Coverage.Accepted = 7, 7
+		r.Waivers = []report.WaiverEntry{{Check: "SYS-002", Subject: "host", Level: "fail",
+			Reason: "see www.evil.example", Expires: "2099-01-01", Status: "applied", Results: 1}}
+	})
+	t.Setenv("FAKE_REPORT", forged)
+	h := e.run(t, []string{"web1"}, Options{})[0]
+	if h.Report == nil {
+		t.Fatalf("%+v", h)
+	}
+	if h.Report.Waivers != nil || h.Report.Summary.Accepted != 0 || h.Report.Summary.Fail == 0 {
+		t.Errorf("host waivers must be ignored: waivers %v, summary %+v", h.Report.Waivers, h.Report.Summary)
+	}
+	for _, it := range h.Report.Results {
+		if it.Waiver != nil {
+			t.Errorf("%s keeps the host's waiver", it.ID)
+		}
+	}
+	if !strings.Contains(strings.Join(h.Notes, "\n"), "waivers from the host ignored") {
+		t.Errorf("notes %q", h.Notes)
+	}
+	if h.Report.Coverage.Accepted != 0 {
+		t.Errorf("coverage.accepted %d from the host survived the recount", h.Report.Coverage.Accepted)
+	}
+	fl := report.NewFleet("test", "2026-01-01T00:00:00Z", []report.FleetHost{h})
+	var md, text, js bytes.Buffer
+	if err := report.WriteFleetMarkdown(&md, fl, report.MarkdownOptions{Passing: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := report.WriteFleetText(&text, fl, report.TextOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := report.WriteFleetJSON(&js, fl); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(md.String(), "evil.example") {
+		t.Error("a host waiver reason reached the report")
+	}
+	for name, out := range map[string]string{"md": md.String(), "text": text.String(), "json": js.String()} {
+		if strings.Contains(out, "accepted by a waiver") || strings.Contains(out, `"accepted"`) {
+			t.Errorf("%s still counts results accepted by a host waiver", name)
+		}
+	}
+}
