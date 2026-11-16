@@ -393,6 +393,24 @@ expired, no longer match, are too narrow for the result or run more than a
 year are listed for review. Why waivers must expire and how the
 file is checked: [docs/waivers.md](docs/waivers.md).
 
+### Spotting drift
+
+Save a report when the host is as it should be, then compare later ones
+with it:
+
+```sh
+sudo stackward audit --json --out base.json
+stackward diff base.json now.json           # two saved reports, no host access
+sudo stackward audit --baseline base.json   # audit and diff in one run, for CI
+```
+
+The diff lists drift (a new listener beyond loopback, a new authorized key
+by fingerprint, a new NOPASSWD sudoer, a new root container) and the
+findings that were added, removed or changed, a change of waiver state
+included; an accepted finding is never shown as fixed. `--fail-on-drift`
+sets when it exits 1 (default: a new fail or warn, any drift, or a drift check that lost coverage). Both
+files are treated as untrusted input; details in [docs/diff.md](docs/diff.md).
+
 ## Coverage and limits
 
 - **Root matters.** 53 of the 112 checks need root to read what they judge
