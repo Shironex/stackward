@@ -44,7 +44,7 @@
     "access_critical": 1,
     "opt_in": 0,
     "restarts": [],
-    "skipped": 11
+    "skipped": 12
   },
   "steps": [
     {
@@ -232,6 +232,17 @@
       ],
       "kind": "passing",
       "reason": "USR-003 already passes or does not apply"
+    },
+    {
+      "id": "ufw-docker",
+      "title": "Filter published container ports with UFW (ufw-docker rules)",
+      "fixes": [
+        "DKR-001",
+        "PAAS-002",
+        "PAAS-003"
+      ],
+      "kind": "manual",
+      "reason": "UFW must be on with a deny default first: apply ufw-policy, then plan again"
     },
     {
       "id": "fail2ban-sshd",

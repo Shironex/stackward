@@ -14,7 +14,7 @@ import (
 // jail.
 var realAccessCritical = map[string]bool{
 	plan.AdminUserID: true, plan.PaaSUserID: true, plan.LockDefaultUserID: true, plan.SSHDHardeningID: true,
-	"fail2ban-sshd": true, plan.UFWPolicyID: true,
+	"fail2ban-sshd": true, plan.UFWPolicyID: true, plan.UFWDockerID: true,
 }
 
 // The binary as released (no build tag) must not contain the test-only

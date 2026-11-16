@@ -1,0 +1,1389 @@
+{
+  "schema": "stackward.facts.v1",
+  "collected_at": "2026-03-01T12:00:00Z",
+  "host": {
+    "hostname": "panel2.example.com",
+    "uid": 0,
+    "euid": 0,
+    "root": true
+  },
+  "os": {
+    "id": "ubuntu",
+    "id_like": [
+      "debian"
+    ],
+    "version_id": "24.04",
+    "version_codename": "noble",
+    "pretty_name": "Ubuntu 24.04.1 LTS"
+  },
+  "kernel": {
+    "release": "6.8.0-48-generic",
+    "installed": [
+      "6.8.0-48-generic",
+      "6.8.0-51-generic"
+    ]
+  },
+  "reboot": {
+    "required": false
+  },
+  "users": {
+    "accounts": [
+      {
+        "name": "root",
+        "uid": 0,
+        "gid": 0,
+        "home": "/root",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "L",
+        "never_logged_in": true
+      },
+      {
+        "name": "alice",
+        "uid": 1000,
+        "gid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "login_shell": true,
+        "password_status": "P",
+        "last_login": "2026-02-27T09:00:00Z"
+      },
+      {
+        "name": "daemon",
+        "uid": 1,
+        "gid": 1,
+        "home": "/home/daemon",
+        "shell": "/usr/sbin/nologin",
+        "login_shell": false,
+        "password_status": "L"
+      }
+    ],
+    "groups": [
+      {
+        "name": "sudo",
+        "gid": 27,
+        "members": [
+          "alice"
+        ]
+      },
+      {
+        "name": "alice",
+        "gid": 1000
+      }
+    ],
+    "sudoers": [
+      {
+        "path": "/etc/sudoers",
+        "perm": 288,
+        "uid": 0,
+        "gid": 0,
+        "non_root_writable": false,
+        "readable": true,
+        "principals": [
+          "root",
+          "%sudo"
+        ]
+      }
+    ],
+    "password_status_checked": true,
+    "lastlog_checked": true
+  },
+  "updates": {
+    "apt": true,
+    "unattended_installed": true,
+    "periodic_unattended": "1",
+    "periodic_update_lists": "1",
+    "config_source": "apt-config",
+    "timer_enabled": true,
+    "timer_active": true,
+    "allowed_origins": [
+      "${distro_id}:${distro_codename}",
+      "${distro_id}:${distro_codename}-security"
+    ],
+    "automatic_reboot": false,
+    "last_run": "2026-02-28T06:10:00Z",
+    "lists_updated": "2026-02-28T06:05:00Z",
+    "pending_checked": true,
+    "pending_total": 2,
+    "pending_security": 0
+  },
+  "sysctl": {
+    "values": {
+      "net.ipv4.ip_forward": "1",
+      "net.ipv4.conf.all.rp_filter": "2",
+      "net.ipv4.conf.default.rp_filter": "2",
+      "net.ipv4.conf.all.accept_redirects": "0",
+      "net.ipv4.conf.default.accept_redirects": "0",
+      "net.ipv4.conf.all.send_redirects": "0",
+      "net.ipv4.conf.all.accept_source_route": "0",
+      "net.ipv4.conf.default.accept_source_route": "0",
+      "net.ipv4.tcp_syncookies": "1",
+      "net.ipv4.icmp_echo_ignore_broadcasts": "1",
+      "net.ipv4.conf.all.log_martians": "1",
+      "net.ipv6.conf.all.accept_redirects": "0",
+      "net.ipv6.conf.default.accept_redirects": "0",
+      "net.ipv6.conf.all.accept_source_route": "0",
+      "net.ipv6.conf.all.accept_ra": "1",
+      "net.ipv6.conf.default.accept_ra": "1",
+      "kernel.kptr_restrict": "1",
+      "kernel.dmesg_restrict": "1",
+      "kernel.unprivileged_bpf_disabled": "2",
+      "kernel.yama.ptrace_scope": "1",
+      "fs.protected_hardlinks": "1",
+      "fs.protected_symlinks": "1",
+      "fs.protected_fifos": "2",
+      "fs.protected_regular": "2"
+    },
+    "docker_present": true,
+    "tailscale_present": true,
+    "global_ipv6_dynamic": false
+  },
+  "journal": {
+    "storage": "auto",
+    "system_max_use": "1G",
+    "persistent_dir": true,
+    "persistent": true,
+    "disk_usage_checked": true,
+    "disk_usage_bytes": 314572800,
+    "proxy_logs": [
+      {
+        "path": "/var/log/nginx/access.log",
+        "size_bytes": 52428800,
+        "rotated": true
+      }
+    ],
+    "agents": [
+      "node_exporter"
+    ]
+  },
+  "clock": {
+    "ntp_synchronized": true,
+    "ntp_enabled": true,
+    "can_ntp": true,
+    "timezone": "Etc/UTC"
+  },
+  "disk": {
+    "mounts": [
+      {
+        "path": "/",
+        "mount": "/",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 8400000,
+        "used_percent": 42
+      },
+      {
+        "path": "/var",
+        "mount": "/",
+        "device": "/dev/sda1",
+        "total_kb": 20000000,
+        "used_kb": 8400000,
+        "used_percent": 42
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "clock",
+      "status": "ok"
+    },
+    {
+      "name": "cloudflared",
+      "status": "ok"
+    },
+    {
+      "name": "crowdsec",
+      "status": "ok"
+    },
+    {
+      "name": "disk",
+      "status": "ok"
+    },
+    {
+      "name": "docker",
+      "status": "ok"
+    },
+    {
+      "name": "fail2ban",
+      "status": "ok"
+    },
+    {
+      "name": "firewall",
+      "status": "ok"
+    },
+    {
+      "name": "journal",
+      "status": "ok"
+    },
+    {
+      "name": "listeners",
+      "status": "ok"
+    },
+    {
+      "name": "os",
+      "status": "ok"
+    },
+    {
+      "name": "paas",
+      "status": "ok"
+    },
+    {
+      "name": "secrets",
+      "status": "ok"
+    },
+    {
+      "name": "ssh",
+      "status": "ok"
+    },
+    {
+      "name": "sysctl",
+      "status": "ok"
+    },
+    {
+      "name": "tailscale",
+      "status": "ok"
+    },
+    {
+      "name": "updates",
+      "status": "ok"
+    },
+    {
+      "name": "users",
+      "status": "ok"
+    }
+  ],
+  "ssh": {
+    "installed": true,
+    "source": "sshd -T",
+    "effective": {
+      "port": [
+        "22"
+      ],
+      "listenaddress": [
+        "[::]:22",
+        "0.0.0.0:22"
+      ],
+      "passwordauthentication": [
+        "no"
+      ],
+      "kbdinteractiveauthentication": [
+        "no"
+      ],
+      "permitrootlogin": [
+        "no"
+      ],
+      "permitemptypasswords": [
+        "no"
+      ],
+      "maxauthtries": [
+        "3"
+      ],
+      "allowusers": [
+        "alice"
+      ],
+      "x11forwarding": [
+        "no"
+      ],
+      "allowagentforwarding": [
+        "no"
+      ],
+      "authenticationmethods": [
+        "any"
+      ],
+      "usepam": [
+        "yes"
+      ],
+      "authorizedkeysfile": [
+        ".ssh/authorized_keys .ssh/authorized_keys2"
+      ],
+      "hostkey": [
+        "/etc/ssh/ssh_host_rsa_key",
+        "/etc/ssh/ssh_host_ed25519_key"
+      ],
+      "kexalgorithms": [
+        "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org"
+      ],
+      "ciphers": [
+        "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+      ],
+      "macs": [
+        "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+      ]
+    },
+    "complete": true,
+    "config": {
+      "files": [
+        {
+          "path": "/etc/ssh/sshd_config",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "readable": true
+        },
+        {
+          "path": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "readable": true
+        }
+      ],
+      "directives": [
+        {
+          "keyword": "passwordauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 2
+        },
+        {
+          "keyword": "permitrootlogin",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 3
+        },
+        {
+          "keyword": "maxauthtries",
+          "value": "3",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 4
+        },
+        {
+          "keyword": "allowusers",
+          "value": "alice",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 5
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 6
+        },
+        {
+          "keyword": "allowagentforwarding",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 7
+        },
+        {
+          "keyword": "kexalgorithms",
+          "value": "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 8
+        },
+        {
+          "keyword": "ciphers",
+          "value": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 9
+        },
+        {
+          "keyword": "macs",
+          "value": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+          "file": "/etc/ssh/sshd_config.d/00-hardening.conf",
+          "line": 10
+        },
+        {
+          "keyword": "passwordauthentication",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config.d/50-cloud-init.conf",
+          "line": 1
+        },
+        {
+          "keyword": "kbdinteractiveauthentication",
+          "value": "no",
+          "file": "/etc/ssh/sshd_config",
+          "line": 14
+        },
+        {
+          "keyword": "usepam",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 15
+        },
+        {
+          "keyword": "x11forwarding",
+          "value": "yes",
+          "file": "/etc/ssh/sshd_config",
+          "line": 16
+        }
+      ]
+    },
+    "listening": [
+      "*:22"
+    ],
+    "listening_inspected": true,
+    "pam_inspected": true,
+    "host_keys": [
+      {
+        "path": "/etc/ssh/ssh_host_rsa_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_rsa_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-rsa",
+        "bits": 3072
+      },
+      {
+        "path": "/etc/ssh/ssh_host_ed25519_key",
+        "configured": true,
+        "meta": {
+          "path": "/etc/ssh/ssh_host_ed25519_key",
+          "mode": 384,
+          "uid": 0,
+          "gid": 0,
+          "size": 100,
+          "mtime": 1767225600
+        },
+        "type": "ssh-ed25519",
+        "bits": 256
+      }
+    ],
+    "users": [
+      {
+        "name": "alice",
+        "uid": 1000,
+        "home": "/home/alice",
+        "shell": "/bin/bash",
+        "home_meta": {
+          "path": "/home/alice",
+          "mode": 2147484136,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "ssh_dir": {
+          "path": "/home/alice/.ssh",
+          "mode": 2147484096,
+          "uid": 1000,
+          "gid": 1000,
+          "size": 0,
+          "mtime": 1767225600
+        },
+        "key_files": [
+          {
+            "path": "/home/alice/.ssh/authorized_keys",
+            "meta": {
+              "path": "/home/alice/.ssh/authorized_keys",
+              "mode": 384,
+              "uid": 1000,
+              "gid": 1000,
+              "size": 100,
+              "mtime": 1767225600
+            },
+            "keys": [
+              {
+                "type": "ssh-ed25519",
+                "bits": 256
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "firewall": {
+    "ufw": {
+      "installed": true,
+      "source": "live",
+      "status": "active",
+      "enabled": "yes",
+      "default_incoming": "deny",
+      "default_routed": "deny",
+      "ipv6": "no",
+      "rules_known": true,
+      "rules": [
+        {
+          "action": "allow",
+          "direction": "in",
+          "port": "22",
+          "proto": "tcp"
+        },
+        {
+          "action": "allow",
+          "direction": "in",
+          "proto": "any",
+          "interface": "tailscale0"
+        }
+      ],
+      "files": {
+        "/etc/default/ufw": "# /etc/default/ufw\n#\n\n# Set to yes to apply rules to support IPv6 (no means only IPv6 on loopback\n# accepted). You will need to 'disable' and then 'enable' the firewall for\n# the changes to take affect.\nIPV6=no\n\n# Set the default input policy to ACCEPT, DROP, or REJECT. Please note that if\n# you change this you will most likely want to adjust your rules.\nDEFAULT_INPUT_POLICY=\"DROP\"\n\n# Set the default output policy to ACCEPT, DROP, or REJECT. Please note that if\n# you change this you will most likely want to adjust your rules.\nDEFAULT_OUTPUT_POLICY=\"ACCEPT\"\n\n# Set the default forward policy to ACCEPT, DROP or REJECT.  Please note that\n# if you change this you will most likely want to adjust your rules\nDEFAULT_FORWARD_POLICY=\"DROP\"\n\n# Set the default application policy to ACCEPT, DROP, REJECT or SKIP. Please\n# note that setting this to ACCEPT may be a security risk. See 'man ufw' for\n# details\nDEFAULT_APPLICATION_POLICY=\"SKIP\"\n\n# By default, ufw only touches its own chains. Set this to 'yes' to have ufw\n# manage the built-in chains too. Warning: setting this to 'yes' will break\n# non-ufw managed firewall rules\nMANAGE_BUILTINS=no\n\n#\n# IPT kernel modules\n#\nIPT_SYSCTL=/etc/ufw/sysctl.conf\nIPT_MODULES=\"\"\n",
+        "/etc/ufw/ufw.conf": "# /etc/ufw/ufw.conf\n#\n\n# Set to yes to start on boot. If setting this remotely, be sure to add a rule\n# to allow your remote connection before starting ufw. Eg: 'ufw allow 22/tcp'\nENABLED=yes\n\n# Please use the 'ufw' command to set the loglevel. Eg: 'ufw logging medium'.\n# See 'man ufw' for details.\nLOGLEVEL=low\n",
+        "/etc/ufw/user.rules": "*filter\n:ufw-user-input - [0:0]\n:ufw-user-output - [0:0]\n:ufw-user-forward - [0:0]\n:ufw-before-logging-input - [0:0]\n:ufw-before-logging-output - [0:0]\n:ufw-before-logging-forward - [0:0]\n:ufw-user-logging-input - [0:0]\n:ufw-user-logging-output - [0:0]\n:ufw-user-logging-forward - [0:0]\n:ufw-after-logging-input - [0:0]\n:ufw-after-logging-output - [0:0]\n:ufw-after-logging-forward - [0:0]\n:ufw-logging-deny - [0:0]\n:ufw-logging-allow - [0:0]\n:ufw-user-limit - [0:0]\n:ufw-user-limit-accept - [0:0]\n### RULES ###\n\n### tuple ### allow tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp --dport 22 -j ACCEPT\n\n### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0\n-A ufw-user-input -i tailscale0 -j ACCEPT\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw-user-limit -j REJECT\n-A ufw-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+        "/etc/ufw/user6.rules": "*filter\n:ufw6-user-input - [0:0]\n:ufw6-user-output - [0:0]\n:ufw6-user-forward - [0:0]\n:ufw6-before-logging-input - [0:0]\n:ufw6-before-logging-output - [0:0]\n:ufw6-before-logging-forward - [0:0]\n:ufw6-user-logging-input - [0:0]\n:ufw6-user-logging-output - [0:0]\n:ufw6-user-logging-forward - [0:0]\n:ufw6-after-logging-input - [0:0]\n:ufw6-after-logging-output - [0:0]\n:ufw6-after-logging-forward - [0:0]\n:ufw6-logging-deny - [0:0]\n:ufw6-logging-allow - [0:0]\n:ufw6-user-limit - [0:0]\n:ufw6-user-limit-accept - [0:0]\n### RULES ###\n\n### END RULES ###\n\n### LOGGING ###\n-A ufw6-after-logging-input -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw6-after-logging-forward -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-I ufw6-logging-deny -m conntrack --ctstate INVALID -j RETURN -m limit --limit 3/min --limit-burst 10\n-A ufw6-logging-deny -j LOG --log-prefix \"[UFW BLOCK] \" -m limit --limit 3/min --limit-burst 10\n-A ufw6-logging-allow -j LOG --log-prefix \"[UFW ALLOW] \" -m limit --limit 3/min --limit-burst 10\n### END LOGGING ###\n\n### RATE LIMITING ###\n-A ufw6-user-limit -m limit --limit 3/minute -j LOG --log-prefix \"[UFW LIMIT BLOCK] \"\n-A ufw6-user-limit -j REJECT\n-A ufw6-user-limit-accept -j ACCEPT\n### END RATE LIMITING ###\nCOMMIT\n",
+        "/etc/ufw/after.rules": "#\n# rules.input-after\n#\n# Rules that should be run after the ufw command line added rules. Custom\n# rules should be added to one of these chains:\n#   ufw-after-input\n#   ufw-after-output\n#   ufw-after-forward\n#\n\n# Don't delete these required lines, otherwise there will be errors\n*filter\n:ufw-after-input - [0:0]\n:ufw-after-output - [0:0]\n:ufw-after-forward - [0:0]\n# End required lines\n\n# don't log noisy services by default\n-A ufw-after-input -p udp --dport 137 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 138 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 139 -j ufw-skip-to-policy-input\n-A ufw-after-input -p tcp --dport 445 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 67 -j ufw-skip-to-policy-input\n-A ufw-after-input -p udp --dport 68 -j ufw-skip-to-policy-input\n\n# don't log noisy broadcast\n-A ufw-after-input -m addrtype --dst-type BROADCAST -j ufw-skip-to-policy-input\n\n# don't delete the 'COMMIT' line or these rules won't be processed\nCOMMIT\n"
+      }
+    },
+    "nft": {
+      "installed": true,
+      "listed": true
+    },
+    "iptables": {
+      "installed": true,
+      "backend": "nf_tables",
+      "listed": true,
+      "policies": {
+        "FORWARD": "DROP",
+        "INPUT": "DROP",
+        "OUTPUT": "ACCEPT"
+      },
+      "chains": [
+        "DOCKER",
+        "DOCKER-USER",
+        "FORWARD",
+        "INPUT",
+        "OUTPUT",
+        "ufw-before-input",
+        "ufw-user-forward",
+        "ufw-user-input"
+      ],
+      "input_rules": 7,
+      "docker_user_rules": [
+        "-A DOCKER-USER -j RETURN"
+      ]
+    },
+    "ufw_docker": {
+      "in_files": "absent",
+      "loaded": "no"
+    },
+    "docker_user": "default",
+    "docker_backend": "iptables"
+  },
+  "listeners": {
+    "source": "ss",
+    "processes_visible": true,
+    "sockets": [
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 22,
+        "processes": [
+          "sshd"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6001,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 6002,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 8000,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "172.17.0.1",
+        "port": 8080,
+        "processes": [
+          "crowdsec"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 20241,
+        "processes": [
+          "cloudflared"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "127.0.0.1",
+        "port": 20242,
+        "processes": [
+          "cloudflared"
+        ]
+      },
+      {
+        "proto": "udp",
+        "address": "0.0.0.0",
+        "port": 41641,
+        "processes": [
+          "tailscaled"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 80,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "::",
+        "port": 443,
+        "processes": [
+          "docker-proxy"
+        ]
+      },
+      {
+        "proto": "tcp",
+        "address": "0.0.0.0",
+        "port": 5432,
+        "processes": [
+          "docker-proxy"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "interface": "lo",
+        "address": "127.0.0.1",
+        "prefix": 8,
+        "scope": "host"
+      },
+      {
+        "interface": "eth0",
+        "address": "203.0.113.30",
+        "prefix": 24,
+        "scope": "global"
+      },
+      {
+        "interface": "eth0",
+        "address": "2001:db8:10::30",
+        "prefix": 64,
+        "scope": "global"
+      },
+      {
+        "interface": "tailscale0",
+        "address": "100.64.0.30",
+        "prefix": 32,
+        "scope": "global"
+      }
+    ],
+    "addresses_source": "ip"
+  },
+  "paas": {
+    "platforms": [
+      {
+        "name": "coolify",
+        "role": "panel",
+        "data_root": "/data/coolify",
+        "evidence": [
+          "path:/data/coolify",
+          "path:/data/coolify/source/docker-compose.yml"
+        ],
+        "proxy_dynamic_dirs": [
+          "/data/coolify/proxy/dynamic"
+        ],
+        "backups": {
+          "dir": "/data/coolify/backups",
+          "readable": true,
+          "files": 4,
+          "newest": "2026-02-27T03:00:00Z"
+        }
+      }
+    ]
+  },
+  "secrets": {
+    "paas_env_files": {
+      "roots": [
+        "/data/coolify/applications",
+        "/data/coolify/services"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/applications/a1b2c3/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/applications/d4e5f6/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/services/g7h8i9/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_main_env": {
+      "roots": [
+        "/data/coolify/source/.env"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/source/.env",
+          "kind": "env",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "paas_ssh_keys": {
+      "roots": [
+        "/data/coolify/ssh/keys"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/ssh/keys",
+          "kind": "dir",
+          "mode": "0755",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/ssh/keys/id.root@host.docker.internal",
+          "kind": "key",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "proxy_dynamic": {
+      "roots": [
+        "/data/coolify/proxy/dynamic",
+        "/data/coolify/proxy/caddy/dynamic"
+      ],
+      "files": [
+        {
+          "path": "/data/coolify/proxy/dynamic/coolify.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        },
+        {
+          "path": "/data/coolify/proxy/dynamic/default_redirect_503.yaml",
+          "kind": "config",
+          "mode": "0600",
+          "uid": 9999,
+          "gid": 0,
+          "platform": "coolify"
+        }
+      ]
+    },
+    "private_keys": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.ssh/id_ed25519",
+          "kind": "ssh",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "docker_configs": {
+      "roots": [
+        "/root",
+        "/home/deploy"
+      ],
+      "files": [
+        {
+          "path": "/root/.docker/config.json",
+          "kind": "docker",
+          "mode": "0600",
+          "uid": 0,
+          "gid": 0
+        }
+      ]
+    },
+    "world_writable": {
+      "roots": [
+        "/data/coolify"
+      ],
+      "files": []
+    },
+    "backup_configs": {
+      "roots": [],
+      "files": []
+    },
+    "backup_tools": []
+  },
+  "docker": {
+    "installed": true,
+    "socket_path": "/var/run/docker.sock",
+    "socket": {
+      "perm": "0660",
+      "uid": 0,
+      "gid": 998,
+      "group": "docker",
+      "world_writable": false
+    },
+    "api": "ok",
+    "version": {
+      "version": "27.5.1",
+      "api_version": "1.47",
+      "os": "linux",
+      "arch": "arm64"
+    },
+    "info": {
+      "logging_driver": "json-file",
+      "cgroup_version": "2"
+    },
+    "daemon": {
+      "config_found": true,
+      "hosts": [
+        {
+          "addr": "fd://",
+          "source": "/lib/systemd/system/docker.service"
+        }
+      ],
+      "log_driver": "json-file",
+      "log_max_size": "10m",
+      "log_max_file": "3",
+      "no_new_privileges": true,
+      "unit_files": [
+        "/lib/systemd/system/docker.service"
+      ]
+    },
+    "tcp_read": false,
+    "containers": [
+      {
+        "id": "c0ffee000005",
+        "name": "alloy",
+        "image": "grafana/alloy:v1.5.0",
+        "running": true,
+        "user": "",
+        "pid_mode": "host",
+        "networks": [
+          "host"
+        ],
+        "network_mode": "host",
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/",
+            "target": "/host/root",
+            "read_only": true
+          }
+        ]
+      },
+      {
+        "id": "000000000000",
+        "name": "coolify",
+        "project": "coolify",
+        "service": "coolify",
+        "image": "ghcr.io/coollabsio/coolify:4.0.0-beta.420",
+        "running": true,
+        "user": "9999",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "ports": [
+          {
+            "container_port": 8080,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 8000
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "coolify"
+        }
+      },
+      {
+        "id": "000000000001",
+        "name": "coolify-db",
+        "project": "coolify",
+        "service": "postgres",
+        "image": "postgres:15-alpine",
+        "running": true,
+        "user": "",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "coolify-db",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "postgres"
+        }
+      },
+      {
+        "id": "c0ffee000001",
+        "name": "coolify-proxy",
+        "image": "traefik:v3.1.4",
+        "running": true,
+        "user": "",
+        "networks": [
+          "coolify",
+          "k4s9d2"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/var/run/docker.sock",
+            "target": "/var/run/docker.sock",
+            "read_only": true
+          }
+        ],
+        "ports": [
+          {
+            "container_port": 80,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 80
+          },
+          {
+            "container_port": 443,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 443
+          }
+        ],
+        "labels": {
+          "coolify.managed": "true",
+          "coolify.proxy": "true"
+        }
+      },
+      {
+        "id": "c0ffee000002",
+        "name": "coolify-proxy-error-pages",
+        "image": "ghcr.io/coollabsio/coolify-helper:1.0.4",
+        "running": true,
+        "user": "10001",
+        "networks": [
+          "coolify"
+        ]
+      },
+      {
+        "id": "000000000003",
+        "name": "coolify-realtime",
+        "project": "coolify",
+        "service": "soketi",
+        "image": "ghcr.io/coollabsio/coolify-realtime:1.0.6",
+        "running": true,
+        "user": "9999",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "ports": [
+          {
+            "container_port": 6001,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 6001
+          },
+          {
+            "container_port": 6002,
+            "proto": "tcp",
+            "host_ip": "127.0.0.1",
+            "host_port": 6002
+          }
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "soketi"
+        }
+      },
+      {
+        "id": "000000000002",
+        "name": "coolify-redis",
+        "project": "coolify",
+        "service": "redis",
+        "image": "redis:7-alpine",
+        "running": true,
+        "user": "redis",
+        "network_mode": "coolify",
+        "networks": [
+          "coolify"
+        ],
+        "labels": {
+          "com.docker.compose.project": "coolify",
+          "com.docker.compose.service": "redis"
+        }
+      },
+      {
+        "id": "c0ffee000003",
+        "name": "coolify-sentinel",
+        "image": "ghcr.io/coollabsio/sentinel:0.0.15",
+        "running": true,
+        "user": "",
+        "pid_mode": "host",
+        "networks": [
+          "coolify"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/var/run/docker.sock",
+            "target": "/var/run/docker.sock",
+            "read_only": true
+          },
+          {
+            "type": "bind",
+            "source": "/data/coolify/sentinel",
+            "target": "/app/db"
+          }
+        ],
+        "labels": {
+          "coolify.managed": "true"
+        }
+      },
+      {
+        "id": "333333333333",
+        "name": "shop-db-k4s9d2",
+        "project": "shop",
+        "service": "db",
+        "image": "postgres:17.2",
+        "running": true,
+        "user": "",
+        "network_mode": "k4s9d2",
+        "networks": [
+          "k4s9d2"
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "source": "shop_pg",
+            "target": "/var/lib/postgresql/data"
+          }
+        ],
+        "labels": {
+          "coolify.managed": "true",
+          "coolify.projectName": "shop",
+          "coolify.serviceName": "db",
+          "coolify.type": "database"
+        }
+      },
+      {
+        "id": "222222222222",
+        "name": "shop-web-k4s9d2",
+        "project": "shop",
+        "service": "web",
+        "image": "ghcr.io/example/shop:2.4.1",
+        "running": true,
+        "user": "10001:10001",
+        "network_mode": "k4s9d2",
+        "networks": [
+          "k4s9d2"
+        ],
+        "proxy_routed": true,
+        "security_opt": [
+          "no-new-privileges:true"
+        ],
+        "labels": {
+          "coolify.managed": "true",
+          "coolify.projectName": "shop",
+          "coolify.serviceName": "web",
+          "coolify.type": "application",
+          "traefik.enable": "true"
+        }
+      },
+      {
+        "id": "c0ffee000004",
+        "name": "storage-init",
+        "image": "busybox:1.36",
+        "running": false,
+        "user": "",
+        "project": "shop",
+        "service": "storage-init",
+        "networks": [
+          "k4s9d2"
+        ],
+        "mounts": [
+          {
+            "type": "bind",
+            "source": "/data/coolify/applications/k4s9d2/storage",
+            "target": "/storage"
+          }
+        ]
+      },
+      {
+        "id": "444444444444",
+        "name": "tunnel-1",
+        "project": "tunnel",
+        "service": "cloudflared",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "host",
+        "networks": [
+          "host"
+        ],
+        "labels": {
+          "com.docker.compose.project": "tunnel",
+          "com.docker.compose.service": "cloudflared"
+        }
+      },
+      {
+        "id": "444444444445",
+        "name": "tunnel-2",
+        "project": "tunnel",
+        "service": "cloudflared",
+        "image": "cloudflare/cloudflared:2026.10.0",
+        "running": true,
+        "user": "nonroot",
+        "network_mode": "host",
+        "networks": [
+          "host"
+        ],
+        "labels": {
+          "com.docker.compose.project": "tunnel",
+          "com.docker.compose.service": "cloudflared"
+        }
+      },
+      {
+        "id": "c0ffee000201",
+        "name": "shared-db",
+        "image": "postgres:16",
+        "running": true,
+        "user": "",
+        "networks": [
+          "bridge"
+        ],
+        "ports": [
+          {
+            "container_port": 5432,
+            "proto": "tcp",
+            "host_ip": "0.0.0.0",
+            "host_port": 5432
+          }
+        ]
+      }
+    ],
+    "networks": [
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "coolify",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local"
+      },
+      {
+        "name": "k4s9d2",
+        "driver": "bridge",
+        "scope": "local"
+      },
+      {
+        "name": "none",
+        "driver": "null",
+        "scope": "local"
+      }
+    ]
+  },
+  "tailscale": {
+    "installed": true,
+    "unit": {
+      "name": "tailscaled.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "status_read": true,
+    "backend_state": "Running",
+    "version": "1.80.0",
+    "serve": {},
+    "lock_enabled": false,
+    "ssh": false
+  },
+  "cloudflared": {
+    "installed": true,
+    "processes_read": true,
+    "processes_visible": true,
+    "connectors": [
+      {
+        "container": true,
+        "args_read": true,
+        "mode": "named"
+      },
+      {
+        "container": true,
+        "args_read": true,
+        "mode": "named"
+      }
+    ]
+  },
+  "crowdsec": {
+    "installed": true,
+    "unit": {
+      "name": "crowdsec.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "processes_read": true,
+    "processes_visible": true,
+    "engine_processes": 1,
+    "cscli": true,
+    "version": "v1.6.4",
+    "bouncers_read": true,
+    "bouncers": [
+      {
+        "name": "traefik-bouncer",
+        "type": "crowdsec-bouncer-traefik-plugin",
+        "version": "1.4.1",
+        "kind": "proxy",
+        "last_pull": "2026-03-01T11:59:48Z"
+      }
+    ],
+    "hub_read": true,
+    "collections": [
+      "crowdsecurity/linux",
+      "crowdsecurity/sshd",
+      "crowdsecurity/traefik"
+    ],
+    "parsers": [
+      "crowdsecurity/sshd-logs",
+      "crowdsecurity/traefik-logs",
+      "crowdsecurity/whitelists"
+    ],
+    "lapi_listen": "172.17.0.1:8080",
+    "acquisition_read": true,
+    "acquisition": [
+      {
+        "file": "/etc/crowdsec/acquis.yaml",
+        "source": "file",
+        "type": "syslog",
+        "paths": [
+          "/var/log/auth.log"
+        ]
+      },
+      {
+        "file": "/etc/crowdsec/acquis.d/traefik.yaml",
+        "source": "docker",
+        "type": "traefik",
+        "containers": [
+          "coolify-proxy"
+        ]
+      }
+    ],
+    "parser_files_read": true,
+    "parser_files": [
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/whitelists.yaml",
+        "name": "crowdsecurity/whitelists",
+        "whitelist_cidrs": [
+          "192.168.0.0/16",
+          "10.0.0.0/8",
+          "172.16.0.0/12"
+        ],
+        "whitelist_ips": [
+          "127.0.0.1",
+          "::1"
+        ]
+      },
+      {
+        "path": "/etc/crowdsec/parsers/s02-enrich/cf-real-ip.yaml",
+        "name": "local/cf-real-ip",
+        "real_ip_header": "cf-connecting-ip"
+      }
+    ]
+  },
+  "fail2ban": {
+    "installed": true,
+    "unit": {
+      "name": "fail2ban.service",
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "unit_file_state": "enabled"
+    },
+    "status_read": true,
+    "active_jails": [
+      "sshd"
+    ],
+    "config_read": true,
+    "jails": [
+      {
+        "name": "sshd",
+        "enabled": true,
+        "port": "ssh",
+        "ignoreip": [
+          "127.0.0.1/8",
+          "::1",
+          "100.64.0.0/10"
+        ]
+      }
+    ]
+  }
+}

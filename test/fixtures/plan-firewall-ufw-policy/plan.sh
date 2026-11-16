@@ -192,6 +192,8 @@ STACKWARD_EOF
 # sshd-hardening (passing): SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005
 # already pass or do not apply
 # lock-default-user (passing): USR-003 already passes or does not apply
+# ufw-docker (manual): UFW must be on with a deny default first: apply
+# ufw-policy, then plan again
 # fail2ban-sshd (unknown): CS-010 is unknown; nothing to plan until the
 # audit can inspect it
 

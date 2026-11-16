@@ -397,7 +397,7 @@ func TestBuildIsDeterministic(t *testing.T) {
 // steps and the fail2ban jail.
 func TestDefaultRegistryHasNoTestAccessSteps(t *testing.T) {
 	real := map[string]bool{AdminUserID: true, PaaSUserID: true, LockDefaultUserID: true, SSHDHardeningID: true, "fail2ban-sshd": true,
-		UFWPolicyID: true}
+		UFWPolicyID: true, UFWDockerID: true}
 	for _, g := range Generators() {
 		if g.Risk == AccessCritical && !real[g.ID] {
 			t.Errorf("access-critical step %s in the default registry; add it to cmd/stackward's realAccessCritical once it is a real step", g.ID)

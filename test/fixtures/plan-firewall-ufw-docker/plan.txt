@@ -1,0 +1,116 @@
+stackward plan: nothing on this host was changed
+host:      sha256:207e1223ba6275be  Ubuntu 24.04.1 LTS
+source:    facts file, report by stackward test, facts from 2026-03-01T12:00:00Z
+sandbox:   unavailable
+steps:     2 planned (0 safe, 1 networking, 1 access-critical), 2 opt in, 11 not planned
+
+1. unattended-upgrades-reboot  [networking]  fixes SYS-003
+   Let unattended-upgrades reboot at 04:00 (host time) when an update needs it
+   opt in: applied only when selected by id
+   create   /etc/apt/apt.conf.d/91stackward-automatic-reboot (0644)
+            checked first with: apt-config dump -c <new file>
+            --- /dev/null
+            +++ b/etc/apt/apt.conf.d/91stackward-automatic-reboot
+            @@ -0,0 +1,5 @@
+            +// Written by stackward: plan step unattended-upgrades-reboot.
+            +// Lets unattended-upgrades reboot the host at 04:00 (host time)
+            +// when an update needs a reboot. Remove this file to undo.
+            +Unattended-Upgrade::Automatic-Reboot "true";
+            +Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+   note     This is the reboot decision. stackward apply never reboots the host: this step only writes a setting. With it, unattended-upgrades reboots the host at 04:00 host time after a run that leaves /var/run/reboot-required. Without it, automatic reboot stays off and reboots wait for you.
+   note     Logged in users do not hold the reboot back (Unattended-Upgrade::Automatic-Reboot-WithUsers is true unless set otherwise).
+   note     The running kernel is older than the newest installed one (SYS-003), but no reboot is marked pending, so unattended-upgrades will not reboot for it; reboot by hand once.
+   undo     Remove the drop-in; automatic reboot is off again and reboots wait for you.
+            rm -f /etc/apt/apt.conf.d/91stackward-automatic-reboot
+
+2. ufw-docker  [access-critical]  fixes DKR-001
+   Filter published container ports with UFW (ufw-docker rules)
+   opt in: applied only when selected by id
+   replace  /etc/ufw/user.rules
+            checked first with: iptables-restore --test --noflush <new file>
+            --- a/etc/ufw/user.rules
+            +++ b/etc/ufw/user.rules
+            @@ -23,6 +23,18 @@
+             ### tuple ### allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0
+             -A ufw-user-input -i tailscale0 -j ACCEPT
+             
+            +### tuple ### route:allow tcp 8080 0.0.0.0/0 any 0.0.0.0/0 in
+            +-A ufw-user-forward -p tcp --dport 8080 -j ACCEPT
+            +
+            +### tuple ### route:allow tcp 80 0.0.0.0/0 any 0.0.0.0/0 in
+            +-A ufw-user-forward -p tcp --dport 80 -j ACCEPT
+            +
+            +### tuple ### route:allow tcp 443 0.0.0.0/0 any 0.0.0.0/0 in
+            +-A ufw-user-forward -p tcp --dport 443 -j ACCEPT
+            +
+            +### tuple ### route:allow any any 0.0.0.0/0 any 0.0.0.0/0 in_tailscale0
+            +-A ufw-user-forward -i tailscale0 -j ACCEPT
+            +
+             ### END RULES ###
+             
+             ### LOGGING ###
+   replace  /etc/ufw/after.rules
+            checked first with: iptables-restore --test --noflush <new file>
+            --- a/etc/ufw/after.rules
+            +++ b/etc/ufw/after.rules
+            @@ -28,3 +28,30 @@
+             
+             # don't delete the 'COMMIT' line or these rules won't be processed
+             COMMIT
+            +
+            +# BEGIN UFW AND DOCKER
+            +*filter
+            +:ufw-user-forward - [0:0]
+            +:ufw-docker-logging-deny - [0:0]
+            +:DOCKER-USER - [0:0]
+            +-A DOCKER-USER -j ufw-user-forward
+            +
+            +-A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+            +-A DOCKER-USER -m conntrack --ctstate INVALID -j DROP
+            +-A DOCKER-USER -i docker0 -o docker0 -j ACCEPT
+            +
+            +-A DOCKER-USER -j RETURN -s 10.0.0.0/8
+            +-A DOCKER-USER -j RETURN -s 172.16.0.0/12
+            +-A DOCKER-USER -j RETURN -s 192.168.0.0/16
+            +
+            +-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 10.0.0.0/8
+            +-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 172.16.0.0/12
+            +-A DOCKER-USER -j ufw-docker-logging-deny -m conntrack --ctstate NEW -d 192.168.0.0/16
+            +
+            +-A DOCKER-USER -j RETURN
+            +
+            +-A ufw-docker-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW DOCKER BLOCK] "
+            +-A ufw-docker-logging-deny -j DROP
+            +
+            +COMMIT
+            +# END UFW AND DOCKER
+   run      ufw reload
+            # load after.rules with the ufw-docker block and the route rules
+   note     Published container ports become filtered: new connections from outside the private ranges to any container are dropped unless a UFW route rule (ufw route allow) allows the container port. Containers you publish later are closed too until you add a route rule.
+   note     Closes to the internet: 0.0.0.0:5432->5432/tcp (shared-db).
+   note     Stays reachable: 0.0.0.0:8000->8080/tcp (coolify) from anywhere (route allow 8080/tcp from anywhere), 0.0.0.0:80->80/tcp (coolify-proxy) from anywhere (route allow 80/tcp from anywhere), 0.0.0.0:443->443/tcp (coolify-proxy) from anywhere (route allow 443/tcp from anywhere); every published port from the tailnet (route allow on tailscale0); every published port from the private ranges 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 (the ufw-docker rules let them through, so a provider's private network keeps access); ports published on 127.0.0.1 and connections made on this host.
+   note     The PaaS panel ports stay public because the paas-panel profile does not move the panel behind a tunnel or the tailnet; PAAS-003 still warns. Plan with --profile tunnel or tailnet-only to close them.
+   note     Route rules match the container port (after Docker's DNAT), so a rule for 443 opens 443 of every container that publishes it.
+   note     The rules are the published ufw-docker block for /etc/ufw/after.rules, written by stackward and test loaded with iptables-restore --test before UFW reloads; no script or package is downloaded. They cover IPv4 only; after6.rules is not changed.
+   note     ip_forward and Docker's firewall settings are left alone. Docker keeps DOCKER-USER across restarts, and UFW loads the block at boot before Docker starts.
+   undo     Restore after.rules and the UFW rules from the backup, empty DOCKER-USER back to what Docker put there, reload UFW and delete ufw-docker's logging chain: published ports are reachable as before.
+            iptables -F DOCKER-USER
+            iptables -A DOCKER-USER -j RETURN
+            ufw reload
+            iptables -F ufw-docker-logging-deny
+            iptables -X ufw-docker-logging-deny
+
+Not planned:
+  journald-cap         passing  LOG-001 already passes or does not apply
+  sysctl-hardening     passing  KRN-002, KRN-003 and KRN-004 already pass or do not apply
+  unattended-upgrades  passing  UPD-001 already passes or does not apply
+  unattended-upgrades-install passing  UPD-001 already passes or does not apply
+  docker-log-rotation  passing  DKR-031 already passes or does not apply
+  admin-user           passing  an admin account besides root and the cloud default exists (alice)
+  paas-user            manual   the platform logs in as root unless it has its own account; name one with stackward plan --paas-user NAME
+  sshd-hardening       passing  SSH-001, SSH-002, SSH-003, SSH-004 and SSH-005 already pass or do not apply
+  lock-default-user    passing  USR-003 already passes or does not apply
+  ufw-policy           passing  NET-001 already passes or does not apply
+  fail2ban-sshd        passing  CS-010 already passes or does not apply
+
+Review every step. Save the plan with --out FILE, or print it as a shell script with --emit-script.
