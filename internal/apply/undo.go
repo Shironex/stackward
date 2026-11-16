@@ -15,10 +15,10 @@ import (
 )
 
 // touched reports whether a journal step changed anything: a file, or a
-// command that ran.
+// command that ran, before or after the edits.
 func touched(js JournalStep) bool {
 	return slices.ContainsFunc(js.Files, func(f JournalFile) bool { return f.Changed }) ||
-		slices.ContainsFunc(js.Commands, func(c JournalCommand) bool { return c.Kind == KindCommand })
+		slices.ContainsFunc(js.Commands, func(c JournalCommand) bool { return c.Kind == KindCommand || c.Kind == KindBefore })
 }
 
 // undoCommands are the step's own undo commands that undo runs after the

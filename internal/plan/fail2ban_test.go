@@ -113,7 +113,12 @@ func TestFail2banSSHDInstallShape(t *testing.T) {
 	if out.Step == nil {
 		t.Fatalf("not installed: %+v", out)
 	}
-	if got := argsOf(out.Step.Commands); !slices.EqualFunc(got, [][]string{f2bInstall, f2bTest, f2bRestart}, slices.Equal) {
+	// The install runs before the drop-in, so a failed install writes
+	// nothing.
+	if got := argsOf(out.Step.Before); !slices.EqualFunc(got, [][]string{aptInstall("fail2ban")}, slices.Equal) {
+		t.Errorf("before %v", got)
+	}
+	if got := argsOf(out.Step.Commands); !slices.EqualFunc(got, [][]string{f2bTest, f2bRestart}, slices.Equal) {
 		t.Errorf("commands %v", got)
 	}
 	if got := argsOf(out.Step.Undo.Commands); !slices.EqualFunc(got, [][]string{f2bRemove, f2bPurge}, slices.Equal) {
@@ -125,7 +130,7 @@ func TestFail2banSSHDInstallShape(t *testing.T) {
 	// The journal backend belongs to the install shape only.
 	s := complete(mustLookup(t, "fail2ban-sshd"), *out.Step)
 	s = cloneStep(s)
-	s.Commands, s.Undo.Commands = s.Commands[1:], []Command{cmd("", f2bRemove...), cmd("", f2bReload...)}
+	s.Before, s.Undo.Commands = nil, []Command{cmd("", f2bRemove...), cmd("", f2bReload...)}
 	s.Commands[1] = cmd("", f2bReload...)
 	if err := Authorize(s); err == nil {
 		t.Error("a journal backend jail without the install was accepted")
@@ -153,7 +158,8 @@ func TestFail2banSSHDAuthorizeRefusesTampering(t *testing.T) {
 		"other jail":   edit(func(c string) string { return strings.Replace(c, "[sshd]", "[recidive]", 1) }),
 		"duplicate":    edit(func(c string) string { return c[:len(c)-1] + " ::1\n" }),
 		"command":      func(s *Step) { s.Commands[1].Args = []string{"systemctl", "stop", "ssh"} },
-		"install":      func(s *Step) { s.Commands = append([]Command{cmd("", f2bInstall...)}, s.Commands...) },
+		"install":      func(s *Step) { s.Commands = append([]Command{cmd("", aptInstall("fail2ban")...)}, s.Commands...) },
+		"before":       func(s *Step) { s.Before = []Command{cmd("", aptInstall("fail2ban")...)} },
 		"undo":         func(s *Step) { s.Undo.Commands[1].Args = f2bPurge },
 		"validate":     func(s *Step) { s.Edits[0].Validate = []string{"sh", "-c"} },
 		"restarts":     func(s *Step) { s.Restarts = nil },

@@ -115,8 +115,11 @@ func TestUnattendedUpgradesInstallIsNamedAndOptIn(t *testing.T) {
 	if out.Step == nil {
 		t.Fatalf("not installed: %+v", out)
 	}
-	if got := argsOf(out.Step.Commands); !slices.EqualFunc(got, [][]string{uuInstall}, slices.Equal) {
-		t.Errorf("commands %v", got)
+	if got := argsOf(out.Step.Before); !slices.EqualFunc(got, [][]string{aptInstall(uuPackage)}, slices.Equal) {
+		t.Errorf("before %v", got)
+	}
+	if len(out.Step.Commands) != 0 {
+		t.Errorf("commands %v", argsOf(out.Step.Commands))
 	}
 	if got := argsOf(out.Step.Undo.Commands); !slices.EqualFunc(got, [][]string{uuRemove, uuPurge}, slices.Equal) {
 		t.Errorf("undo %v", got)
@@ -145,7 +148,8 @@ func TestUnattendedUpgradesAuthorizeRefusesTampering(t *testing.T) {
 			s.Edits[0].NewSHA256 = sha(s.Edits[0].New)
 		},
 		"validate":     func(s *Step) { s.Edits[0].Validate = nil },
-		"install":      func(s *Step) { s.Commands = append([]Command{cmd("", uuInstall...)}, s.Commands...) },
+		"install":      func(s *Step) { s.Commands = append([]Command{cmd("", aptInstall(uuPackage)...)}, s.Commands...) },
+		"before":       func(s *Step) { s.Before = []Command{cmd("", aptInstall(uuPackage)...)} },
 		"undo shape":   func(s *Step) { s.Undo.Commands = s.Undo.Commands[:2] },
 		"other timer":  func(s *Step) { s.Commands[0].Args = []string{"systemctl", "enable", "ssh.socket"} },
 		"path":         func(s *Step) { s.Edits[0].Path = "/etc/apt/apt.conf.d/20auto-upgrades" },

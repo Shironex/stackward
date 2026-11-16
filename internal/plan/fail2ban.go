@@ -24,10 +24,14 @@ import (
 // is installed (CS-011), and the address of the SSH session the plan was
 // made from. The lockout guard refuses to apply it from a session whose
 // address the jail would not ignore. When fail2ban is missing, the
-// install is a command in the step, named in the plan, and the step is
-// opt in.
+// install runs before the drop-in is written (after an apt-get update when
+// the package lists are empty or stale), named in the plan, so a failed
+// install writes nothing; the step is opt in.
 
-const f2bDropin = "/etc/fail2ban/jail.d/90-stackward-sshd.local"
+const (
+	f2bDropin  = "/etc/fail2ban/jail.d/90-stackward-sshd.local"
+	f2bPackage = "fail2ban"
+)
 
 // orderFail2banSSHD puts the jail after the account and sshd steps: it
 // bans clients, so the ways in are settled before it starts.
@@ -42,6 +46,8 @@ func init() {
 		Order: orderFail2banSSHD,
 		OptIn: true,
 		Plan:  planFail2banSSHD,
+		// The install, when fail2ban is missing, runs before the drop-in.
+		Before: true,
 
 		Authorize: authorizeFail2banSSHD,
 		Check:     checkFail2banSSHD,
@@ -58,8 +64,7 @@ var (
 	f2bReload   = []string{"systemctl", "reload", "fail2ban"}
 	f2bRestart  = []string{"systemctl", "restart", "fail2ban"}
 	f2bRemove   = []string{"rm", "-f", f2bDropin}
-	f2bInstall  = aptGet("install", "-y", "fail2ban")
-	f2bPurge    = aptGet("purge", "-y", "fail2ban")
+	f2bPurge    = aptPurge(f2bPackage)
 	f2bHeadText = "# Written by stackward: plan step fail2ban-sshd, fixes CS-010.\n" +
 		"# Bans SSH brute force on the sshd ports. Never bans loopback, the\n" +
 		"# tailnet when Tailscale is in use, or the address the plan was made\n" +
@@ -94,12 +99,13 @@ func (j jail) render() string {
 		"ignoreip = " + strings.Join(j.ignore, " ") + "\n"
 }
 
-// f2bCommands are the commands and undo commands of the two shapes: a
-// running fail2ban gets the jail with a reload, a missing one is
-// installed first and purged by the undo.
+// f2bCommands are the commands after the edit and the undo commands of
+// the two shapes: a running fail2ban gets the jail with a reload, a
+// missing one (installed before the edit) is started and purged by the
+// undo.
 func f2bCommands(install bool) (cmds, undo [][]string) {
 	if install {
-		return [][]string{f2bInstall, f2bTest, f2bRestart}, [][]string{f2bRemove, f2bPurge}
+		return [][]string{f2bTest, f2bRestart}, [][]string{f2bRemove, f2bPurge}
 	}
 	return [][]string{f2bTest, f2bReload}, [][]string{f2bRemove, f2bReload}
 }
@@ -146,8 +152,17 @@ func planFail2banSSHD(in Input) Outcome {
 		s.Notes = append(s.Notes, "The jail keeps the log backend fail2ban already uses for sshd. If fail2ban cannot read the sshd log with it, loading the jail fails and the transaction rolls back.")
 	}
 	if install {
-		s.Undo.Description = "Remove the jail drop-in and purge fail2ban, which the step installed: its jails stop and every ban is lifted. Packages apt installed with it stay."
-		s.Notes = append([]string{"Installs the fail2ban package (and what it depends on) from the configured apt sources with apt-get install. Nothing else is upgraded on purpose, but apt may upgrade a dependency it needs. If the package lists are old, run apt update first, or the install fails and the transaction rolls back."}, s.Notes...)
+		pi, aptNote := planInstall(f, f2bPackage)
+		s.Before = pi.before()
+		s.Undo.Description = "Remove the jail drop-in and purge fail2ban, which the step installed: its jails stop and every ban is lifted. Packages apt installed with it stay. A purge finds nothing to do when the install never finished."
+		head := []string{"Installs the fail2ban package (and what it depends on) from the configured apt sources with apt-get install, before the jail is written: a failed install writes nothing and the transaction rolls back. Nothing else is upgraded on purpose, but apt may upgrade a dependency it needs."}
+		if aptNote != "" {
+			head = append(head, aptNote)
+		}
+		if f2b.ConfigDir {
+			head = append(head, "/etc/fail2ban exists without the fail2ban program (left from an earlier install); apt installs into it.")
+		}
+		s.Notes = append(head, s.Notes...)
 	}
 	for _, c := range cmds {
 		s.Commands = append(s.Commands, cmd(f2bWhy(c), c...))
@@ -238,8 +253,6 @@ func sshdPorts(f *facts.Facts) []int {
 
 func f2bWhy(c []string) string {
 	switch {
-	case slices.Equal(c, f2bInstall):
-		return "install fail2ban (named here so nothing is installed silently)"
 	case slices.Equal(c, f2bTest):
 		return "check the whole fail2ban configuration with the new jail"
 	case slices.Equal(c, f2bRestart):
@@ -317,9 +330,17 @@ func authorizeFail2banSSHD(s Step) error {
 	if err := wantRestarts(s, "fail2ban"); err != nil {
 		return err
 	}
-	// The install shape is the only one that reads the journal.
+	// The install shape is the only one that reads the journal, and the
+	// only one with the install.
+	installed, rest, err := installOf(s, f2bPackage)
+	if err != nil {
+		return err
+	}
+	if installed != j.journal {
+		return fmt.Errorf("the install of fail2ban and the journal backend go together; this step has the install %v and the backend %v", installed, j.journal)
+	}
 	cmds, undo := f2bCommands(j.journal)
-	if err := wantCommands("commands", s.Commands, cmds...); err != nil {
+	if err := wantCommands("commands", rest, cmds...); err != nil {
 		return err
 	}
 	return wantCommands("undo", s.Undo.Commands, undo...)
@@ -334,8 +355,8 @@ func checkFail2banSSHD(r Reader, s Step) (bool, string, error) {
 	if err != nil || !ok {
 		return false, "", err
 	}
-	if len(s.Commands) > 0 && slices.Equal(s.Commands[0].Args, f2bInstall) {
-		installed, err := dpkgInstalled(r, "fail2ban")
+	if installs(s, f2bPackage) {
+		installed, err := dpkgInstalled(r, f2bPackage)
 		if err != nil || !installed {
 			return false, "", err
 		}

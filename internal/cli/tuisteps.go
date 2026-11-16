@@ -184,6 +184,9 @@ func stepItem(s plan.Step, g plan.Generator) tui.StepItem {
 		ID: s.ID, Title: g.Title, Class: string(g.Risk), OptIn: g.OptIn,
 		Fixes: g.Fixes, Restarts: s.Restarts, Notes: s.Notes,
 	}
+	for _, c := range s.Before {
+		it.Changes = append(it.Changes, "first run "+strings.Join(c.Args, " "))
+	}
 	for _, e := range s.Edits {
 		line := e.Action + " " + e.Path
 		if e.Mode != "" {

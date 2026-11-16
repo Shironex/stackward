@@ -11,10 +11,13 @@ set -eu
 # 1/3 unattended-upgrades-install [safe] fixes UPD-001
 # Install unattended-upgrades and turn it on with an apt.conf.d drop-in
 # Note: Installs the unattended-upgrades package (and what it depends on)
-# from the configured apt sources with apt-get install. Nothing else is
-# upgraded on purpose, but apt may upgrade a dependency the package needs.
-# If the package lists are old, run apt update first, or the install fails
-# and nothing else changes.
+# from the configured apt sources with apt-get install, before the drop-in
+# is written: a failed install writes nothing. Nothing else is upgraded on
+# purpose, but apt may upgrade a dependency the package needs.
+# Note: Runs apt-get update first: the apt package lists are empty
+# (/var/lib/apt/lists holds no Packages index, as on a fresh cloud image),
+# so apt-get install would not find unattended-upgrades or its current
+# version. It only refreshes the package lists; nothing is upgraded.
 # Note: Reboot decision: automatic reboot stays off, so updates that need a
 # reboot (a kernel, libc) wait for you and SYS-002 reports them. To let
 # unattended-upgrades reboot at 04:00 (host time) instead, apply the opt in
@@ -26,10 +29,15 @@ set -eu
 # so.
 # Undo: Remove the drop-in; unattended-upgrades then follows the
 # distribution's own settings again. The package is purged; packages apt
-# installed with it stay.
+# installed with it stay. A purge finds nothing to do when the install never
+# finished.
 #   rm -f /etc/apt/apt.conf.d/90stackward-unattended-upgrades
 #   env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 purge -y unattended-upgrades
 step_unattended_upgrades_install() {
+	# refresh the empty or stale package lists, so the install finds unattended-upgrades
+	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update
+	# install unattended-upgrades before any file is written (named here so nothing is installed silently)
+	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades
 	# create /etc/apt/apt.conf.d/90stackward-unattended-upgrades (0644)
 	if [ -e /etc/apt/apt.conf.d/90stackward-unattended-upgrades ]; then
 		echo 'stackward: /etc/apt/apt.conf.d/90stackward-unattended-upgrades exists, the plan expected it absent; plan again' >&2
@@ -50,8 +58,6 @@ STACKWARD_EOF
 		exit 1
 	fi
 	mv /etc/apt/apt.conf.d/90stackward-unattended-upgrades.stackward-new /etc/apt/apt.conf.d/90stackward-unattended-upgrades
-	# install unattended-upgrades (named here so nothing is installed silently)
-	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y unattended-upgrades
 }
 
 # 2/3 unattended-upgrades-reboot [networking] fixes UPD-004
@@ -95,10 +101,13 @@ STACKWARD_EOF
 # Ban SSH brute force with a fail2ban sshd jail
 # Restarts fail2ban.
 # Note: Installs the fail2ban package (and what it depends on) from the
-# configured apt sources with apt-get install. Nothing else is upgraded on
-# purpose, but apt may upgrade a dependency it needs. If the package lists
-# are old, run apt update first, or the install fails and the transaction
-# rolls back.
+# configured apt sources with apt-get install, before the jail is written: a
+# failed install writes nothing and the transaction rolls back. Nothing else
+# is upgraded on purpose, but apt may upgrade a dependency it needs.
+# Note: Runs apt-get update first: the apt package lists are empty
+# (/var/lib/apt/lists holds no Packages index, as on a fresh cloud image),
+# so apt-get install would not find fail2ban or its current version. It only
+# refreshes the package lists; nothing is upgraded.
 # Note: No SSH client address was known when this plan was made (a saved
 # facts file, or not over SSH), so only loopback, the jail's own entries and
 # the tailnet are ignored. apply refuses to run the step from an SSH session
@@ -112,10 +121,14 @@ STACKWARD_EOF
 # python3-systemd module fail2ban recommends for it.
 # Undo: Remove the jail drop-in and purge fail2ban, which the step
 # installed: its jails stop and every ban is lifted. Packages apt installed
-# with it stay.
+# with it stay. A purge finds nothing to do when the install never finished.
 #   rm -f /etc/fail2ban/jail.d/90-stackward-sshd.local
 #   env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 purge -y fail2ban
 step_fail2ban_sshd() {
+	# refresh the empty or stale package lists, so the install finds fail2ban
+	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update
+	# install fail2ban before any file is written (named here so nothing is installed silently)
+	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban
 	# create /etc/fail2ban/jail.d/90-stackward-sshd.local (0644)
 	if [ -e /etc/fail2ban/jail.d/90-stackward-sshd.local ]; then
 		echo 'stackward: /etc/fail2ban/jail.d/90-stackward-sshd.local exists, the plan expected it absent; plan again' >&2
@@ -135,8 +148,6 @@ ignoreip = 127.0.0.1/8 ::1
 STACKWARD_EOF
 	chmod 0644 /etc/fail2ban/jail.d/90-stackward-sshd.local.stackward-new
 	mv /etc/fail2ban/jail.d/90-stackward-sshd.local.stackward-new /etc/fail2ban/jail.d/90-stackward-sshd.local
-	# install fail2ban (named here so nothing is installed silently)
-	env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y fail2ban
 	# check the whole fail2ban configuration with the new jail
 	fail2ban-client -t
 	# start fail2ban with the new jail

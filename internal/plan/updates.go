@@ -1,11 +1,8 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"slices"
-	"strings"
 
 	"github.com/Shironex/stackward/internal/checks"
 	"github.com/Shironex/stackward/internal/facts"
@@ -16,8 +13,9 @@ import (
 // distribution's 20auto-upgrades, and enable apt-daily-upgrade.timer when
 // the audit saw it disabled. The main apt configuration is never edited.
 // When the package is missing, only the opt in install step plans: it
-// names the apt-get install in the plan, so nothing is installed unless
-// the owner selects it by id. Neither step touches the reboot policy; that
+// names the apt-get install in the plan (run before the drop-in, after an
+// apt-get update when the package lists are empty or stale), so nothing
+// is installed unless the owner selects it by id. Neither step touches the reboot policy; that
 // is the separate, opt in unattended-upgrades-reboot step.
 
 const (
@@ -46,6 +44,8 @@ func init() {
 		Risk:  Safe,
 		OptIn: true,
 		Plan:  planUnattendedInstall,
+		// The install runs before the drop-in is written.
+		Before: true,
 
 		Authorize: authorizeUnattendedInstall,
 		Check:     checkUnattendedInstall,
@@ -66,8 +66,7 @@ var (
 	timerStart    = []string{"systemctl", "start", uuTimer}
 	timerStop     = []string{"systemctl", "stop", uuTimer}
 	timerDisable  = []string{"systemctl", "disable", uuTimer}
-	uuInstall     = aptGet("install", "-y", uuPackage)
-	uuPurge       = aptGet("purge", "-y", uuPackage)
+	uuPurge       = aptPurge(uuPackage)
 	uuTouches     = []string{"file:" + uuDropin}
 	uuTimerTouch  = "service:" + uuTimer
 	aptLockWaitOp = "DPkg::Lock::Timeout=120"
@@ -144,7 +143,7 @@ func planUnattended(in Input) Outcome {
 	if !u.UnattendedInstalled {
 		return Skip(SkipPassing, "does not apply: unattended-upgrades is not installed; the opt in step unattended-upgrades-install installs it")
 	}
-	s := uuStep(u, false)
+	s := uuStep(u, nil)
 	return Outcome{Step: &s}
 }
 
@@ -156,13 +155,22 @@ func planUnattendedInstall(in Input) Outcome {
 	if u.UnattendedInstalled {
 		return Skip(SkipPassing, "does not apply: unattended-upgrades is already installed; the step unattended-upgrades turns it on")
 	}
-	s := uuStep(u, true)
+	pi, note := planInstall(in.Facts, uuPackage)
+	s := uuStep(u, &uuInstall{pkgInstall: pi, note: note})
 	return Outcome{Step: &s}
 }
 
-// uuStep builds either step. install adds the package install in front
-// and its purge at the end of the undo.
-func uuStep(u *facts.Updates, install bool) Step {
+// uuInstall is the package install of unattended-upgrades-install, with
+// the note planInstall gave.
+type uuInstall struct {
+	pkgInstall
+	note string
+}
+
+// uuStep builds either step. A non nil install runs the package install
+// before the drop-in and adds its purge at the end of the undo.
+func uuStep(u *facts.Updates, inst *uuInstall) Step {
+	install := inst != nil
 	t := timerPlanOf(u)
 	cmds, undo := uuCommands(t, install)
 	e := newEdit(uuDropin, Create, "0644", "", uuContent)
@@ -188,9 +196,13 @@ func uuStep(u *facts.Updates, install bool) Step {
 		s.Undo.Description += " The timer goes back to disabled, as the audit saw it."
 	}
 	if install {
-		s.Undo.Description += " The package is purged; packages apt installed with it stay."
+		s.Before = inst.before()
+		s.Undo.Description += " The package is purged; packages apt installed with it stay. A purge finds nothing to do when the install never finished."
 		s.Notes = append(s.Notes,
-			"Installs the unattended-upgrades package (and what it depends on) from the configured apt sources with apt-get install. Nothing else is upgraded on purpose, but apt may upgrade a dependency the package needs. If the package lists are old, run apt update first, or the install fails and nothing else changes.")
+			"Installs the unattended-upgrades package (and what it depends on) from the configured apt sources with apt-get install, before the drop-in is written: a failed install writes nothing. Nothing else is upgraded on purpose, but apt may upgrade a dependency the package needs.")
+		if inst.note != "" {
+			s.Notes = append(s.Notes, inst.note)
+		}
 	}
 	s.Notes = append(s.Notes, rebootDecisionNote(u),
 		"Only the origins allowed in 50unattended-upgrades are installed; UPD-003 checks that the security pocket is among them.",
@@ -211,10 +223,9 @@ func rebootDecisionNote(u *facts.Updates) string {
 	return "Reboot decision: automatic reboot stays off, so updates that need a reboot (a kernel, libc) wait for you and SYS-002 reports them. To let unattended-upgrades reboot at " + rebootTime + " (host time) instead, apply the opt in step unattended-upgrades-reboot."
 }
 
+// uuCommands are the commands after the edit and the undo commands; the
+// install itself is a Before command (pkgInstall).
 func uuCommands(t timerPlan, install bool) (cmds, undo [][]string) {
-	if install {
-		cmds = append(cmds, uuInstall)
-	}
 	cmds = append(cmds, t.commands()...)
 	undo = append([][]string{uuRemove}, t.undo()...)
 	if install {
@@ -224,10 +235,7 @@ func uuCommands(t timerPlan, install bool) (cmds, undo [][]string) {
 }
 
 func uuWhy(c []string) string {
-	switch {
-	case slices.Equal(c, uuInstall):
-		return "install unattended-upgrades (named here so nothing is installed silently)"
-	case slices.Equal(c, timerEnable):
+	if slices.Equal(c, timerEnable) {
 		return "enable the daily unattended-upgrades timer, disabled when audited"
 	}
 	return "start the timer now"
@@ -262,12 +270,20 @@ func authorizeUU(s Step, install bool) error {
 	if err := wantRestarts(s); err != nil {
 		return err
 	}
+	// The install, for the install step only, runs before the edit.
+	installed, rest, err := installOf(s, uuPackage)
+	if err != nil {
+		return err
+	}
+	if installed != install {
+		return fmt.Errorf("the commands are not ones the step runs: the install of %s is %v, the step's is %v", uuPackage, installed, install)
+	}
 	// The timer part is one of three shapes; the commands pick it and
 	// the undo must reverse exactly that one.
 	var errs []error
 	for _, t := range []timerPlan{timerKeep, timerEnableOnly, timerEnableStart} {
 		cmds, undo := uuCommands(t, install)
-		err := wantCommands("commands", s.Commands, cmds...)
+		err := wantCommands("commands", rest, cmds...)
 		if err == nil {
 			return wantCommands("undo", s.Undo.Commands, undo...)
 		}
@@ -304,27 +320,8 @@ func checkUnattendedInstall(r Reader, s Step) (bool, string, error) {
 // dpkgInstalled reports whether dpkg's status file lists pkg as
 // installed ("install ok installed"). A missing status file means no.
 func dpkgInstalled(r Reader, pkg string) (bool, error) {
-	b, err := r.ReadFile(dpkgStatus)
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	for _, para := range strings.Split(string(b), "\n\n") {
-		var name, status string
-		for _, line := range strings.Split(para, "\n") {
-			if v, ok := strings.CutPrefix(line, "Package: "); ok {
-				name = strings.TrimSpace(v)
-			} else if v, ok := strings.CutPrefix(line, "Status: "); ok {
-				status = strings.TrimSpace(v)
-			}
-		}
-		if name == pkg {
-			return status == "install ok installed", nil
-		}
-	}
-	return false, nil
+	status, err := dpkgStatusOf(r, pkg)
+	return status == "install ok installed", err
 }
 
 // failing returns the ids among ids whose worst result is warn or fail.
