@@ -5,6 +5,47 @@ for a tag is used as the notes of its GitHub release. Versions follow
 [semantic versioning](https://semver.org/); a version with a suffix such as
 `-rc.1` is a pre-release.
 
+## 0.2.0-rc.2 (2026-11-16)
+
+The second pre-release of 0.2, with the fixes from testing 0.2.0-rc.1 on a
+throwaway server. `install.sh` keeps installing 0.1.2 unless you pass
+`--version v0.2.0-rc.2`.
+
+### Fixed
+
+- `--admin-keys-from root` works on a server where root is the only
+  account: admin-user copies `/root/.ssh/authorized_keys` to the new
+  account, and the plan says where the keys came from and that
+  sshd-hardening turns root login off once the new account is confirmed.
+  The key source is checked apart from the new account's name, so root is
+  still refused as the account to create.
+- A step that installs a package (fail2ban-sshd, unattended-upgrades-install)
+  installs it before writing any file, so a failed install leaves nothing
+  behind. When the audit saw the package lists empty (a fresh cloud image)
+  or older than 3 days, `apt-get update` runs first, named in the plan with
+  a note. The audit records the state of the lists.
+- Undo no longer fails on a package or account that never came to be: a
+  purge of a package dpkg has no record of, or a `userdel` of an account
+  `useradd` never created, is skipped and the journal says why. A failed
+  install now ends a transaction `rolled-back`, not `rollback-failed`.
+- Undo removes the directories apply created for a new file (such as
+  `/etc/fail2ban/jail.d`) while they are empty.
+- A step that was rolled back or undone no longer leaves a pending restart
+  for the next apply.
+- A leftover `/etc/fail2ban` without the fail2ban program no longer counts
+  as fail2ban being installed.
+- When CS-010 or SSH-011 cannot tell whether SSH is protected, the message
+  names what could not be read, and says to run with sudo only when the
+  audit did not run as root.
+- `install.sh` names `stackward plan` among the next steps after installing
+  0.2.
+
+### Testing
+
+- The VM matrix adds a root only server: admin-user from root's keys, and a
+  fail2ban install on empty package lists that fails, rolls back cleanly and
+  then succeeds.
+
 ## 0.2.0-rc.1 (2026-11-16)
 
 The first pre-release of 0.2: stackward can now fix what it finds. It writes
