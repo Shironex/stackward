@@ -43,9 +43,18 @@ func LoadReport(r io.Reader) (*report.Report, error) {
 		}
 		return nil, fmt.Errorf("unsupported report schema %q (want %s)", rep.Schema, report.SchemaID)
 	}
+	for i := range rep.Waivers {
+		w := &rep.Waivers[i]
+		w.Subject, w.Reason = redact.String(w.Subject), redact.String(w.Reason)
+	}
 	for i := range rep.Results {
 		it := &rep.Results[i]
 		it.Subject, it.Message = redact.String(it.Subject), redact.String(it.Message)
+		if it.Waiver != nil {
+			cp := *it.Waiver
+			cp.Reason = redact.String(cp.Reason)
+			it.Waiver = &cp
+		}
 		if it.Group == "" {
 			it.Group = catalog.GroupOf(it.ID)
 		}
@@ -61,14 +70,41 @@ func LoadReport(r io.Reader) (*report.Report, error) {
 	return &rep, nil
 }
 
+// accepted is the level the browser shows for a fail or warn result a
+// waiver accepts. It is not a check level: the report keeps the real one,
+// which the detail pane shows next to it.
+const accepted checks.Level = "accepted"
+
+// shownLevel is the level a result is listed, sorted and filtered under.
+func shownLevel(it report.Item) checks.Level {
+	if it.Accepted() {
+		return accepted
+	}
+	return it.Level
+}
+
+// listLevels is the order of levels in the list, worst first; accepted
+// findings come after info.
+var listLevels = []checks.Level{checks.Fail, checks.Warn, checks.Unknown, checks.Info, accepted, checks.Pass, checks.Skip}
+
 // levelRank orders levels worst first; unknown level strings sort last.
 func levelRank(l checks.Level) int {
-	for i, v := range checks.Levels {
+	for i, v := range listLevels {
 		if v == l {
 			return i
 		}
 	}
-	return len(checks.Levels)
+	return len(listLevels)
+}
+
+// badgeWidth is the width of the level badge of the list: the longest
+// level word of the results, at least "UNKNOWN".
+func badgeWidth(items []report.Item) int {
+	w := len(checks.Unknown)
+	for _, it := range items {
+		w = max(w, len(shownLevel(it)))
+	}
+	return w
 }
 
 // hiddenByDefault reports whether a level stays out of the list until the
@@ -83,7 +119,7 @@ func sortItems(items []report.Item) []report.Item {
 	out := append([]report.Item(nil), items...)
 	worst := map[string]int{}
 	for _, it := range out {
-		r := levelRank(it.Level)
+		r := levelRank(shownLevel(it))
 		if w, ok := worst[it.Group]; !ok || r < w {
 			worst[it.Group] = r
 		}
@@ -99,7 +135,7 @@ func sortItems(items []report.Item) []report.Item {
 			}
 			return a.Group < b.Group
 		}
-		if la, lb := levelRank(a.Level), levelRank(b.Level); la != lb {
+		if la, lb := levelRank(shownLevel(a)), levelRank(shownLevel(b)); la != lb {
 			return la < lb
 		}
 		if a.ID != b.ID {
@@ -120,16 +156,16 @@ type filter struct {
 // matches reports whether it passes the filter.
 func (f filter) matches(it report.Item) bool {
 	switch {
-	case f.level != "" && it.Level != f.level:
+	case f.level != "" && shownLevel(it) != f.level:
 		return false
-	case f.level == "" && !f.passing && hiddenByDefault(it.Level):
+	case f.level == "" && !f.passing && hiddenByDefault(shownLevel(it)):
 		return false
 	}
 	q := strings.ToLower(strings.TrimSpace(f.query))
 	if q == "" {
 		return true
 	}
-	for _, field := range []string{it.ID, it.Title, it.Subject, it.Message, it.Group, catalog.GroupName(it.Group), string(it.Level)} {
+	for _, field := range []string{it.ID, it.Title, it.Subject, it.Message, it.Group, catalog.GroupName(it.Group), string(it.Level), string(shownLevel(it))} {
 		if strings.Contains(strings.ToLower(field), q) {
 			return true
 		}
@@ -137,10 +173,14 @@ func (f filter) matches(it report.Item) bool {
 	return false
 }
 
-// levelCycle is the order the level key steps through. Pass and skip only
-// join it while passing results are shown.
-func levelCycle(passing bool) []checks.Level {
+// levelCycle is the order the level key steps through. Accepted joins it
+// when the report has accepted results, pass and skip while passing
+// results are shown.
+func levelCycle(passing, withAccepted bool) []checks.Level {
 	c := []checks.Level{"", checks.Fail, checks.Warn, checks.Unknown, checks.Info}
+	if withAccepted {
+		c = append(c, accepted)
+	}
 	if passing {
 		c = append(c, checks.Pass, checks.Skip)
 	}
@@ -148,8 +188,8 @@ func levelCycle(passing bool) []checks.Level {
 }
 
 // nextLevel returns the level after cur in the cycle.
-func nextLevel(cur checks.Level, passing bool) checks.Level {
-	c := levelCycle(passing)
+func nextLevel(cur checks.Level, passing, withAccepted bool) checks.Level {
+	c := levelCycle(passing, withAccepted)
 	for i, l := range c {
 		if l == cur {
 			return c[(i+1)%len(c)]

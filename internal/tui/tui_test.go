@@ -196,7 +196,7 @@ func TestLevelCycle(t *testing.T) {
 	var seen []checks.Level
 	l := checks.Level("")
 	for range 6 {
-		l = nextLevel(l, false)
+		l = nextLevel(l, false, false)
 		seen = append(seen, l)
 	}
 	want := []checks.Level{checks.Fail, checks.Warn, checks.Unknown, checks.Info, "", checks.Fail}
@@ -205,8 +205,11 @@ func TestLevelCycle(t *testing.T) {
 			t.Fatalf("cycle %v, want %v", seen, want)
 		}
 	}
-	if nextLevel(checks.Info, true) != checks.Pass {
+	if nextLevel(checks.Info, true, false) != checks.Pass {
 		t.Error("with passing shown, the cycle must reach pass")
+	}
+	if nextLevel(checks.Info, false, true) != accepted || nextLevel(accepted, true, true) != checks.Pass {
+		t.Error("with accepted results, the cycle must reach accepted after info")
 	}
 	rep := fixtureReport(t, "paas-coolify-panel-root")
 	fm := drive(t, rep, Options{}, 80, 24, "a", "l", "l", "l", "l", "l", "a")
