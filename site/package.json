@@ -19,13 +19,13 @@
     "check:overflow": "node scripts/check-overflow.mjs"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.42.9",
+    "@astrojs/starlight": "0.43.1",
     "@fontsource-variable/ibm-plex-sans": "5.3.0",
     "@fontsource-variable/red-hat-mono": "5.3.0",
-    "astro": "7.4.7",
+    "astro": "7.4.13",
     "sharp": "0.35.5"
   },
   "devDependencies": {
-    "playwright-core": "1.64.0"
+    "playwright-core": "1.65.1"
   }
 }
